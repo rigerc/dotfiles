@@ -30,6 +30,6 @@ fi
 # Initialize chezmoi with your dotfiles repo
 echo "🔧 Initializing chezmoi..."
 # Replace YOUR_GITHUB_USERNAME with your actual username
-chezmoi init --apply YOUR_GITHUB_USERNAME/dotfiles
+chezmoi init --apply rigerc/dotfiles
 
 echo "✅ Installation complete! Please restart your shell or run: source ~/.zshrc"
