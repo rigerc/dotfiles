@@ -1,0 +1,7 @@
+# .chezmoiignore - Files and directories for chezmoi to ignore
+
+README.md
+LICENSE
+.git/
+.gitignore
+bootstrap.sh
