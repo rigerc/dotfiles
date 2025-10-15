@@ -1,0 +1,22 @@
+#!/bin/bash
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${YELLOW}Installing brews...${NC}"
+
+# Install Brews
+brew bundle --file=/dev/stdin <<EOF
+{{ range .packages.brews -}}
+brew {{ . | quote }}
+{{ end -}}
+{{ range .packages.casks -}}
+cask {{ . | quote }}
+{{ end -}} 
+EOF
+
+echo -e "${GREEN}Brew install complete!${NC}"
