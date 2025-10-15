@@ -1,0 +1,121 @@
+# Git configuration managed by chezmoi
+# Place at ~/.local/share/chezmoi/dot_gitconfig
+
+[user]
+    # User name and email will be set via chezmoi template
+    # name = {{- if .git.name -}}{{ .git.name }}{{- else -}}Your Name{{- end -}}
+    # email = {{- if .git.email -}}{{ .git.email }}{{- else -}}your.email@example.com{{- end -}}
+
+[core]
+    editor = nvim
+    pager = delta
+    autocrlf = input
+    whitespace = fix,-indent-with-non-tab,trailing-space,cr-at-eol
+    quotePath = false
+
+[delta]
+    features = side-by-side line-numbers decorations
+    syntax-theme = GitHub
+    plus-style = "syntax #003800"
+    minus-style = "syntax #3f0001"
+
+[init]
+    defaultBranch = main
+
+[pull]
+    rebase = true
+    ff = only
+
+[push]
+    autoSetupRemote = true
+    default = simple
+
+[commit]
+    verbose = true
+
+[log]
+    decorate = short
+    abbrevCommit = true
+
+[status]
+    short = true
+    branch = true
+    showUntrackedFiles = all
+
+[branch]
+    autosetuprebase = always
+
+[merge]
+    conflictstyle = diff3
+    tool = nvim
+
+[diff]
+    algorithm = patience
+    renames = copies
+    mnemonicPrefix = true
+    tool = delta
+
+[rebase]
+    autoSquash = true
+    autoStash = true
+
+[fetch]
+    prune = true
+    pruneTags = true
+
+[tag]
+    forceSignAnnotated = true
+
+[alias]
+    # Enhanced status
+    st = status
+    s = status --short --branch
+
+    # Commit shortcuts
+    co = checkout
+    br = branch
+    ci = commit
+    cia = commit --amend
+    c = commit -m
+    ca = commit --amend --no-edit
+
+    # Log shortcuts
+    lg = log --oneline --graph --decorate --all
+    lol = log --oneline --graph --decorate --all --color | head -20
+    lola = log --oneline --graph --decorate --all
+    hist = log --pretty=format:'%h %ad | %s%d [%an]' --graph --date=short
+
+    # Diff shortcuts
+    d = diff
+    dc = diff --cached
+    ds = diff --stat
+    dw = diff --word-diff
+
+    # Pull/push shortcuts
+    p = push
+    pl = pull
+    pp = "!git pull --rebase && git push"
+
+    # Stash shortcuts
+    stash-list = stash list
+    stash-show = stash show
+    stash-pop = stash pop
+    stash-drop = stash drop
+    save = stash save --include-untracked
+
+    # Other useful aliases
+    unstage = reset HEAD --
+    last = log -1 HEAD
+    uncommit = reset --soft HEAD~1
+    amend = commit --amend --no-edit
+    who = shortlog -sn
+    gone = "!git fetch --all --prune; git branch -vv | awk '/: gone]/{print $1}' | xargs git branch -D"
+
+[help]
+    autocorrect = 1
+
+[sendemail]
+    annotate = yes
+
+[web]
+    browser = open

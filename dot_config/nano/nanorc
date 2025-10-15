@@ -1,0 +1,103 @@
+# Nano configuration managed by chezmoi
+# Place at ~/.local/share/chezmoi/dot_config/nano/nanorc
+
+## General settings
+set constantshow         # Show cursor position at bottom line
+set fill -8              # Wrap lines at column 80
+set historylog           # Save search/replace strings
+set matchbrackets "(<[{)>]})"
+set multibuffer          # Read multiple files into separate buffers
+set nohelp               # Don't display the help lists
+set nowrap               # Don't hard-wrap long lines
+set quiet                # No beep on errors
+set rebinddelete         # Fix backspace/delete behavior
+set rebindkeypad         # Fix numeric keypad behavior
+set regexp               # Use regular expressions
+set smooth               # Smooth scrolling
+set suspend              # Allow suspension
+set tabsize 4            # Set tab size to 4 spaces
+set tabstospaces         # Convert tabs to spaces
+set trimblanks           # Trim trailing whitespace
+set undo                 # Enable undo/redo
+set view                 # Read-only mode by default
+set wordbounds           # Detect word boundaries differently
+
+## Syntax highlighting
+include "/usr/share/nano/*.nanorc"
+include "/usr/local/share/nano/*.nanorc"
+include "/opt/homebrew/share/nano/*.nanorc"
+
+## Key bindings for better usability
+# Bindings are in the format: bind key function menu
+
+# Save and exit
+bind ^S writeout main
+bind ^Q exit main
+
+# Search and replace
+bind ^F whereis all
+bind ^R replace all
+bind ^W wheris next
+
+# Cut, copy, paste
+bind ^K cut all
+bind ^U copy all
+bind ^Y paste all
+
+# Undo/redo
+bind ^Z undo all
+bind ^Y redo all
+
+# Navigation
+bind ^P up all
+bind ^N down all
+bind ^B left all
+bind ^F right all
+
+# Buffer switching
+bind M-1 prevbuf main
+bind M-2 nextbuf main
+
+## File type specific settings
+
+## Backup and locking
+set backupdir "~/.nano/backups"
+set tempfile "~/.nano/temp"
+
+## Search settings
+set casesensitive        # Case sensitive searches
+set backwards            # Search backwards by default
+
+## Indentation
+set autoindent           # Auto indent new lines
+set cutfromcursor        # Cut from cursor position
+
+## Display
+set linenumbers          # Show line numbers
+set morespace            # Use extra space for status bar
+set noconvert            # Don't convert files from DOS/Mac format
+
+## Color scheme (terminal colors)
+set titlecolor brightwhite,blue
+set statuscolor brightwhite,green
+set keycolor cyan
+set functioncolor green
+
+## Custom color schemes for syntax highlighting
+# You can add custom color schemes here
+
+## File type associations (if you want specific behavior for certain file types)
+# syntax "python" "\.py$"
+# color brightgreen "^[[:space:]]*def|class"
+# color brightred "^[[:space:]]*(if|for|while|try|except|finally)"
+
+## Experimental features
+set atblanks             # Smart home key behavior
+set backup               # Create backup files
+
+## Security
+set locking              # Enable file locking
+set magic                # Use regular expressions
+
+## Performance
+set quickblank           # Quick blank line scrolling

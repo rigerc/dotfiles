@@ -92,5 +92,15 @@ fi
 # Python virtual environment prompt
 export VIRTUAL_ENV_DISABLE_PROMPT=1
 
+# Load tmux integration (auto-start tmux)
+if [[ -f "{{ .chezmoi.sourceDir }}/dot_config/zsh/tmux.zsh" ]]; then
+    source "{{ .chezmoi.sourceDir }}/dot_config/zsh/tmux.zsh"
+fi
+
+# Load environment variables
+if [[ -f "{{ .chezmoi.sourceDir }}/dot_config/env/development.env" ]]; then
+    source "{{ .chezmoi.sourceDir }}/dot_config/env/development.env"
+fi
+
 # Additional completion setup
 autoload -Uz compinit && compinit -d ~/.cache/zcompdump

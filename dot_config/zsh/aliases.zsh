@@ -45,3 +45,32 @@ alias reload="exec zsh"
 
 # Tmux aliases (if using tmux)
 alias t="tmux"
+alias ta="tmux attach"
+alias tl="tmux list-sessions"
+alias tn="tmux new-session"
+alias tk="tmux kill-session"
+alias ts="tmux switch-client"
+alias tkill="tmux kill-server"
+
+# Git aliases (enhanced)
+alias glog="git log --oneline --graph --decorate --all"
+alias gst="git status"
+alias gco="git checkout"
+alias gbr="git branch"
+alias gadd="git add ."
+alias gcm="git commit -m"
+alias gp="git push"
+alias gl="git pull"
+alias gpl="git pull --rebase"
+alias gpp="git pull --rebase && git push"
+alias gd="git diff"
+alias gds="git diff --stat"
+alias gdc="git diff --cached"
+alias grs="git restore"
+alias grst="git restore --staged"
+alias greset="git reset"
+alias gclean="git clean -fd"
+alias gsync="git fetch --all --prune && git pull --rebase"
+
+# Lazygit alias
+alias lg="lazygit"

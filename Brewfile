@@ -22,6 +22,8 @@ brew "make"
 # Version control & tools
 brew "gh"  # GitHub CLI
 brew "git-lfs"
+brew "lazygit"
+brew "tmux"
 
 # Text editors
 brew "nano"
