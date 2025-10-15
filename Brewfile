@@ -13,6 +13,7 @@ brew "python"
 brew "ruby"
 brew "golang"
 brew "rust"
+brew "lazygit"
 
 # Build tools
 brew "cmake"
@@ -37,6 +38,7 @@ brew "htop"
 brew "tldr"
 brew "eza"
 brew "zoxide"
+brew "fastfetch"
 
 # Shell
 brew "zsh"

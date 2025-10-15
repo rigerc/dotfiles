@@ -25,6 +25,14 @@ This is a **chezmoi-based** personal dotfiles repository. The repository contain
 - **Neovim**: Lua-based configuration in `dot_config/nvim/`
 - **Development tools**: Brewfile defines tools like Node, Python, Go, Rust, etc.
 
+## Session Start
+
+### Directory Overview
+At the start of each session, list all files in this directory using:
+```bash
+tree -a -I '.git'
+```
+
 ## Common Operations
 
 ### Installing/Updating Dotfiles

@@ -9,6 +9,8 @@ alias rm="rm -i"
 alias du="du -h"
 alias df="df -h"
 alias cat="bat"
+alias grep="ripgrep"
+alias z="zoxide"
 
 # Development
 alias vim="nvim"
