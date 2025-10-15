@@ -8,8 +8,7 @@
     LC_ALL="en_US.UTF-8"
 
     # Path modifications
-    PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
-    PATH="$HOME/.local/bin:$PATH"
+    PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
 
     # Node.js development
     NPM_CONFIG_PREFIX="$HOME/.npm-global"
