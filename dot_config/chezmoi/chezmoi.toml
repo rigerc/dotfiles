@@ -7,47 +7,6 @@
     LANG="en_US.UTF-8"
     LC_ALL="en_US.UTF-8"
 
-    # Path modifications
-    PATH="${PATH:+${PATH}:}~/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin"
-    PATH="${PATH:+${PATH}:}~${PATH:+${PATH}:}~$HOME/.local/bin"
-    # Node.js development
-    NPM_CONFIG_PREFIX="$HOME/.npm-global"
-    PATH="${PATH:+${PATH}:}~$HOME/.npm-global/bin"
-    NODE_OPTIONS="--max-old-space-size=4096"
-
-    # Python development
-    PYTHONPATH="$HOME/.local/lib/python3.x/site-packages:$PYTHONPATH"
-    PYTHONSTARTUP="$HOME/.pythonrc"
-    PIP_CONFIG_FILE="$HOME/.config/pip/pip.conf"
-    PIPENV_VENV_IN_PROJECT=true
-    VIRTUAL_ENV_DISABLE_PROMPT=1
-
-    # Go development
-    GOPATH="$HOME/go"
-    GOROOT="/opt/homebrew/opt/go/libexec"
-    PATH="${PATH:+${PATH}:}~$GOPATH/bin:$GOROOT/bin"
-    GO111MODULE=on
-
-    # Rust development
-    CARGO_HOME="$HOME/.cargo"
-    RUSTUP_HOME="$HOME/.rustup"
-    PATH="${PATH:+${PATH}:}~$CARGO_HOME/bin"
-    RUST_SRC_PATH="$(rustc --print sysroot)/lib/rustlib/src/rust/library"
-
-    # Java development (if installed)
-    JAVA_HOME="/opt/homebrew/opt/openjdk"
-    PATH="${PATH:+${PATH}:}~$JAVA_HOME/bin"
-    CLASSPATH="."
-
-    # Maven/Gradle
-    M2_HOME="$HOME/.m2"
-    GRADLE_HOME="$HOME/.gradle"
-    PATH="${PATH:+${PATH}:}~$M2_HOME/bin:$GRADLE_HOME/bin"
-
-    # Ruby development (if installed)
-    GEM_HOME="$HOME/.gem"
-    PATH="${PATH:+${PATH}:}~$GEM_HOME/bin"
-
     # Development tools
     FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border --inline-info"
     FZF_DEFAULT_COMMAND="rg --files --hidden --follow --glob '!.git/*'"
@@ -57,26 +16,6 @@
     # Git configuration
     GIT_MERGE_AUTOEDIT=no
     GIT_PAGER="delta --dark"
-
-    # Database development
-    PGDATA="$HOME/.local/var/postgres"
-    MYSQL_HOME="/opt/homebrew/opt/mysql-client"
-
-    # Docker development
-    DOCKER_BUILDKIT=1
-    COMPOSE_DOCKER_CLI_BUILD=1
-
-    # Kubernetes development
-    KUBECONFIG="$HOME/.kube/config"
-    KUBECTL_EXTERNAL_DIFF="delta"
-
-    # Terraform development
-    TF_VAR_file="terraform.tfvars"
-    TF_IN_AUTOMATION=true
-
-    # AWS CLI (if used)
-    AWS_CONFIG_FILE="$HOME/.aws/config"
-    AWS_SHARED_CREDENTIALS_FILE="$HOME/.aws/credentials"
 
     # Development cache directories
     XDG_CACHE_HOME="$HOME/.cache"
