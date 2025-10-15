@@ -9,27 +9,68 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Installing Homebrew and packages from Brewfile...${NC}"
 
+# Install build tools for Linux if needed
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    echo -e "${YELLOW}Checking for Linux build tools...${NC}"
+    if command -v apt-get &> /dev/null; then
+        # Debian/Ubuntu
+        sudo apt-get update > /dev/null 2>&1
+        sudo apt-get install -y build-essential procps curl file git > /dev/null 2>&1
+    elif command -v dnf &> /dev/null; then
+        # Fedora/RHEL/CentOS Stream
+        sudo dnf groupinstall -y "Development Tools" > /dev/null 2>&1
+        sudo dnf install -y procps-ng curl file git > /dev/null 2>&1
+    elif command -v pacman &> /dev/null; then
+        # Arch Linux
+        sudo pacman -S --needed --noconfirm base-devel procps-ng curl file git > /dev/null 2>&1
+    fi
+    echo -e "${GREEN}Build tools installed/verified${NC}"
+fi
+
 # Install Homebrew if not already installed
 if ! command -v brew &> /dev/null; then
     echo -e "${YELLOW}Homebrew not found. Installing Homebrew...${NC}"
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" > /dev/null 2>&1
 
-    # Add Homebrew to PATH for macOS and Linux
+    # Add Homebrew to PATH using brew --prefix (recommended approach)
     if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS - try standard locations first, then use brew --prefix if available
         if [[ -f "/opt/homebrew/bin/brew" ]]; then
-            # Apple Silicon Mac
             eval "$(/opt/homebrew/bin/brew shellenv)"
         elif [[ -f "/usr/local/bin/brew" ]]; then
-            # Intel Mac
             eval "$(/usr/local/bin/brew shellenv)"
         fi
     elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Linux - try standard locations first, then use brew --prefix if available
         if [[ -f "/home/linuxbrew/.linuxbrew/bin/brew" ]]; then
-            # Linux
             eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         elif [[ -f "$HOME/.linuxbrew/bin/brew" ]]; then
-            # Linux (user-specific installation)
             eval "$("$HOME/.linuxbrew/bin/brew shellenv")"
+        fi
+    fi
+
+    # If brew is still not found in PATH, try to find and use it
+    if command -v brew &> /dev/null; then
+        eval "$(brew --prefix)/bin/brew shellenv"
+    fi
+
+    # Add persistent shell configuration
+    if command -v brew &> /dev/null; then
+        BREW_SHELLENV='eval "$(brew shellenv)"'
+
+        # Add to appropriate shell config file
+        if [[ -f "$HOME/.zshrc" ]]; then
+            if ! grep -q "brew shellenv" "$HOME/.zshrc"; then
+                echo "" >> "$HOME/.zshrc"
+                echo "# Homebrew" >> "$HOME/.zshrc"
+                echo "$BREW_SHELLENV" >> "$HOME/.zshrc"
+            fi
+        elif [[ -f "$HOME/.bashrc" ]]; then
+            if ! grep -q "brew shellenv" "$HOME/.bashrc"; then
+                echo "" >> "$HOME/.bashrc"
+                echo "# Homebrew" >> "$HOME/.bashrc"
+                echo "$BREW_SHELLENV" >> "$HOME/.bashrc"
+            fi
         fi
     fi
     echo -e "${GREEN}Homebrew installed successfully${NC}"
