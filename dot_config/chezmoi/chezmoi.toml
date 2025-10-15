@@ -8,11 +8,11 @@
     LC_ALL="en_US.UTF-8"
 
     # Path modifications
-    PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
-
+    PATH="${PATH:+${PATH}:}~/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin"
+    PATH="${PATH:+${PATH}:}~${PATH:+${PATH}:}~$HOME/.local/bin"
     # Node.js development
     NPM_CONFIG_PREFIX="$HOME/.npm-global"
-    PATH="$HOME/.npm-global/bin:$PATH"
+    PATH="${PATH:+${PATH}:}~$HOME/.npm-global/bin"
     NODE_OPTIONS="--max-old-space-size=4096"
 
     # Python development
@@ -25,28 +25,28 @@
     # Go development
     GOPATH="$HOME/go"
     GOROOT="/opt/homebrew/opt/go/libexec"
-    PATH="$GOPATH/bin:$GOROOT/bin:$PATH"
+    PATH="${PATH:+${PATH}:}~$GOPATH/bin:$GOROOT/bin"
     GO111MODULE=on
 
     # Rust development
     CARGO_HOME="$HOME/.cargo"
     RUSTUP_HOME="$HOME/.rustup"
-    PATH="$CARGO_HOME/bin:$PATH"
+    PATH="${PATH:+${PATH}:}~$CARGO_HOME/bin"
     RUST_SRC_PATH="$(rustc --print sysroot)/lib/rustlib/src/rust/library"
 
     # Java development (if installed)
     JAVA_HOME="/opt/homebrew/opt/openjdk"
-    PATH="$JAVA_HOME/bin:$PATH"
+    PATH="${PATH:+${PATH}:}~$JAVA_HOME/bin"
     CLASSPATH="."
 
     # Maven/Gradle
     M2_HOME="$HOME/.m2"
     GRADLE_HOME="$HOME/.gradle"
-    PATH="$M2_HOME/bin:$GRADLE_HOME/bin:$PATH"
+    PATH="${PATH:+${PATH}:}~$M2_HOME/bin:$GRADLE_HOME/bin"
 
     # Ruby development (if installed)
     GEM_HOME="$HOME/.gem"
-    PATH="$GEM_HOME/bin:$PATH"
+    PATH="${PATH:+${PATH}:}~$GEM_HOME/bin"
 
     # Development tools
     FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border --inline-info"
