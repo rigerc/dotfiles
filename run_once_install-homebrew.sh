@@ -14,15 +14,19 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     echo -e "${YELLOW}Checking for Linux build tools...${NC}"
     if command -v apt-get &> /dev/null; then
         # Debian/Ubuntu
-        sudo apt-get update > /dev/null 2>&1
-        sudo apt-get install -y build-essential procps curl file git > /dev/null 2>&1
+        echo "Running sudo apt-get update (may require password)..."
+        sudo apt-get update
+        echo "Installing build tools (may require password)..."
+        sudo apt-get install -y build-essential procps curl file git
     elif command -v dnf &> /dev/null; then
         # Fedora/RHEL/CentOS Stream
-        sudo dnf groupinstall -y "Development Tools" > /dev/null 2>&1
-        sudo dnf install -y procps-ng curl file git > /dev/null 2>&1
+        echo "Installing build tools (may require password)..."
+        sudo dnf groupinstall -y "Development Tools"
+        sudo dnf install -y procps-ng curl file git
     elif command -v pacman &> /dev/null; then
         # Arch Linux
-        sudo pacman -S --needed --noconfirm base-devel procps-ng curl file git > /dev/null 2>&1
+        echo "Installing build tools (may require password)..."
+        sudo pacman -S --needed --noconfirm base-devel procps-ng curl file git
     fi
     echo -e "${GREEN}Build tools installed/verified${NC}"
 fi
@@ -49,9 +53,15 @@ if ! command -v brew &> /dev/null; then
         fi
     fi
 
-    # If brew is still not found in PATH, try to find and use it
-    if command -v brew &> /dev/null; then
-        eval "$(brew --prefix)/bin/brew shellenv"
+    # Try alternative PATH setup if brew still not found
+    if ! command -v brew &> /dev/null; then
+        # Direct path approach for various installation locations
+        for BREW_PATH in "/opt/homebrew/bin/brew" "/usr/local/bin/brew" "/home/linuxbrew/.linuxbrew/bin/brew" "$HOME/.linuxbrew/bin/brew"; do
+            if [[ -f "$BREW_PATH" ]]; then
+                eval "$($BREW_PATH --prefix)/bin/brew shellenv"
+                break
+            fi
+        done
     fi
 
     # Add persistent shell configuration
