@@ -22,15 +22,6 @@ if command -v tmux &> /dev/null; then
     fi
 fi
 
-# Tmux aliases
-alias tm="tmux"
-alias tma="tmux attach"
-alias tml="tmux list-sessions"
-alias tmn="tmux new-session"
-alias tmk="tmux kill-session"
-alias tms="tmux switch-client"
-alias tmkill="tmux kill-server"
-
 # Tmux session management functions
 tmux-session() {
     if [[ -n "$1" ]]; then

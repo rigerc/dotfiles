@@ -19,7 +19,6 @@ packages  :
     - gh  # GitHub CLI
     - git-lfs
     - lazygit
-    - tmux
 
     # Text editors
     - nano
