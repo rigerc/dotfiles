@@ -1,5 +1,4 @@
 [scriptEnv]
-    MY_VAR = "my_value"
     EDITOR="nvim"
     VISUAL="nvim"
     BROWSER="open"
