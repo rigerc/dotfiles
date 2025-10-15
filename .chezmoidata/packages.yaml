@@ -40,4 +40,5 @@ packages  :
 
     # Shell
     - zsh
+    - tmux
   casks:

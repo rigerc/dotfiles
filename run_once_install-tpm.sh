@@ -22,7 +22,7 @@ fi
 # Install TPM if not already installed
 if [[ ! -d "$TPM_DIR" ]]; then
     echo -e "${YELLOW}Cloning TPM repository...${NC}"
-    git clone https://github.com/tmux-plugins/tpm "$TPM_DIR"
+    git clone https://github.com/tmux-plugins/tpm "$TPM_DIR" > /dev/null
     echo -e "${GREEN}TPM installed successfully!${NC}"
 else
     echo -e "${GREEN}TPM already installed at $TPM_DIR${NC}"
