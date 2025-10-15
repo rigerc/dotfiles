@@ -59,7 +59,7 @@ if command -v zoxide &> /dev/null; then
   # zoxide with fzf integration - interactive directory jumping
   if command -v fzf &> /dev/null; then
     # Function to use zoxide with fzf for interactive directory selection
-    zi() {
+    zif() {
       local dir
       dir=$(zoxide query -l | fzf --height 40% --reverse --prompt="cd> ")
       if [[ -n "$dir" ]]; then
@@ -68,7 +68,7 @@ if command -v zoxide &> /dev/null; then
     }
 
     # Function to use zoxide with fzf for interactive directory selection with preview
-    zi_preview() {
+    zif_preview() {
       local dir
       if command -v eza &> /dev/null; then
         dir=$(zoxide query -l | fzf --height 40% --reverse --prompt="cd> " --preview="eza -la --git --icons {}" --preview-window=right:30%)
@@ -86,21 +86,12 @@ fi
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 
-# Node version manager (if using nvm)
-# export NVM_DIR="$HOME/.nvm"
-# [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-
 # Python virtual environment prompt
 export VIRTUAL_ENV_DISABLE_PROMPT=1
 
 # Load tmux integration (auto-start tmux)
-if [[ -f "{{ .chezmoi.sourceDir }}/dot_config/zsh/tmux.zsh" ]]; then
-    source "{{ .chezmoi.sourceDir }}/dot_config/zsh/tmux.zsh"
-fi
-
-# Load environment variables
-if [[ -f "{{ .chezmoi.sourceDir }}/dot_config/env/development.env" ]]; then
-    source "{{ .chezmoi.sourceDir }}/dot_config/env/development.env"
+if [[ -f "$HOME/.config/zsh/tmux.zsh" ]]; then
+    source "$HOME/.config/zsh/tmux.zsh"
 fi
 
 # Additional completion setup
