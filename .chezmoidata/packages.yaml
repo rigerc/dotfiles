@@ -1,4 +1,4 @@
-package:
+packages  :
   taps:
     - homebrew/bundle
     - homebrew/services
