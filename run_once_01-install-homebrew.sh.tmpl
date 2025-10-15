@@ -26,7 +26,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     elif command -v pacman &> /dev/null; then
         # Arch Linux
         echo "Installing build tools (may require password)..."
-        sudo pacman -S --needed --noconfirm base-devel procps-ng curl file git
+        sudo pacman -S --needed --noconfirm --quiet base-devel procps-ng curl file git
     fi
     echo -e "${GREEN}Build tools installed/verified${NC}"
 fi
@@ -51,7 +51,6 @@ if ! command -v brew &> /dev/null; then
         test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         echo "eval \"\$($(brew --prefix)/bin/brew shellenv)\"" >> ~/.bashrc
         fi
-    fi
 
     # Try alternative PATH setup if brew still not found
     if ! command -v brew &> /dev/null; then
