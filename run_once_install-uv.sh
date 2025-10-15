@@ -12,7 +12,7 @@ echo -e "${YELLOW}Installing uv...${NC}"
 # Install uv if not already installed
 if ! command -v uv &> /dev/null; then
     echo -e "${YELLOW}uv not found. Installing uv...${NC}"
-    /bin/bash -c "$(curl -LsSf https://astral.sh/uv/install.sh | sh)" > /dev/null
+    /bin/bash -c "$(curl -LsSf https://astral.sh/uv/install.sh)" > /dev/null
     echo -e "${GREEN}uv installed successfully${NC}"
 else
     echo -e "${GREEN}uv already installed${NC}"

@@ -7,13 +7,13 @@ packages  :
     # Development
     - node
     - python
-    - ruby
+    #- ruby
     - golang
-    - rust
+    #- rust
 
     # Build tools
-    - cmake
-    - make
+    #- cmake
+    #- make
 
     # Version control & tools
     - gh  # GitHub CLI
