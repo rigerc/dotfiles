@@ -7,8 +7,6 @@ set fill -8              # Wrap lines at column 80
 set historylog           # Save search/replace strings
 set matchbrackets "(<[{)>]})"
 set multibuffer          # Read multiple files into separate buffers
-set nohelp               # Don't display the help lists
-set nowrap               # Don't hard-wrap long lines
 set quiet                # No beep on errors
 set rebinddelete         # Fix backspace/delete behavior
 set rebindkeypad         # Fix numeric keypad behavior
@@ -21,6 +19,7 @@ set trimblanks           # Trim trailing whitespace
 set undo                 # Enable undo/redo
 set view                 # Read-only mode by default
 set wordbounds           # Detect word boundaries differently
+set linenumbers
 
 ## Syntax highlighting
 include "/usr/share/nano/*.nanorc"

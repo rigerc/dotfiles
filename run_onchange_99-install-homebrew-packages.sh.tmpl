@@ -9,6 +9,15 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Installing brews...${NC}"
 
+# Check if brew command is available
+if ! command -v brew &> /dev/null; then
+    echo -e "${RED}Error: Homebrew is not installed or not in PATH${NC}"
+    echo -e "${YELLOW}Please install Homebrew first by running the install-homebrew script${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}Homebrew found, proceeding with package installation...${NC}"
+
 # Install Brews
 brew bundle --file=/dev/stdin <<EOF
 {{ range .packages.brews -}}
