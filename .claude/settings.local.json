@@ -6,7 +6,8 @@
       "WebSearch",
       "WebFetch(domain:zdharma-continuum.github.io)",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:brew.sh)"
+      "WebFetch(domain:brew.sh)",
+      "WebFetch(domain:www.chezmoi.io)"
     ],
     "deny": [],
     "ask": []

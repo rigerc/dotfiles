@@ -1,0 +1,42 @@
+package:
+  taps:
+    - homebrew/bundle
+    - homebrew/services
+
+  brews:
+    # Development
+    - node
+    - python
+    - ruby
+    - golang
+    - rust
+
+    # Build tools
+    - cmake
+    - make
+
+    # Version control & tools
+    - gh  # GitHub CLI
+    - git-lfs
+    - lazygit
+    - tmux
+
+    # Text editors
+    - nano
+    - neovim
+
+    # Utilities
+    - jq  # JSON processor
+    - yq  # YAML processor
+    - ripgrep
+    - fd
+    - fzf
+    - bat
+    - htop
+    - tldr
+    - eza
+    - zoxide
+    - fastfetch
+
+    # Shell
+    - zsh

@@ -7,7 +7,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${YELLOW}Installing Homebrew and packages from Brewfile...${NC}"
+echo -e "${YELLOW}Installing packages from chezmoi declarative configuration...${NC}"
 
 # Install build tools for Linux if needed
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -90,17 +90,70 @@ fi
 
 # Update Homebrew
 echo -e "${YELLOW}Updating Homebrew...${NC}"
-brew update > /dev/null 2>&1
+brew update
 
-# Install from Brewfile if it exists
-BREWFILE="{{ .chezmoi.sourceDir }}/Brewfile"
-if [[ -f "$BREWFILE" ]]; then
-    echo -e "${YELLOW}Installing packages from Brewfile...${NC}"
-    brew bundle --file="$BREWFILE" > /dev/null 2>&1
-    echo -e "${GREEN}Brewfile packages installed successfully${NC}"
+# Install taps first
+echo -e "${YELLOW}Installing Homebrew taps...${NC}"
+for tap in homebrew/bundle homebrew/services; do
+    if ! brew tap | grep -q "$tap"; then
+        echo "Installing tap: $tap"
+        brew tap "$tap"
+    else
+        echo "Tap $tap already installed"
+    fi
+done
+
+# Function to install a package if not already installed
+install_brew_package() {
+    local package=$1
+    if brew list "$package" &>/dev/null; then
+        echo "✓ $package already installed"
+        return 0
+    else
+        echo "Installing $package..."
+        if brew install "$package"; then
+            echo "✓ $package installed successfully"
+            return 0
+        else
+            echo "✗ Failed to install $package"
+            return 1
+        fi
+    fi
+}
+
+# Install packages from chezmoi data
+echo -e "${YELLOW}Installing packages from chezmoi configuration...${NC}"
+
+# Define packages array
+packages=(
+    # Development
+    "node" "python" "ruby" "golang" "rust"
+    # Build tools
+    "cmake" "make"
+    # Version control & tools
+    "gh" "git-lfs" "lazygit" "tmux"
+    # Text editors
+    "nano" "neovim"
+    # Utilities
+    "jq" "yq" "ripgrep" "fd" "fzf" "bat" "htop" "tldr" "eza" "zoxide" "fastfetch"
+    # Shell
+    "zsh"
+)
+
+# Install packages
+failed_packages=()
+for package in "${packages[@]}"; do
+    if ! install_brew_package "$package"; then
+        failed_packages+=("$package")
+    fi
+done
+
+# Report failed installations
+if [[ ${#failed_packages[@]} -gt 0 ]]; then
+    echo -e "${RED}Some packages failed to install: ${failed_packages[*]}${NC}"
+    echo -e "${YELLOW}You can try installing them manually with: brew install <package>${NC}"
 else
-    echo -e "${RED}Brewfile not found at $BREWFILE${NC}"
-    echo -e "${YELLOW}Skipping brew bundle installation${NC}"
+    echo -e "${GREEN}All packages installed successfully!${NC}"
 fi
 
-echo -e "${GREEN}Homebrew setup complete!${NC}"
+echo -e "${GREEN}Package installation complete!${NC}"
