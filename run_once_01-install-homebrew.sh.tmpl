@@ -26,7 +26,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     elif command -v pacman &> /dev/null; then
         # Arch Linux
         echo "Installing build tools (may require password)..."
-        sudo pacman -S --needed --noconfirm --quiet base-devel procps-ng curl file git >/dev/null
+        sudo pacman -S --needed --noconfirm --quiet base-devel procps-ng curl file git fontconfig >/dev/null
     fi
     echo -e "${GREEN}Build tools installed/verified${NC}"
 fi
