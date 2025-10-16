@@ -8,8 +8,7 @@ Darwin)
     # commands to install password-manager-binary on Darwin
     ;;
 Linux)
-    sudo pacman -S --quiet --noconfirm bitwarden-cli
-    export BW_SESSION=$(bw login bond@bsgb.nl --raw) 
+# ...
     ;;
 *)
     echo "unsupported OS"
