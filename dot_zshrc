@@ -131,6 +131,11 @@ if [[ -f "$HOME/.config/zsh/aliases.zsh" ]]; then
     source "$HOME/.config/zsh/aliases.zsh"
 fi
 
+# Load Bitwarden integration
+if [[ -f "$HOME/.config/zsh/bitwarden.zsh" ]]; then
+    source "$HOME/.config/zsh/bitwarden.zsh"
+fi
+
 # Load tmux integration (auto-start tmux)
 if [[ -f "$HOME/.config/zsh/tmux.zsh" ]]; then
     source "$HOME/.config/zsh/tmux.zsh"

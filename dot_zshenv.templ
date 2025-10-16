@@ -36,6 +36,10 @@ export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"
 export BAT_CONFIG_PATH="$HOME/.config/bat/config"
 export BAT_THEME="GitHub"
 
+# Bitwarden configuration
+export BW_SERVER="https://api.bitwarden.com"
+export BW_SESSION=$(bw login --sso && bw unlock --raw) 
+export BW_AUTO_LOCK_TIMEOUT="600"
 # TOKENS
 export OPENROUTER_API_KEY="{{ (bitwardenFields "item" "OPENROUTER_API_KEY").token.value }}"
 export ZAI_API_KEY="{{ (bitwardenFields "item" "ZAI_API_KEY").token.value }}"

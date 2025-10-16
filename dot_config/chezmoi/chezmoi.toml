@@ -1,3 +1,6 @@
+[hooks.read-source-state.pre]
+    command = ".local/share/chezmoi/.install-password-manager.sh"
+
 [scriptEnv]
     EDITOR="nvim"
     VISUAL="nvim"
@@ -21,3 +24,8 @@
     RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"
     BAT_CONFIG_PATH="$HOME/.config/bat/config"
     BAT_THEME="GitHub"
+
+    # Bitwarden configuration
+    BW_SERVER="https://api.bitwarden.com"
+    BW_SESSION=$(bw login --sso && bw unlock --raw)
+    BW_AUTO_LOCK_TIMEOUT="600"
