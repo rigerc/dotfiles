@@ -19,7 +19,7 @@ fi
 echo -e "${GREEN}Homebrew found, proceeding with package installation...${NC}"
 
 # Install Brews
-brew bundle --verbose --file=/dev/stdin <<EOF
+brew bundle --file=/dev/stdin <<EOF
 {{ range .packages.brews -}}
 brew {{ . | quote }}
 {{ end -}}
