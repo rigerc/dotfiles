@@ -1,3 +1,8 @@
+# Fastfetch startup - show system info on shell start
+if command -v fastfetch &> /dev/null; then
+  fastfetch
+fi
+
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
@@ -39,11 +44,6 @@ zinit light zsh-users/zsh-completions
 
 # Powerlevel10k configuration
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
-
-# Fastfetch startup - show system info on shell start
-if command -v fastfetch &> /dev/null; then
-  fastfetch
-fi
 
 # Development tools
 export PATH="$HOME/.cargo/bin:$PATH"
@@ -91,9 +91,6 @@ if command -v zoxide &> /dev/null; then
     }
   fi
 fi
-
-# FZF integration (if fzf is installed)
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
 
 # Python virtual environment prompt
