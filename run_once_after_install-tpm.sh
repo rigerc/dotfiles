@@ -40,25 +40,6 @@ if ! command -v tmux &> /dev/null; then
     exit 1
 fi
 
-# Source tmux configuration to install plugins
-echo -e "${YELLOW}Installing tmux plugins...${NC}"
-
-# Create a temporary tmux session to install plugins
-if tmux has-session 2>/dev/null; then
-    echo -e "${YELLOW}Tmux session detected. Installing plugins...${NC}"
-    # If tmux is running, install plugins in existing session
-    tmux new-session -d -s "__tpm_install__" "$TPM_DIR/bin/install_plugins"
-    tmux kill-session -t "__tpm_install__"
-else
-    echo -e "${YELLOW}Creating temporary tmux session to install plugins...${NC}"
-    # Create a temporary session just for plugin installation
-    tmux new-session -d -s "__tpm_install__" "$TPM_DIR/bin/install_plugins"
-    tmux kill-session -t "__tpm_install__"
-fi
-
-echo -e "${GREEN}Tmux plugins installed successfully!${NC}"
 tmux source ~/.tmux.conf
 
 echo -e "${GREEN}TPM setup complete!${NC}"
-echo -e "${YELLOW}To use tmux plugins:${NC}"
-echo -e "1. Reload your tmux configuration with: tmux source ~/.tmux.conf"
