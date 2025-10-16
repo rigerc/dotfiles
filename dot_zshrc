@@ -97,6 +97,11 @@ fi
 # Python virtual environment prompt
 export VIRTUAL_ENV_DISABLE_PROMPT=1
 
+# Load custom aliases
+if [[ -f "$HOME/.config/zsh/aliases.zsh" ]]; then
+    source "$HOME/.config/zsh/aliases.zsh"
+fi
+
 # Load tmux integration (auto-start tmux)
 if [[ -f "$HOME/.config/zsh/tmux.zsh" ]]; then
     source "$HOME/.config/zsh/tmux.zsh"

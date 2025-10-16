@@ -31,4 +31,5 @@ fi
 mkdir -p ~/.cache
 
 echo -e "${GREEN}Zsh setup complete!${NC}"
-echo -e "${YELLOW}Note: Restart your terminal or run 'exec zsh' to load the new configuration${NC}"
+echo -e "${YELLOW}Starting new Zsh shell...${NC}"
+exec zsh
