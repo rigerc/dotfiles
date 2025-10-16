@@ -25,7 +25,7 @@ fi
 # Zsh is already installed via Brewfile, just set as default shell
 if [[ "$SHELL" != "$ZSH_PATH" ]]; then
     echo -e "${YELLOW}Setting Zsh as default shell...${NC}"
-    chsh -s "$ZSH_PATH"
+    sudo chsh -s "$ZSH_PATH"
     echo -e "${GREEN}Zsh set as default shell${NC}"
 else
     echo -e "${GREEN}Zsh already set as default shell${NC}"
