@@ -9,6 +9,9 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Setting up Zsh with Zinit...${NC}"
 
+test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)"
+test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
 # Add zsh to /etc/shells if not already present
 ZSH_PATH=$(which zsh)
 if ! grep -q "^$ZSH_PATH$" /etc/shells; then
