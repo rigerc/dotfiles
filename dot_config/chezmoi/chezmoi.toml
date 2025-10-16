@@ -16,8 +16,8 @@
     XDG_DATA_HOME="$HOME/.local/share"
     XDG_STATE_HOME="$HOME/.local/state"
     HISTFILE="$HOME/.zsh_history"
-    HISTSIZE=50000
-    SAVEHIST=50000
+    HISTSIZE="50000"
+    SAVEHIST="50000"
     RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"
     BAT_CONFIG_PATH="$HOME/.config/bat/config"
     BAT_THEME="GitHub"
