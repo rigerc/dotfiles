@@ -5,24 +5,19 @@
     TERM="xterm-256color"
     LANG="en_US.UTF-8"
     LC_ALL="en_US.UTF-8"
-    # Development tools
     FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border --inline-info"
     FZF_DEFAULT_COMMAND="rg --files --hidden --follow --glob '!.git/*'"
     FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
     FZF_ALT_C_COMMAND="fd --type d --hidden --follow --exclude '.git'"
-    # Git configuration
     GIT_MERGE_AUTOEDIT=no
     GIT_PAGER="delta --dark"
-    # Development cache directories
     XDG_CACHE_HOME="$HOME/.cache"
     XDG_CONFIG_HOME="$HOME/.config"
     XDG_DATA_HOME="$HOME/.local/share"
     XDG_STATE_HOME="$HOME/.local/state"
-    # Shell history
     HISTFILE="$HOME/.zsh_history"
     HISTSIZE=50000
     SAVEHIST=50000
-    # Development tools configuration
     RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"
     BAT_CONFIG_PATH="$HOME/.config/bat/config"
     BAT_THEME="GitHub"
