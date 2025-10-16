@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# exit immediately if password-manager-binary is already in $PATH
+# exit immediately if password-manager-binary is already in $PATH asd
 type bw >/dev/null 2>&1 && exit
 
 case "$(uname -s)" in
