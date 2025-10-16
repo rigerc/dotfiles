@@ -1,20 +1,10 @@
-# Fastfetch startup - show system info on shell start
-if command -v fastfetch &> /dev/null; then
-  fastfetch
-fi
+# Skip global compinit (zinit handles it)
+skip_global_compinit=1
 
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
-# Initialization code that may require console input (password prompts, [y/n]
-# confirmations, etc.) must go above this block; everything else may go below.
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-
-
-# Zsh configuration managed by chezmoi
-# Place at ~/.local/share/chezmoi/dot_zshrc
-
-# Zsh completion will be initialized after Zinit loads
+# Only run in interactive login shells
+   if [[ -o login ]] && command -v fastfetch &> /dev/null; then
+     fastfetch
+   fi
 
 # History configuration
 HISTFILE=~/.zsh_history
@@ -23,6 +13,10 @@ SAVEHIST=10000
 setopt SHARE_HISTORY
 setopt HIST_IGNORE_DUPS
 setopt HIST_FIND_NO_DUPS
+setopt HIST_IGNORE_SPACE      # Don't save commands starting with space
+setopt HIST_REDUCE_BLANKS     # Remove superfluous blanks
+setopt HIST_VERIFY            # Show command before executing from history
+setopt INC_APPEND_HISTORY     # Write immediately, not on exit
 
 # Initialize zinit
 ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
@@ -33,28 +27,61 @@ fi
 source "${ZINIT_HOME}/zinit.zsh"
 
 # Load zinit plugins with optimized completion handling
-zinit ice depth=1; zinit light romkatv/powerlevel10k
 zinit light zdharma-continuum/fast-syntax-highlighting
 zinit ice lucid wait='1' atload'_zsh_autosuggest_start'
+
 zinit light zsh-users/zsh-autosuggestions
-zinit ice lucid wait='1' atinit"source shell/key-bindings.zsh; source shell/completion.zsh"
-zinit light junegunn/fzf
-zinit ice lucid wait='1' blockf atload'zicompinit'
+
+zinit ice lucid wait='1' blockf atpull'zinit creinstall -q .'
 zinit light zsh-users/zsh-completions
 
-# Powerlevel10k configuration
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+zinit pack for fzf
+zinit ice lucid wait='1' from"gh-r" as"program"
+zinit light junegunn/fzf
 
-# Development tools
-export PATH="$HOME/.cargo/bin:$PATH"
-export PATH="/opt/homebrew/bin:$PATH"
+# fzf-tab
+zinit light Aloxaf/fzf-tab
+# disable sort when completing `git checkout`
+zstyle ':completion:*:git-checkout:*' sort false
+# set descriptions format to enable group support
+# NOTE: don't use escape sequences (like '%F{red}%d%f') here, fzf-tab will ignore them
+zstyle ':completion:*:descriptions' format '[%d]'
+# set list-colors to enable filename colorizing
+zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
+# force zsh not to show completion menu, which allows fzf-tab to capture the unambiguous prefix
+zstyle ':completion:*' menu no
+# preview directory's content with eza when completing cd
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
+# custom fzf flags
+# NOTE: fzf-tab does not follow FZF_DEFAULT_OPTS by default
+zstyle ':fzf-tab:*' fzf-flags --color=fg:1,fg+:2 --bind=tab:accept
+# To make fzf-tab follow FZF_DEFAULT_OPTS.
+# NOTE: This may lead to unexpected behavior since some flags break this plugin. See Aloxaf/fzf-tab#455.
+zstyle ':fzf-tab:*' use-fzf-default-opts yes
+# switch group using `<` and `>`
+zstyle ':fzf-tab:*' switch-group '<' '>'
+
+# fzf-tmux-popup
+zstyle ':fzf-tab:*' fzf-command ftb-tmux-popup
+
+#Starship prompt
+zinit ice as"command" from"gh-r" \
+          atclone"./starship init zsh > init.zsh; ./starship completions zsh > _starship" \
+          atpull"%atclone" src"init.zsh"
+zinit light starship/starship
 
 # Eza (modern ls replacement) aliases
 if command -v eza &> /dev/null; then
-  alias ls="eza -la --git --icons"
-  alias ll="eza -lh --git --icons"
-  alias la="eza -la --git --icons"
-  alias tree="eza --tree --git --icons"
+  alias ls='eza --color=always --group-directories-first --icons'
+  alias ll='eza -la --icons --octal-permissions --group-directories-first'
+  alias l='eza -bGF --header --git --color=always --group-directories-first --icons'
+  alias llm='eza -lbGd --header --git --sort=modified --color=always --group-directories-first --icons' 
+  alias la='eza --long --all --group --group-directories-first'
+  alias lx='eza -lbhHigUmuSa@ --time-style=long-iso --git --color-scale --color=always --group-directories-first --icons'
+
+  alias lS='eza -1 --color=always --group-directories-first --icons'
+  alias lt='eza --tree --level=2 --color=always --group-directories-first --icons'
+  alias l.="eza -a | grep -E '^\.'"
 else
   # Fallback to standard ls if eza is not available
   alias ls="ls -la"
@@ -62,9 +89,13 @@ else
   alias la="ls -la"
 fi
 
+
 # Zoxide integration (if zoxide is installed)
 if command -v zoxide &> /dev/null; then
-  eval "$(zoxide init zsh --cmd cd)"
+zinit ice lucid wait='1' as"command" from"gh-r" \
+  atclone"./zoxide init zsh --cmd cd > init.zsh" \
+  atpull"%atclone" src"init.zsh"
+zinit light ajeetdsouza/zoxide
 
   # zoxide with fzf integration - interactive directory jumping
   if command -v fzf &> /dev/null; then
@@ -92,7 +123,6 @@ if command -v zoxide &> /dev/null; then
   fi
 fi
 
-
 # Python virtual environment prompt
 export VIRTUAL_ENV_DISABLE_PROMPT=1
 
@@ -105,6 +135,3 @@ fi
 if [[ -f "$HOME/.config/zsh/tmux.zsh" ]]; then
     source "$HOME/.config/zsh/tmux.zsh"
 fi
-
-# Additional completion setup
-autoload -Uz compinit && compinit -d ~/.cache/zcompdump

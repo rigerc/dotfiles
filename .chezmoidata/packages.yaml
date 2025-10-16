@@ -22,6 +22,7 @@ packages  :
     # Text editors
     - nano
     - neovim
+    - micro
 
     # Utilities
     - jq  # JSON processor
@@ -41,3 +42,4 @@ packages  :
     - tmux
 
   casks:
+    - claude-code

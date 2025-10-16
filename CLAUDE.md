@@ -4,172 +4,149 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a **chezmoi-based** personal dotfiles repository. The repository contains configuration files for various development tools and shell environments, primarily focused on Zsh and Neovim setups.
+This is a personal dotfiles repository managed with [Chezmoi](https://www.chezmoi.io/), designed for cross-platform development environment setup (macOS and Linux). The repository includes shell configuration, development tools, and application settings.
 
-**This dotfiles repository uses chezmoi** for dotfile management. chezmoi is a tool for managing dotfiles across multiple machines, keeping configuration files synchronized and properly deployed.
+## Key Commands
 
-## Key Structure
-
-### chezmoi Integration
-- Files are stored with `dot_` prefix (e.g., `dot_zshrc`, `dot_p10k.zsh`)
-- chezmoi manages these to create actual dotfiles in the home directory
-- Configuration files in `dot_config/` map to `~/.config/`
-- Template files (`.tmpl`) use chezmoi template syntax for dynamic configuration
-- Data files in `.chezmoidata/` for template variables (e.g., `packages.yaml`)
-
-### Installation Scripts
-- `run_once_01-install-homebrew.sh.tmpl` - Installs Homebrew and sets up environment
-- `run_onchange_99-install-homebrew-packages.sh.tmpl` - Installs packages from chezmoi data
-- `run_once_install-zsh.sh` - Sets up Zsh as default shell with Zinit
-- `run_once_install-nerd-font.sh` - Installs Iosevka Nerd Font
-- `run_once_install-uv.sh` - Installs uv Python package manager
-- `run_once_after_install-tpm.sh` - Post-install setup for tmux plugin manager
-
-### Core Configurations
-- **Zsh setup**: Uses **Zinit** plugin manager with Powerlevel10k theme. **This Zsh configuration uses Zinit** for plugin management and loading.
-- **Neovim**: LazyVim-based configuration using lazy.nvim plugin manager
-- **Tmux**: Auto-start configuration with session management functions
-- **Development tools**: Package definitions in `.chezmoidata/packages.yaml`
-
-## Quick Start
-
-### Initial Installation
-For a new system, initialize with:
+### Chezmoi Management
 ```bash
+# Initialize and apply dotfiles
 sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply rigerc
-```
 
-### Directory Overview
-At the start of each session, list all files in this directory using:
-```bash
-tree -a -I '.git'
-```
-
-## Common Operations
-
-### Installing/Updating Dotfiles
-The dotfiles use chezmoi template syntax (e.g., `{{ .chezmoi.sourceDir }}`) for dynamic paths. Apply changes with:
-```bash
+# Apply changes after modifying files
 chezmoi apply
-```
 
-### Installation Script Details
-- `run_once_01-install-homebrew.sh.tmpl` - Installs Homebrew with platform-specific paths
-- `run_onchange_99-install-homebrew-packages.sh.tmpl` - Installs packages from `.chezmoidata/packages.yaml`
-- `run_once_install-zsh.sh` - Sets up Zsh as default shell and installs Zinit
-- `run_once_install-nerd-font.sh` - Installs Iosevka Nerd Font for terminal icons
-- `run_once_install-uv.sh` - Installs uv Python package manager
-- `run_once_after_install-tpm.sh` - Post-install setup for tmux plugin manager
-- `run_once_install-ssh-server.sh.tmpl` - Installs and configures OpenSSH server on port 4444
+# Check status of managed files
+chezmoi status
 
-### Initial System Setup
-For a new system, run the installation scripts in order:
-```bash
-# chezmoi will automatically execute run_once_* scripts
-chezmoi apply
+# Edit managed files (opens in configured EDITOR)
+chezmoi edit <file>
+
+# Add new file to management
+chezmoi add <file>
 ```
 
 ### Package Management
-Packages are defined in `.chezmoidata/packages.yaml` and installed via chezmoi templates:
 ```bash
-# Trigger package installation by updating the data file or running:
-chezmoi apply
+# Update all Homebrew packages and cleanup
+brew-update
+
+# Update global npm packages
+npm-update
+
+# Install/update all packages defined in .chezmoidata/packages.yaml
+# This happens automatically when chezmoi detects changes to packages.yaml
 ```
 
-### Shell Configuration
-- **Zsh uses Zinit plugin manager** for loading and managing plugins
-- Powerlevel10k configuration is in `dot_p10k.zsh`
-- Aliases and shell settings in `dot_zshrc`
-- Tmux integration in `dot_config/zsh/tmux.zsh`
-- SSH server management functions in `dot_config/zsh/ssh-functions.zsh`
-
-### Development Tools Integration
-- **Eza**: Modern `ls` replacement with git integration and icons
-- **Zoxide**: Smart directory navigation with `z` command and fzf integration (`zif`, `zif_preview`)
-- **FZF**: Fuzzy finder with custom default options
-- **Tmux**: Auto-start with session management functions (`tmux-session`, `tmux-switch`)
-- **SSH Server**: OpenSSH server running on port 4444 with management functions
-
-## Architecture Notes
-
-### Plugin Management
-- **Zsh**: Zinit loads plugins with optimized completion handling
-- **Neovim**: LazyVim ecosystem with lazy.nvim for plugin management
-- **Tmux**: TPM (Tmux Plugin Manager) for plugin management
-
-### Environment Configuration
- chezmoi script environment variables are defined in `dot_config/chezmoi/chezmoi.toml`, including:
-- Editor preferences (nvim)
-- FZF default commands and options with ripgrep integration
-- XDG base directory specifications
-- Tool configurations (ripgrep, bat, git delta, etc.)
-- Shell history settings and language configuration
-
-### Package Structure
-The `.chezmoidata/packages.yaml` defines:
-- **Development tools**: Node, Python, Go, Rust, GitHub CLI, lazygit
-- **Text editors**: Neovim, nano
-- **Modern utilities**: eza (ls replacement), zoxide (smart cd), fzf, bat, ripgrep, fd
-- **Shell tools**: Zsh, tmux, jq, yq, htop, fastfetch
-
-### Cross-Platform Compatibility
-The setup supports both macOS and Linux with:
-- Platform-specific Homebrew installation paths
-- Build tools installation for Linux distributions
-- Consistent tool configurations across platforms
-
-## SSH Server Management
-
-### SSH Server Setup
-The dotfiles include OpenSSH server configuration running on **port 4444** with:
-- Key-based authentication (password authentication disabled)
-- User restrictions and security hardening
-- Platform-specific service management (macOS/Linux)
-
-### SSH Management Commands
+### Development Tools
 ```bash
-# Start SSH server
-ssh-start
+# Git operations with aliases
+gst                 # git status
+glog                # git log --oneline --graph --decorate --all
+gco <branch>        # git checkout
+gadd                # git add .
+gcm "message"       # git commit -m "message"
+gp                  # git push
+gl                  # git pull
+gpl                 # git pull --rebase
+lg                  # lazygit (TUI git client)
 
-# Stop SSH server
-ssh-stop
+# Tmux operations
+t                   # tmux
+ta                  # tmux attach
+tn                  # tmux new-session
+tl                  # tmux list-sessions
+tk                  # tmux kill-session
 
-# Restart SSH server
-ssh-restart
+# Navigation with zoxide + fzf
+z                   # zoxide (smart cd)
+zif                 # zoxide with fzf interactive selection
+zif_preview         # zoxide with fzf and directory preview
 
-# Check SSH server status
-ssh-status
-
-# Edit SSH configuration
-ssh-config
-
-# View SSH logs
-ssh-log
-
-# Generate new SSH key pair
-ssh_generate_key [type] [name] [email]
-
-# Show connection information
-ssh_connection_info [hostname] [port] [username]
+# File operations
+ls                  # eza (modern ls with icons)
+ll                  # eza -la --icons --octal-permissions
+l                   # eza -bGF --header --git
+la                  # eza --long --all --group
 ```
 
-### SSH Configuration Files
-- `dot_config/ssh/sshd_config.tmpl` - SSH daemon configuration
-- `dot_config/ssh/ssh_config.tmpl` - SSH client configuration
-- `dot_config/ssh/authorized_keys.tmpl` - SSH public keys template
-- `dot_config/ssh/launchd/org.openbsd.sshd.plist.tmpl` - macOS service config
-- `dot_config/ssh/systemd/ssh-user.service.tmpl` - Linux user service config
+## Architecture and Structure
 
-### SSH Security Notes
-- Server runs on port 4444 (non-standard port for security)
-- Only public key authentication is enabled
-- User access is restricted to the current user
-- Root login is disabled
-- Connection timeouts and session limits are configured
+### Chezmoi Integration
+- Uses Chezmoi for dotfile management with templates
+- Configuration stored in `.chezmoidata/packages.yaml` for package lists
+- `.chezmoiignore` excludes Claude-related files from management
+- Supports automatic package installation when `packages.yaml` changes
 
-This is a personal development environment setup focused on:
-- Cross-platform compatibility (macOS/Linux)
-- Modern terminal experience with plugins and themes
-- Efficient development workflows with integrated tools
-- Git integration and aliases
-- Secure SSH server access for remote development
+### Shell Environment (Zsh)
+- **Plugin Management**: Uses [Zinit](https://github.com/zdharma-continuum/zinit) for fast plugin loading
+- **Key Plugins**:
+  - `fast-syntax-highlighting`: Syntax highlighting
+  - `zsh-autosuggestions`: Command suggestions based on history
+  - `fzf-tab`: Fuzzy completion with tab support
+  - `starship`: Custom prompt configuration
+  - `zoxide`: Smart directory navigation
+- **Configuration Files**:
+  - `dot_zshrc`: Main Zsh configuration with plugin initialization
+  - `dot_config/zsh/aliases.zsh`: Comprehensive alias definitions
+  - `dot_config/zsh/tmux.zsh`: Auto-start tmux configuration
+
+### Terminal Multiplexer (Tmux)
+- **Plugin Management**: Uses [TPM](https://github.com/tmux-plugins/tpm) for plugin management
+- **Key Plugins**:
+  - `tmux-sensible`: Sensible defaults
+  - `tmux-yank`: Better copying/pasting
+  - `vim-tmux-navigator`: Seamless navigation between vim/tmux panes
+  - `tmux-resurrect` + `tmux-continuum`: Session persistence
+  - `catppuccin/tmux`: Catppuccin theme
+- **Features**:
+  - Auto-restore sessions on start
+  - True color support
+  - Automatic window renaming based on directory
+  - Vi key bindings in copy mode
+
+### Editor Configuration
+- **Primary Editor**: Neovim with LazyVim bootstrap
+- **Fallback**: Nano with enhanced configuration
+- **Configuration**: `dot_config/nvim/init.lua` (LazyVim setup)
+
+### Development Tools
+- **Version Control**: Git with enhanced aliases and LazyGit TUI
+- **File Search**: ripgrep (rg), fzf for fuzzy finding
+- **File Operations**: eza (ls replacement), fd (find replacement), bat (cat replacement)
+- **Utilities**: jq (JSON), yq (YAML), htop, zoxide
+
+### Package Management
+- **Homebrew**: Primary package manager (macOS and Linux)
+- **Package Lists**: Defined in `.chezmoidata/packages.yaml` with categories:
+  - Development: Node, Python, Go, Rust
+  - Tools: GitHub CLI, lazygit, ripgrep, fzf, etc.
+  - Editors: Neovim, nano, micro
+- **Installation Scripts**:
+  - `run_once_01-install-homebrew.sh.tmpl`: Homebrew installation
+  - `run_onchange_99-install-homebrew-packages.sh.tmpl`: Package installation
+
+### Prompt Configuration
+- **Starship Prompt**: Custom configuration in `dot_config/starship.toml`
+- **Features**: Git status, Python virtual environments, command duration, clean minimal design
+
+## Development Workflow
+
+1. **Initial Setup**: Run the chezmoi init command from README.MD
+2. **Making Changes**: Edit files with `chezmoi edit <file>` or modify source files directly
+3. **Applying Changes**: Run `chezmoi apply` to update the system
+4. **Package Updates**: Modify `.chezmoidata/packages.yaml` and changes will auto-apply
+5. **Shell Reload**: Use `reload` alias or `exec zsh` to reload shell configuration
+
+## File Locations
+
+- **Chezmoi Config**: `dot_config/chezmoi/chezmoi.toml`
+- **Shell Aliases**: `dot_config/zsh/aliases.zsh`
+- **Tmux Config**: `dot_tmux.conf`
+- **Starship Prompt**: `dot_config/starship.toml`
+- **Neovim Config**: `dot_config/nvim/`
+- **Package List**: `.chezmoidata/packages.yaml`
+
+## Platform Support
+
+Designed to work on both macOS and Linux with platform-specific handling in installation scripts. Uses XDG Base Directory specification for config organization where possible.

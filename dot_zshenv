@@ -1,0 +1,37 @@
+export EDITOR="micro"
+export VISUAL="nvim"
+export BROWSER="open"
+
+export TERM="xterm-256color"
+
+export LANG="en_US.UTF-8"
+export LC_ALL="en_US.UTF-8"
+
+# set paths for go
+export GOPATH=$HOME/.go
+export PATH=$PATH:$GOPATH/bin
+
+# .local/bin path
+export PATH="$HOME/.local/bin:$PATH"
+
+# Development tools
+export PATH="$HOME/.cargo/bin:$PATH"
+export PATH="/opt/homebrew/bin:$PATH"
+
+export FZF_DEFAULT_OPTS="--height40%--layout=reverse--border--inline-info"
+export FZF_DEFAULT_COMMAND="rg--files--hidden--follow--glob'\\!.git/*'"
+export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+export FZF_ALT_C_COMMAND="fd--typed--hidden--follow--exclude'.git'"
+
+export GIT_MERGE_AUTOEDIT="no"
+export GIT_PAGER="delta--dark"
+
+export XDG_CACHE_HOME="$HOME/.cache"
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_STATE_HOME="$HOME/.local/state"
+
+
+export RIPGREP_CONFIG_PATH="$HOME/.config/ripgrep/config"
+export BAT_CONFIG_PATH="$HOME/.config/bat/config"
+export BAT_THEME="GitHub"
