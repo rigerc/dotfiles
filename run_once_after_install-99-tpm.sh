@@ -2,6 +2,9 @@
 set -euo pipefail
 
 source "$HOME/.bashrc"
+test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)"
+test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
