@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # exit immediately if password-manager-binary is already in $PATH
 type bw >/dev/null 2>&1 && exit
@@ -8,7 +8,7 @@ Darwin)
     # commands to install password-manager-binary on Darwin
     ;;
 Linux)
-    sudo pacman -S --quiet --no-confirm bitwarden-cli
+    sudo pacman -S --quiet --noconfirm bitwarden-cli
     export BW_SESSION=$(bw login && bw unlock --raw) 
     ;;
 *)
