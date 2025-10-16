@@ -7,7 +7,8 @@
       "WebFetch(domain:zdharma-continuum.github.io)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:brew.sh)",
-      "WebFetch(domain:www.chezmoi.io)"
+      "WebFetch(domain:www.chezmoi.io)",
+      "WebFetch(domain:man.openbsd.org)"
     ],
     "deny": [],
     "ask": []

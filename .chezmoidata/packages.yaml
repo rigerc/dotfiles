@@ -39,4 +39,7 @@ packages  :
     # Shell
     - zsh
     - tmux
+
+    # SSH
+    - openssh-server
   casks:
