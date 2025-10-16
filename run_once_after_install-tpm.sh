@@ -56,33 +56,8 @@ else
 fi
 
 echo -e "${GREEN}Tmux plugins installed successfully!${NC}"
-
-# Verify plugins are installed
-echo -e "${YELLOW}Verifying plugin installation...${NC}"
-PLUGINS_INSTALLED=true
-
-# Check for common plugins
-COMMON_PLUGINS=(
-    "tmux-sensible"
-    "tmux-yank"
-    "vim-tmux-navigator"
-    "tmux-resurrect"
-    "tmux-continuum"
-)
-
-for plugin in "${COMMON_PLUGINS[@]}"; do
-    if [[ -d "$HOME/.tmux/plugins/$plugin" ]]; then
-        echo -e "${GREEN}✓ $plugin installed${NC}"
-    else
-        echo -e "${YELLOW}○ $plugin not found (may not be in your tmux.conf)${NC}"
-    fi
-done
+tmux source ~/.tmux.conf
 
 echo -e "${GREEN}TPM setup complete!${NC}"
 echo -e "${YELLOW}To use tmux plugins:${NC}"
 echo -e "1. Reload your tmux configuration with: tmux source ~/.tmux.conf"
-echo -e "2. Or restart tmux completely"
-echo -e "${YELLOW}To manage plugins manually:${NC}"
-echo -e "- Install plugins: Prefix + I"
-echo -e "- Update plugins: Prefix + U"
-echo -e "- Uninstall plugins: Prefix + alt + u"
