@@ -1,5 +1,0 @@
-[".install-bitwarden.sh"]
-    type = "file"
-    url = "http://google.com"
-    executable = true
-    path = ".install-bitwarden.sh"
