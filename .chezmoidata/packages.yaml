@@ -40,6 +40,4 @@ packages  :
     - zsh
     - tmux
 
-    # SSH
-    - openssh-server
   casks:
