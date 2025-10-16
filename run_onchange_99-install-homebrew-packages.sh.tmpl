@@ -9,6 +9,9 @@ NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Installing brews...${NC}"
 
+test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)"
+test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
 # Check if brew command is available
 if ! command -v brew &> /dev/null; then
     echo -e "${RED}Error: Homebrew is not installed or not in PATH${NC}"
