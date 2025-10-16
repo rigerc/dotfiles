@@ -9,7 +9,7 @@ Darwin)
     ;;
 Linux)
     sudo pacman -S --quiet --noconfirm bitwarden-cli
-    export BW_SESSION=$(bw login && bw unlock --raw) 
+    export BW_SESSION=$(bw login bond@bsgb.nl --raw) 
     ;;
 *)
     echo "unsupported OS"
