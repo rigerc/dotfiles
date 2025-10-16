@@ -74,28 +74,3 @@ alias gsync="git fetch --all --prune && git pull --rebase"
 
 # Lazygit alias
 alias lg="lazygit"
-
-# Bitwarden aliases
-if command -v bw &> /dev/null; then
-  alias bw="bw"  # Bitwarden CLI
-  alias bwl="bw_login"  # Login via SSO
-  alias bwls="bw_login_with_session"  # Login via SSO and unlock in one step
-  alias bwu="bw_unlock"  # Unlock Bitwarden
-  alias bws="bw sync"  # Sync Bitwarden vault
-  alias bwc="bw_copy_secure"  # Copy password (secure with auto-clear)
-  alias bwg="bw_generate"  # Generate password
-  alias bwe="bw edit"  # Edit item
-  alias bwa="bw add"  # Add item
-  alias bwlst="bw list items"  # List items
-  alias bwsts="bw_status"  # Check status
-  alias bwlo="bw_logout"  # Logout
-
-  # FZF integration aliases
-  if command -v fzf &> /dev/null; then
-    alias bwf="bw_fzf"  # Fuzzy search item
-    alias bwfc="bw_copy_fzf"  # Fuzzy search and copy password
-    alias bwfe="bw_edit_fzf"  # Fuzzy search and edit item
-    alias bwft="bw_totp_fzf"  # Fuzzy search TOTP codes
-    alias bwfl="bw_list_fzf"  # Fuzzy search and view item details
-  fi
-fi
