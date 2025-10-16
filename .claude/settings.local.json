@@ -8,7 +8,9 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:brew.sh)",
       "WebFetch(domain:www.chezmoi.io)",
-      "WebFetch(domain:man.openbsd.org)"
+      "WebFetch(domain:man.openbsd.org)",
+      "Bash(brew search:*)",
+      "Bash(brew info:*)"
     ],
     "deny": [],
     "ask": []
