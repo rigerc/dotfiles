@@ -43,6 +43,4 @@ if ! command -v tmux &> /dev/null; then
     exit 1
 fi
 
-tmux source ~/.tmux.conf
-
 echo -e "${GREEN}TPM setup complete!${NC}"
