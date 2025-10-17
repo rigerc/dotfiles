@@ -11,7 +11,8 @@
       "WebFetch(domain:man.openbsd.org)",
       "Bash(brew search:*)",
       "Bash(brew info:*)",
-      "mcp__context7__get-library-docs"
+      "mcp__context7__get-library-docs",
+      "WebFetch(domain:docs.brew.sh)"
     ],
     "deny": [],
     "ask": []

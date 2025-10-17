@@ -1,0 +1,144 @@
+#!/bin/bash
+# Chezmoi script to ensure Homebrew is in PATH for all shells
+# This script runs once to set up Homebrew environment variables
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Logging functions
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+log_info "Setting up Homebrew PATH configuration..."
+
+# Homebrew installation paths
+HOMEBREW_PATHS=(
+    "$HOME/.linuxbrew"
+    "/home/linuxbrew/.linuxbrew"
+    "/opt/homebrew"  # Apple Silicon Macs
+    "/usr/local"     # Intel Macs
+)
+
+# Function to find Homebrew installation
+find_homebrew() {
+    for path in "${HOMEBREW_PATHS[@]}"; do
+        if [[ -d "$path" && -x "$path/bin/brew" ]]; then
+            echo "$path"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Function to check if Homebrew is already in PATH
+is_homebrew_in_path() {
+    command -v brew >/dev/null 2>&1
+}
+
+# Function to add Homebrew to shell config
+add_to_shell_config() {
+    local config_file="$1"
+    local homebrew_path="$2"
+    local shell_env_line="eval \"\$($homebrew_path/bin/brew shellenv)\""
+
+    log_info "Processing $config_file"
+
+    # Create config file if it doesn't exist
+    if [[ ! -f "$config_file" ]]; then
+        touch "$config_file"
+        log_info "Created $config_file"
+    fi
+
+    # Check if Homebrew configuration already exists
+    if grep -q "brew shellenv" "$config_file" 2>/dev/null; then
+        log_warning "Homebrew configuration already exists in $config_file"
+        return 0
+    fi
+
+    # Add Homebrew configuration
+    {
+        echo ""
+        echo "# Homebrew configuration"
+        echo "if [[ -d $homebrew_path ]]; then"
+        echo "    eval \"\$($homebrew_path/bin/brew shellenv)\""
+        echo "fi"
+        echo ""
+    } >> "$config_file"
+
+    log_success "Added Homebrew configuration to $config_file"
+}
+
+# Main execution
+main() {
+    # Check if Homebrew is already in PATH
+    if is_homebrew_in_path; then
+        log_success "Homebrew is already in PATH"
+        log_info "Current brew location: $(which brew)"
+        log_info "Homebrew version: $(brew --version | head -n1)"
+        return 0
+    fi
+
+    # Find Homebrew installation
+    homebrew_path=$(find_homebrew)
+    if [[ -z "$homebrew_path" ]]; then
+        log_error "Homebrew installation not found in standard locations"
+        log_info "Standard locations checked:"
+        for path in "${HOMEBREW_PATHS[@]}"; do
+            log_info "  - $path"
+        done
+        log_info "Please install Homebrew first or check installation path"
+        return 1
+    fi
+
+    log_success "Found Homebrew installation at: $homebrew_path"
+
+    # Add to shell configurations
+    local shell_configs=(
+        "$HOME/.bashrc"
+        "$HOME/.zshrc"
+        "$HOME/.profile"
+        "$HOME/.bash_profile"
+    )
+
+    for config in "${shell_configs[@]}"; do
+        add_to_shell_config "$config" "$homebrew_path"
+    done
+
+    # Add to current session
+    eval "$($homebrew_path/bin/brew shellenv)"
+
+    log_success "Homebrew PATH configuration completed"
+    log_info "Homebrew is now available in current session"
+    log_info "Configuration will persist in new shell sessions"
+
+    # Verify installation
+    if is_homebrew_in_path; then
+        log_success "Verification successful: $(which brew)"
+        log_info "Homebrew version: $(brew --version | head -n1)"
+    else
+        log_error "Verification failed - please restart your shell"
+        return 1
+    fi
+}
+
+# Execute main function
+main "$@"
