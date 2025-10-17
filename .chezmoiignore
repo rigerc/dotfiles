@@ -2,4 +2,4 @@ CLAUDE.md
 .claude/*
 README.MD
 install-arch-wsl.ps1
-.tmp/*
+docs/*

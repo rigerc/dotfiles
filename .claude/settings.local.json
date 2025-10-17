@@ -10,7 +10,8 @@
       "WebFetch(domain:www.chezmoi.io)",
       "WebFetch(domain:man.openbsd.org)",
       "Bash(brew search:*)",
-      "Bash(brew info:*)"
+      "Bash(brew info:*)",
+      "mcp__context7__get-library-docs"
     ],
     "deny": [],
     "ask": []
