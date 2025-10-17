@@ -54,7 +54,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     elif command -v pacman &> /dev/null; then
         log_info "Detected Arch Linux system with pacman"
         log_info "Installing packages: base-devel, procps-ng, curl, file, git, fontconfig"
-        sudo pacman -S --needed --noconfirm --quiet base-devel procps-ng curl file git fontconfig
+        sudo pacman -Syu --needed --noconfirm --quiet base-devel procps-ng curl file git fontconfig
         log_success "Arch Linux build tools installed successfully"
 
     else

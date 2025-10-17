@@ -11,7 +11,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${YELLOW}Finishing up installation...${NC}"
+echo -e "${YELLOW}Finishing up installation and setting up Zsh...${NC}"
 echo -e "${YELLOW}Running as user: $(whoami)${NC}"
 
 # Function to run command and verify success
@@ -32,6 +32,30 @@ run_command() {
 
 # Track overall success
 all_success=true
+
+# Setup Zsh as default shell
+if ! run_command "Setting up Zsh as default shell..." "
+    ZSH_PATH=\$(which zsh)
+    if ! grep -q \"^\$ZSH_PATH\$\" /etc/shells; then
+        echo \"Adding Zsh to /etc/shells...\"
+        echo \"\$ZSH_PATH\" | sudo tee -a /etc/shells >/dev/null
+        echo \"Zsh added to /etc/shells\"
+    else
+        echo \"Zsh already in /etc/shells\"
+    fi
+
+    if [[ \"\$SHELL\" != \"\$ZSH_PATH\" ]]; then
+        echo \"Setting Zsh as default shell...\"
+        sudo chsh -s \"\$ZSH_PATH\" \$(whoami)
+        echo \"DEBUG: sudo chsh -s \"\$ZSH_PATH\" \$(whoami)\"
+        echo \"Zsh set as default shell\"
+    else
+        echo \"Zsh already set as default shell\"
+    fi
+
+"; then
+    all_success=false
+fi
 
 # Cleaning up LazyVim...
 if ! run_command "Cleaning up LazyVim..." "rm -rf ~/.config/nvim/.git"; then
