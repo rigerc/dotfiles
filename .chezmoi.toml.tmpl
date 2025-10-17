@@ -1,6 +1,6 @@
-{{- $username := promptStringOnce . "username" "What is your system username?" -}}
-{{- $github_user := promptStringOnce . "github_user" "What is your GitHub username?" -}}
-{{- $github_email := promptStringOnce . "github_email" "What is your GitHub email?" -}}
+{{- $username := promptStringOnce . "username" "Username" -}}
+{{- $github_user := promptStringOnce . "github_user" "GitHub username" -}}
+{{- $github_email := promptStringOnce . "github_email" "GitHub email" -}}
 
 [tmpDir]
     path = ".local/share/chezmoi/.tmp"
