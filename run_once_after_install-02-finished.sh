@@ -11,6 +11,9 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+echo -e "${YELLOW}Finishing up installation...${NC}"
+echo -e "${YELLOW}Running as user: $(whoami)${NC}"
+
 # Function to run command and verify success
 run_command() {
     local description="$1"
@@ -29,6 +32,11 @@ run_command() {
 
 # Track overall success
 all_success=true
+
+# Cleaning up LazyVim...
+if ! run_command "Cleaning up LazyVim..." "rm -rf ~/.config/nvim/.git"; then
+    all_success=false
+fi
 
 # Rebuild font cache
 if ! run_command "Rebuilding font cache..." "fc-cache -f -v"; then

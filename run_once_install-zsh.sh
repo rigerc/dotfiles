@@ -8,6 +8,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${YELLOW}Setting up Zsh with Zinit...${NC}"
+echo -e "${YELLOW}Running as user: $(whoami)${NC}"
 
 test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)"
 test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
@@ -25,7 +26,8 @@ fi
 # Zsh is already installed via Brewfile, just set as default shell
 if [[ "$SHELL" != "$ZSH_PATH" ]]; then
     echo -e "${YELLOW}Setting Zsh as default shell...${NC}"
-    sudo chsh -s "$ZSH_PATH"
+    sudo chsh -s "$ZSH_PATH" $(whoami)
+    echo -e "DEBUG: sudo chsh -s "$ZSH_PATH" $(whoami)"
     echo -e "${GREEN}Zsh set as default shell${NC}"
 else
     echo -e "${GREEN}Zsh already set as default shell${NC}"

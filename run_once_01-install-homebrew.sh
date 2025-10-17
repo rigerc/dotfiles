@@ -7,8 +7,8 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${YELLOW}Running as user: $(whoami)${NC}"
 echo -e "${YELLOW}Installing Homebrew and packages from Brewfile...${NC}"
+echo -e "${YELLOW}Running as user: $(whoami)${NC}"
 
 # Install build tools for Linux if needed
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
