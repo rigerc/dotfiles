@@ -85,3 +85,5 @@ else
 fi
 
 echo -e "${RED}Restart shell to finish...${NC}"
+sleep 10
+exit
