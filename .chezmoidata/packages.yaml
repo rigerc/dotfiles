@@ -7,7 +7,6 @@ packages  :
   arch_packages:
     - openssh
     - git
-    - sudo
     - curl
     - grep
     - gawk
