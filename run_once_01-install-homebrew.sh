@@ -7,6 +7,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+echo -e "${YELLOW}Running as user: $(whoami)${NC}"
 echo -e "${YELLOW}Installing Homebrew and packages from Brewfile...${NC}"
 
 # Install build tools for Linux if needed
@@ -26,7 +27,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     elif command -v pacman &> /dev/null; then
         # Arch Linux
         echo "Installing build tools (may require password)..."
-        sudo pacman -S --needed --noconfirm --quiet base-devel procps-ng curl file git fontconfig >/dev/null
+        sudo pacman -S --needed --noconfirm --quiet base-devel procps-ng curl file git fontconfig > /dev/null
     fi
     echo -e "${GREEN}Build tools installed/verified${NC}"
 fi
@@ -35,7 +36,7 @@ fi
 if ! command -v brew &> /dev/null; then
     echo -e "${YELLOW}Homebrew not found. Installing Homebrew...${NC}"
     export NONINTERACTIVE=1
-    /bin/bash -c "$(sudo curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" > /dev/null
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" > /dev/null
 
     # Add Homebrew to PATH using brew --prefix (recommended approach)
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -102,6 +103,6 @@ fi
 #{{ end -}} 
 #EOF
 
-eval "source $HOME/.bashrc"
+#eval "source $HOME/.bashrc"
 echo -e "${GREEN}Homebrew setup complete!${NC}"
 locale-gen
