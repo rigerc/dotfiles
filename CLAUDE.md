@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is a personal dotfiles repository managed with [Chezmoi](https://www.chezmoi.io/), designed for cross-platform development environment setup (macOS and Linux). The repository includes shell configuration, development tools, and application settings.
+This is a personal dotfiles repository managed with Chezmoi, designed for cross-platform development environment setup (macOS and Linux). The repository includes shell configuration, development tools, and application settings.
 
 ## Key Commands
 
@@ -68,20 +68,6 @@ ls                  # eza (modern ls with icons)
 ll                  # eza -la --icons --octal-permissions
 l                   # eza -bGF --header --git
 la                  # eza --long --all --group
-
-# Bitwarden password manager (if installed)
-bw                  # Bitwarden CLI
-bwl                 # Login via SSO (opens browser)
-bwls                # Login via SSO and unlock in one step
-bwu                 # Unlock Bitwarden (with auto-lock timer)
-bws                 # Sync vault
-bwc                 # Copy password to clipboard (auto-clear in 15s)
-bwg                 # Generate secure password
-bwf                 # Fuzzy search items with fzf
-bwfc                # Fuzzy search and copy password
-bwft                # Fuzzy search TOTP codes
-bwfl                # Fuzzy search and view item details
-bwlo                # Logout and lock vault
 ```
 
 ## Architecture and Structure
@@ -93,7 +79,7 @@ bwlo                # Logout and lock vault
 - Supports automatic package installation when `packages.yaml` changes
 
 ### Shell Environment (Zsh)
-- **Plugin Management**: Uses [Zinit](https://github.com/zdharma-continuum/zinit) for fast plugin loading
+- **Plugin Management**: Uses Zinit for fast plugin loading
 - **Key Plugins**:
   - `fast-syntax-highlighting`: Syntax highlighting
   - `zsh-autosuggestions`: Command suggestions based on history
@@ -104,26 +90,16 @@ bwlo                # Logout and lock vault
   - `dot_zshrc`: Main Zsh configuration with plugin initialization
   - `dot_config/zsh/aliases.zsh`: Comprehensive alias definitions
   - `dot_config/zsh/tmux.zsh`: Auto-start tmux configuration
-  - `dot_config/zsh/bitwarden.zsh`: Bitwarden CLI integration and session management
 
 ### Terminal Multiplexer (Tmux)
-- **Plugin Management**: Uses [TPM](https://github.com/tmux-plugins/tpm) for plugin management
-- **Key Plugins**:
-  - `tmux-sensible`: Sensible defaults
-  - `tmux-yank`: Better copying/pasting
-  - `vim-tmux-navigator`: Seamless navigation between vim/tmux panes
-  - `tmux-resurrect` + `tmux-continuum`: Session persistence
-  - `catppuccin/tmux`: Catppuccin theme
-- **Features**:
-  - Auto-restore sessions on start
-  - True color support
-  - Automatic window renaming based on directory
-  - Vi key bindings in copy mode
+- **Plugin Management**: Uses TPM for plugin management
+- **Key Plugins**: vim-tmux-navigator, tmux-yank, tmux-resurrect
+- **Features**: Auto-restore sessions, true color support, automatic window renaming
 
 ### Editor Configuration
-- **Primary Editor**: Neovim with LazyVim bootstrap
+- **Primary Editor**: Neovim with LazyVim bootstrap (external repo)
 - **Fallback**: Nano with enhanced configuration
-- **Configuration**: `dot_config/nvim/init.lua` (LazyVim setup)
+- **Configuration**: `dot_config/nvim/` (LazyVim managed via externals)
 
 ### Development Tools
 - **Version Control**: Git with enhanced aliases and LazyGit TUI
@@ -137,14 +113,20 @@ bwlo                # Logout and lock vault
   - Development: Node, Python, Go, Rust
   - Tools: GitHub CLI, lazygit, ripgrep, fzf, etc.
   - Editors: Neovim, nano, micro
-  - Security: bitwarden-cli for password management
+  - Shell: zsh, tmux
 - **Installation Scripts**:
-  - `run_once_01-install-homebrew.sh.tmpl`: Homebrew installation
+  - `run_once_01-install-homebrew.sh`: Homebrew installation
   - `run_onchange_99-install-homebrew-packages.sh.tmpl`: Package installation
 
 ### Prompt Configuration
 - **Starship Prompt**: Custom configuration in `dot_config/starship.toml`
 - **Features**: Git status, Python virtual environments, command duration, clean minimal design
+
+### External Repositories
+- **Zinit**: Managed via `.chezmoiexternals/zinit.toml`
+- **LazyVim**: Managed via `.chezmoiexternals/lazyvim.toml`
+- **TPM**: Managed via `.chezmoiexternals/tpm.toml`
+- **Fonts**: Managed via `.chezmoiexternals/fonts.toml.tmpl`
 
 ## Development Workflow
 
@@ -154,36 +136,14 @@ bwlo                # Logout and lock vault
 4. **Package Updates**: Modify `.chezmoidata/packages.yaml` and changes will auto-apply
 5. **Shell Reload**: Use `reload` alias or `exec zsh` to reload shell configuration
 
-## Security and Password Management
-
-### Bitwarden Integration
-- **CLI Tool**: Uses official `bitwarden-cli` for password management
-- **Authentication**: SSO-based authentication (no API keys required)
-- **Session Management**: Automatic lock after 10 minutes (configurable via `BW_AUTO_LOCK_TIMEOUT`)
-- **FZF Integration**: Interactive search and selection of passwords
-- **Security Features**:
-  - Auto-clear clipboard (15 seconds for passwords, 30 seconds for generated passwords)
-  - Auto-lock on shell exit
-  - Session timeout checking via prompt hooks
-- **Chezmoi Templates**: Secure credential retrieval in configuration templates using `.chezmoidata/bitwarden.yaml`
-
-### Bitwarden Setup Instructions
-1. **Login via SSO**: Use `bwl` to initiate SSO login (opens browser for authentication)
-   - Or use `bwls` to login via SSO and unlock in one step
-2. **Unlock**: If using `bwl`, run `bwu` to unlock your vault after SSO completion
-3. **Use**: Access passwords with `bwfc` (fuzzy search and copy), `bwft` (TOTP codes), etc.
-4. **Chezmoi Integration**: Session is automatically managed for template usage via `BW_SESSION` environment variable
-
 ## File Locations
 
 - **Chezmoi Config**: `dot_config/chezmoi/chezmoi.toml`
 - **Shell Aliases**: `dot_config/zsh/aliases.zsh`
-- **Bitwarden Integration**: `dot_config/zsh/bitwarden.zsh`
 - **Tmux Config**: `dot_tmux.conf`
 - **Starship Prompt**: `dot_config/starship.toml`
-- **Neovim Config**: `dot_config/nvim/`
+- **Neovim Config**: `dot_config/nvim/` (LazyVim external)
 - **Package List**: `.chezmoidata/packages.yaml`
-- **Bitwarden Config**: `.chezmoidata/bitwarden.yaml`
 
 ## Platform Support
 

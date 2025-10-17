@@ -36,7 +36,7 @@ fi
 if ! command -v brew &> /dev/null; then
     echo -e "${YELLOW}Homebrew not found. Installing Homebrew...${NC}"
     export NONINTERACTIVE=1
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" > /dev/null
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" #> /dev/null
 
     # Add Homebrew to PATH using brew --prefix (recommended approach)
     if [[ "$OSTYPE" == "darwin"* ]]; then
