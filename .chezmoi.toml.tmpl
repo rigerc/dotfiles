@@ -1,4 +1,14 @@
-tmpDir = ".local/share/chezmoi/.tmp"
+{{- $username := promptStringOnce . "username" "What is your system username?" -}}
+{{- $github_user := promptStringOnce . "github_user" "What is your GitHub username?" -}}
+{{- $github_email := promptStringOnce . "github_email" "What is your GitHub email?" -}}
+
+[tmpDir]
+    path = ".local/share/chezmoi/.tmp"
+
+[data]
+    username = {{ $username | quote }}
+    github_user = {{ $github_user | quote }}
+    github_email = {{ $github_email | quote }}
 
 [hooks.read-source-state.pre]
     script = ".local/share/chezmoi/.install-gopass.sh"

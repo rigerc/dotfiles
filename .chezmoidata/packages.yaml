@@ -3,6 +3,21 @@ packages  :
     - homebrew/bundle
     - homebrew/services
 
+  # Arch Linux packages (pacman)
+  arch_packages:
+    - openssh
+    - git
+    - sudo
+    - curl
+    - grep
+    - gawk
+    - jq
+    - deno
+    - base-devel
+    - procps-ng 
+    - file
+    - fontconfig
+
   brews:
     # Development
     - node
