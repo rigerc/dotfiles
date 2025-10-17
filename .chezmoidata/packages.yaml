@@ -31,6 +31,9 @@ packages  :
     - fd
     - fzf
     - bat
+    - bat-extras
+    - cheat
+    - uv
     - htop
     - tlrc
     - eza
