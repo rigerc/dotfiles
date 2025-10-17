@@ -3,6 +3,8 @@
 
 set -euo pipefail
 
+pacman -Syu
+
 # Check if running on Arch Linux
 if ! command -v pacman &> /dev/null; then
     echo "This script is designed for Arch Linux systems with pacman package manager"
