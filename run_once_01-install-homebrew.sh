@@ -105,4 +105,3 @@ fi
 
 #eval "source $HOME/.bashrc"
 echo -e "${GREEN}Homebrew setup complete!${NC}"
-locale-gen

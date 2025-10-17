@@ -11,13 +11,45 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${YELLOW}Rebuilding font cache..${NC}"
-fc-cache -f -v 2>/dev/null || true
+# Function to run command and verify success
+run_command() {
+    local description="$1"
+    local command="$2"
+    
+    echo -e "${YELLOW}${description}${NC}"
+    
+    if eval "$command" 2>/dev/null; then
+        echo -e "${GREEN}✓ ${description} completed successfully${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ ${description} failed${NC}"
+        return 1
+    fi
+}
 
-echo -e "${YELLOW}Generating locales...${NC}"
-locale-gen
+# Track overall success
+all_success=true
 
-echo -e "${YELLOW}Installing Tmux plugins...${NC}"
-~/.config/tmux/plugins/tpm/bin/install_plugins
+# Rebuild font cache
+if ! run_command "Rebuilding font cache..." "fc-cache -f -v"; then
+    all_success=false
+fi
+
+# Generate locales
+if ! run_command "Generating locales..." "locale-gen"; then
+    all_success=false
+fi
+
+# Install Tmux plugins
+if ! run_command "Installing Tmux plugins..." "~/.config/tmux/plugins/tpm/bin/install_plugins"; then
+    all_success=false
+fi
+
+echo ""
+if [ "$all_success" = true ]; then
+    echo -e "${GREEN}All operations completed successfully!${NC}"
+else
+    echo -e "${YELLOW}Some operations failed. Please review the output above.${NC}"
+fi
 
 echo -e "${RED}Restart shell to finish...${NC}"
