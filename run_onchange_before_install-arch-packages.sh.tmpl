@@ -3,8 +3,8 @@
 
 set -euo pipefail
 
-pacman-key --init
-pacman -Syu --noconfirm --quiet sudo
+#pacman-key --init
+#pacman -Syu --noconfirm --quiet sudo
 
 # Check if running on Arch Linux
 if ! command -v pacman &> /dev/null; then

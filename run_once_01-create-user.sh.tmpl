@@ -53,6 +53,7 @@ fi
 
 # Create sudoers configuration for wheel group
 SUDOERS_FILE="/etc/sudoers.d/wheel"
+    
 SUDOERS_CONTENT="%wheel ALL=(ALL:ALL) NOPASSWD: ALL"
 
 if [[ -f "$SUDOERS_FILE" ]]; then
