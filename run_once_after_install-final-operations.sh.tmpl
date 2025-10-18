@@ -77,6 +77,33 @@ if ! run_command "Installing Tmux plugins..." "~/.config/tmux/plugins/tpm/bin/in
     all_success=false
 fi
 
+# Move WSL configuration and cleanup
+if ! run_command "Moving WSL configuration and cleaning up..." "
+    if [[ -f \"\$HOME/tmp/wsl.conf\" ]]; then
+        echo \"Moving wsl.conf to /etc/wsl.conf...\"
+        sudo mv \"\$HOME/tmp/wsl.conf\" /etc/wsl.conf
+
+        # Verify the file was moved properly
+        if [[ -f \"/etc/wsl.conf\" ]]; then
+            echo \"✓ wsl.conf successfully moved to /etc/wsl.conf\"
+        else
+            echo \"✗ Failed to move wsl.conf to /etc/wsl.conf\"
+            exit 1
+        fi
+
+        # Clean up the tmp directory
+        if [[ -d \"\$HOME/tmp\" ]]; then
+            echo \"Removing \$HOME/tmp directory...\"
+            rm -rf \"\$HOME/tmp\"
+            echo \"✓ \$HOME/tmp directory removed\"
+        fi
+    else
+        echo \"No wsl.conf found in \$HOME/tmp, skipping WSL configuration\"
+    fi
+"; then
+    all_success=false
+fi
+
 echo ""
 if [ "$all_success" = true ]; then
     echo -e "${GREEN}All operations completed successfully!${NC}"
