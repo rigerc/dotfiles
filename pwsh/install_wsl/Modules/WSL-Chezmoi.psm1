@@ -146,10 +146,10 @@ function Invoke-ChezmoiSetup {
     $EscapedGitName = $GitName -replace '"', '\"'
     $EscapedGitEmail = $GitEmail -replace '"', '\"'
     
-    # Build Chezmoi command
-    $ChezmoiCommand = "sh -c `"`$(curl -fsLS get.chezmoi.io)`" -- init -d --apply $EscapedGitName --promptString=`'github_user`'=`'$EscapedGitName`',`'github_email`'=`'$EscapedGitEmail`'"
     
+    $ChezmoiCommand = "chezmoi init --apply $EscapedGitName --promptString github_user='$EscapedGitName' --promptString github_email='$EscapedGitEmail'"
     Write-LogMessage "Starting Windows Terminal with Chezmoi setup" -Level Info
+    Write-LogMessage "Chezmoi command: $ChezmoiCommand" -Level Debug
     Write-Host ""
     
     Invoke-WSLCommandInteractive -DistroName $DistroName -Command $ChezmoiCommand -Username $Username

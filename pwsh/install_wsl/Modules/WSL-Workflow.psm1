@@ -168,6 +168,7 @@ function Invoke-ContinueModeWorkflow {
     
     # Verify configuration
     Test-Configuration -DistroName $Config.DistroName -Username $Config.Username
+    Restart-WSLDistribution -DistroName $Config.DistroName
 }
 
 function Invoke-NormalModeWorkflow {
@@ -210,6 +211,7 @@ function Invoke-NormalModeWorkflow {
     
     # Verify configuration
     Test-Configuration -DistroName $Config.DistroName -Username $Config.Username
+    Restart-WSLDistribution -DistroName $Config.DistroName
 }
 
 function Invoke-ChezmoiWorkflow {
@@ -244,27 +246,6 @@ function Invoke-ChezmoiWorkflow {
     
     Start-Sleep -Seconds 3
     
-    # Restart WSL distribution to apply changes
-    Write-Section "Restarting WSL Distribution"
-    Write-LogMessage "Shutting down WSL distribution to apply changes..." -Level Info
-    
-    try {
-        Stop-WSLDistribution -DistroName $Config.DistroName
-        Write-LogMessage "Waiting for distribution to be ready after restart..." -Level Info
-        Start-Sleep -Seconds 20
-        
-        if (-not (Wait-ForDistributionReady -DistroName $Config.DistroName)) {
-            Write-LogMessage "Warning: Distribution failed to become ready after restart" -Level Warning
-            Write-LogMessage "SSH configuration may not work properly" -Level Warning
-        }
-        else {
-            Write-LogMessage "Distribution is ready after restart" -Level Success
-        }
-    }
-    catch {
-        Write-LogMessage "Failed to restart WSL distribution: $($_.Exception.Message.Trim())" -Level Warning
-        Write-LogMessage "SSH configuration may not work properly" -Level Warning
-    }
 }
 
 function Show-CompletionSummary {
@@ -294,6 +275,6 @@ function Show-CompletionSummary {
 }
 
 # Export functions
-Export-ModuleMember -Function Invoke-ContinueChecks, Invoke-ContinueModeWorkflow, 
-                              Invoke-NormalModeWorkflow, Invoke-ChezmoiWorkflow, 
+Export-ModuleMember -Function Invoke-ContinueChecks, Invoke-ContinueModeWorkflow,
+                              Invoke-NormalModeWorkflow, Invoke-ChezmoiWorkflow,
                               Show-CompletionSummary

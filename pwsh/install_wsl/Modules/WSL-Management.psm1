@@ -128,7 +128,7 @@ function Wait-ForDistributionReady {
     
     $Activity = "Waiting for WSL Distribution '$DistroName' to be Ready"
     Write-LogMessage "Waiting for distribution to be ready..." -Level Info
-    Start-Sleep(10)
+    Start-Sleep(4)
     for ($i = 1; $i -le $MaxAttempts; $i++) {
         $PercentComplete = [math]::Round(($i / $MaxAttempts) * 100)
         $SecondsRemaining = ($MaxAttempts - $i) * $DelaySeconds

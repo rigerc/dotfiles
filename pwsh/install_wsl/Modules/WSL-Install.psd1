@@ -91,7 +91,7 @@
         'Test-DistributionReady',
         'Test-UserExists',
         'Test-UserSudoAccess',
-        'Test-PacmanKeyringInitialized',
+        'Test-PacmanKeyInitialized',
         'Test-PackageInstalled',
         'Test-ChezmoiConfigured',
         'Invoke-WSLCommand',

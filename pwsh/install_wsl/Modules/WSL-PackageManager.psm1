@@ -47,9 +47,20 @@ function Initialize-PacmanKeyring {
         [string]$DistroName
     )
     
-    if (Test-PacmanKeyringInitialized -DistroName $DistroName) {
-        Write-LogMessage "Pacman keyring is already initialized" -Level Success
-        return
+    # Check if keyring is already initialized to avoid redundant operations
+    try {
+        $keyringInitialized = Test-PacmanKeyInitialized -DistroName $DistroName
+
+        if ($keyringInitialized) {
+            Write-LogMessage "Pacman keyring is already initialized for distribution '$DistroName' - skipping initialization" -Level Success
+            return
+        }
+
+        Write-LogMessage "Pacman keyring not yet initialized for distribution '$DistroName' - proceeding with initialization..." -Level Info
+    }
+    catch {
+        Write-LogMessage "Failed to check keyring initialization status for distribution '$DistroName': $($_.Exception.Message.Trim())" -Level Warning
+        Write-LogMessage "Proceeding with initialization to ensure keyring is properly set up" -Level Warning
     }
     
     Write-LogMessage "Initializing pacman keyring..." -Level Info
@@ -279,27 +290,31 @@ function Test-PackageManagerInitialized {
         MissingPackages = @()
     }
     
-    # Check if sudo is available
+    # Check if the default user can use sudo
     try {
-        $Command = "command -v sudo >/dev/null 2>&1 && echo 'available' || echo 'not_available'"
-        $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
-        
-        if ($Result -match "available") {
-            $Status.SudoAvailable = $true
-            Write-LogMessage "Sudo is available" -Level Success
+        if (Test-UserExists -DistroName $DistroName -Username $script:DefaultUsername) {
+            $SudoAccess = Test-UserSudoAccess -DistroName $DistroName -Username $script:DefaultUsername
+            if ($SudoAccess) {
+                $Status.SudoAvailable = $true
+                Write-LogMessage "Default user '$($script:DefaultUsername)' can use sudo" -Level Success
+            }
+            else {
+                Write-LogMessage "Default user '$($script:DefaultUsername)' cannot use sudo" -Level Warning
+                return $Status
+            }
         }
         else {
-            Write-LogMessage "Sudo is not available" -Level Warning
+            Write-LogMessage "Default user '$($script:DefaultUsername)' does not exist" -Level Warning
             return $Status
         }
     }
     catch {
-        Write-LogMessage "Failed to check sudo availability" -Level Warning
+        Write-LogMessage "Failed to check sudo access for default user" -Level Warning
         return $Status
     }
     
     # Check keyring initialization
-    $Status.KeyringInitialized = Test-PacmanKeyringInitialized -DistroName $DistroName
+    $Status.KeyringInitialized = Test-PacmanKeyInitialized -DistroName $DistroName
     
     if (-not $Status.KeyringInitialized) {
         Write-LogMessage "Pacman keyring is not initialized" -Level Warning

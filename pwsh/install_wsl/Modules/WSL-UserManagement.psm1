@@ -103,9 +103,16 @@ function Add-UserToSudoers {
         
         # Configure passwordless sudo for wheel group
         Write-LogMessage "Configuring passwordless sudo..." -Level Info
-        $Command = "echo '%wheel ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers"
+        $Command = "echo '%wheel ALL=(ALL:ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel && chmod 440 /etc/sudoers.d/wheel"
         Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
         
+
+        # Configure systemd
+        Write-LogMessage "Configuring systemd" -Level Info
+        $systemD= "[boot]`nsystemd=true`n[user]`ndefault=$username]"
+        $Command = "echo '$systemD' | sudo tee /etc/wsl.conf > /dev/null"
+        Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
+
         # Verify sudo access
         Write-LogMessage "Verifying sudo access..." -Level Info
         Start-Sleep -Seconds 2

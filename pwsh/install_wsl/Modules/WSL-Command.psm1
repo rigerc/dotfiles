@@ -79,18 +79,11 @@ function Invoke-WSLCommand {
     $WslArgs = @("--distribution", $DistroName, "--user", $User, "--", "bash", "-c", $Command)
     
     try {
-        if ($script:Debug -and -not $Quiet) {
-            $Output = & wsl @WslArgs | Out-String
-            return Format-WSLOutput -Output $Output
-        }
-        elseif ($Quiet) {
-            $Output = & wsl @WslArgs 2>&1 | Out-String
-            return Format-WSLOutput -Output $Output
-        }
-        else {
-            $Output = & wsl @WslArgs | Out-String
-            return Format-WSLOutput -Output $Output
-        }
+        # Execute WSL command and capture output
+        $Output = & wsl @WslArgs 2>&1 | Out-String
+
+        # Format output based on mode (debug/quiet/normal)
+        return Format-WSLOutput -Output $Output -Debug:$script:Debug -Quiet:$Quiet
     }
     catch {
         Write-LogMessage "WSL command failed: $($_.Exception.Message.Trim())" -Level Error
@@ -121,8 +114,10 @@ function Invoke-WSLCommandInteractive {
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$Command,
-        
-        [string]$Username = "root"
+
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$Username
     )
     
     # Check if the distribution exists
@@ -138,12 +133,20 @@ function Invoke-WSLCommandInteractive {
     
     $StartInfo = @{
         FilePath     = $WtPath
-        ArgumentList = @("-w", "-1", "wsl", "-d", $DistroName, "--user", $Username, "--", $Command)
+        ArgumentList = @("wsl", "-d", $DistroName, "--user", $Username, "--exec", $Command)
+        PassThru     = $true
         Wait         = $true
     }
     
     Write-LogMessage "Starting Windows Terminal process" -Level Info
-    Start-Process @StartInfo
+    $Process = Start-Process @StartInfo
+    
+    # Wait for the process to exit
+    if ($Process) {
+        Write-LogMessage "Waiting for Windows Terminal process to complete" -Level Debug
+        $Process.WaitForExit()
+        Write-LogMessage "Windows Terminal process completed with exit code: $($Process.ExitCode)" -Level Debug
+    }
 }
 
 # Export functions

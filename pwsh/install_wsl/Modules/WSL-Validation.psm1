@@ -100,43 +100,28 @@ function Test-DistributionExists {
     )
     
     Write-LogMessage "Checking if WSL distribution '$DistroName' exists" -Level Debug
-    Write-LogMessage "Executing command: wsl --list --quiet" -Level Debug
     
     try {
         $Distributions = wsl --list --quiet 2>$null | Out-String
-        Write-LogMessage "WSL command executed with exit code: $LASTEXITCODE" -Level Debug
         
-        if ($Distributions) {
-            Write-LogMessage "WSL distributions found: $($Distributions.Replace("`n", ', ').Trim())" -Level Debug
-            $DistributionList = $Distributions -split "`r?`n"
-            Write-LogMessage "Processing $($DistributionList.Count) distribution entries" -Level Debug
+        if (-not [string]::IsNullOrWhiteSpace($Distributions)) {
+            $DistributionList = $Distributions -split "`r?`n" | Where-Object { $_ -and $_.Trim() }
             
             foreach ($Distro in $DistributionList) {
-                Write-LogMessage "Processing distribution entry: '$Distro'" -Level Debug
                 $CleanDistro = Format-WSLOutput -Output $Distro
-                Write-LogMessage "Cleaned distribution name: '$CleanDistro'" -Level Debug
                 
                 if ($CleanDistro -eq $DistroName) {
-                    Write-LogMessage "Match found! Distribution '$DistroName' exists" -Level Debug
+                    Write-LogMessage "Distribution '$DistroName' exists" -Level Debug
                     return $true
                 }
-                else {
-                    Write-LogMessage "No match. '$CleanDistro' != '$DistroName'" -Level Debug
-                }
             }
-            Write-LogMessage "No match found for distribution '$DistroName' after checking all entries" -Level Debug
-        }
-        else {
-            Write-LogMessage "No WSL distributions found or WSL command returned empty output" -Level Debug
         }
         
-        Write-LogMessage "Returning false - distribution '$DistroName' does not exist" -Level Debug
+        Write-LogMessage "Distribution '$DistroName' does not exist" -Level Debug
         return $false
     }
     catch {
         Write-LogMessage "Error checking if distribution exists: $($_.Exception.Message.Trim())" -Level Error
-        Write-LogMessage "Exception type: $($_.Exception.GetType().Name)" -Level Debug
-        Write-LogMessage "Returning false due to exception" -Level Debug
         return $false
     }
 }
@@ -158,8 +143,20 @@ function Test-DistributionReady {
         [string]$DistroName
     )
     
+    # Pre-condition validation: Check if distribution exists first
+    if (-not (Test-DistributionExists -DistroName $DistroName)) {
+        Write-LogMessage "Cannot test readiness - distribution '$DistroName' does not exist" -Level Warning
+        return $false
+    }
+    
     try {
         $Result = wsl -d $DistroName -u root -- echo "ready" 2>&1 | Out-String
+        
+        # Ensure we return a boolean value
+        if ([string]::IsNullOrWhiteSpace($Result)) {
+            return $false
+        }
+        
         return $Result -match "ready"
     }
     catch {
@@ -190,9 +187,21 @@ function Test-UserExists {
         [string]$Username
     )
     
+    # Pre-condition validation: Check if distribution exists first
+    if (-not (Test-DistributionExists -DistroName $DistroName)) {
+        Write-LogMessage "Cannot check user '$Username' - distribution '$DistroName' does not exist" -Level Warning
+        return $false
+    }
+    
     try {
         $Command = "id $Username >/dev/null 2>&1 && echo 'exists' || echo 'not_found'"
-        $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
+        $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot
+        
+        # Ensure we return a boolean value
+        if ([string]::IsNullOrWhiteSpace($Result)) {
+            return $false
+        }
+        
         return $Result -match "exists"
     }
     catch {
@@ -224,9 +233,20 @@ function Test-UserSudoAccess {
         [string]$Username
     )
     
+    # Pre-condition validation: Check if distribution exists and user exists first
+    if (-not (Test-DistributionExists -DistroName $DistroName)) {
+        Write-LogMessage "Cannot check sudo access for user '$Username' - distribution '$DistroName' does not exist" -Level Warning
+        return $false
+    }
+    
+    if (-not (Test-UserExists -DistroName $DistroName -Username $Username)) {
+        Write-LogMessage "Cannot check sudo access - user '$Username' does not exist in distribution '$DistroName'" -Level Warning
+        return $false
+    }
+    
     try {
         $Command = "sudo -n whoami"
-        Invoke-WSLCommand -DistroName $DistroName -Command $Command -Username $Username -Quiet
+        Invoke-WSLCommand -DistroName $DistroName -Command $Command -Username $Username
         return ($LASTEXITCODE -eq 0)
     }
     catch {
@@ -234,10 +254,10 @@ function Test-UserSudoAccess {
     }
 }
 
-function Test-PacmanKeyringInitialized {
+function Test-PacmanKeyInitialized {
     <#
     .SYNOPSIS
-        Checks if the pacman keyring is initialized.
+        Uses pacman-key to test if the pacman keyring is initialized for a WSL distribution.
     .PARAMETER DistroName
         The name of the WSL distribution.
     .OUTPUTS
@@ -250,13 +270,26 @@ function Test-PacmanKeyringInitialized {
         [ValidateNotNullOrEmpty()]
         [string]$DistroName
     )
-    
+
+    if (-not (Test-DistributionExists -DistroName $DistroName)) {
+        Write-LogMessage "Distro '$DistroName' does not exist; skipping pacman-key initialization check." -Level Warning
+        return $false
+    }
+
     try {
-        $Command = "test -d /etc/pacman.d/gnupg && (ls -A /etc/pacman.d/gnupg 2>/dev/null | grep -q .) && echo 'initialized' || echo 'not_initialized'"
-        $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
+        # Use pacman-key to list keys and check if the keyring is initialized
+        $Command = "pacman-key --list-keys >/dev/null 2>&1 && echo 'initialized' || echo 'not_initialized'"
+        $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot
+        
+        # Ensure we return a boolean value
+        if ([string]::IsNullOrWhiteSpace($Result)) {
+            return $false
+        }
+        
         return $Result -match "initialized"
     }
     catch {
+        Write-LogMessage "Error checking pacman-key initialization: $($_.Exception.Message.Trim())" -Level Warning
         return $false
     }
 }
@@ -278,17 +311,21 @@ function Test-PackageInstalled {
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$DistroName,
-        
+
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$PackageName
     )
- 
-    
+
+    # Pre-condition validation: Check if distribution exists first
+    if (-not (Test-DistributionExists -DistroName $DistroName)) {
+        Write-LogMessage "Cannot check package '$PackageName' - distribution '$DistroName' does not exist" -Level Warning
+        return $false
+    }
+
     try {
-        $Command = "pacman -Qi $PackageName >/dev/null 2>&1 && echo 'installed' || echo 'not_installed'"
-        $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
-        return $Result -match "installed"
+        $null = Invoke-WSLCommand -DistroName $DistroName -Command "pacman -Qi $PackageName" -AsRoot -Quiet
+        return $LASTEXITCODE -eq 0
     }
     catch {
         return $false
@@ -318,9 +355,26 @@ function Test-ChezmoiConfigured {
         [string]$Username
     )
     
+    # Pre-condition validation: Check if distribution exists and user exists first
+    if (-not (Test-DistributionExists -DistroName $DistroName)) {
+        Write-LogMessage "Cannot check Chezmoi configuration for user '$Username' - distribution '$DistroName' does not exist" -Level Warning
+        return $false
+    }
+    
+    if (-not (Test-UserExists -DistroName $DistroName -Username $Username)) {
+        Write-LogMessage "Cannot check Chezmoi configuration - user '$Username' does not exist in distribution '$DistroName'" -Level Warning
+        return $false
+    }
+    
     try {
         $Command = "command -v chezmoi >/dev/null 2>&1 && test -d ~/.local/share/chezmoi && echo 'configured' || echo 'not_configured'"
-        $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -Username $Username -Quiet
+        $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -Username $Username
+        
+        # Ensure we return a boolean value
+        if ([string]::IsNullOrWhiteSpace($Result)) {
+            return $false
+        }
+        
         return $Result -match "configured"
     }
     catch {
@@ -329,6 +383,6 @@ function Test-ChezmoiConfigured {
 }
 
 # Export functions
-Export-ModuleMember -Function Test-ValidLinuxUsername, Test-GitAvailable, Test-DistributionExists, 
-                              Test-DistributionReady, Test-UserExists, Test-UserSudoAccess, 
-                              Test-PacmanKeyringInitialized, Test-PackageInstalled, Test-ChezmoiConfigured
+Export-ModuleMember -Function Test-ValidLinuxUsername, Test-GitAvailable, Test-DistributionExists,
+                              Test-DistributionReady, Test-UserExists, Test-UserSudoAccess,
+                              Test-PacmanKeyInitialized, Test-PackageInstalled, Test-ChezmoiConfigured
