@@ -24,10 +24,10 @@ log_warning() {
 log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
-
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
 echo -e "${YELLOW}Homebrew initialization...${NC}"
+exec /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+
 
 # Check if Homebrew is already installed
 if command -v brew >/dev/null 2>&1; then

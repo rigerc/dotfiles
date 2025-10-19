@@ -3,11 +3,11 @@
 
 # Git configuration using prompted data
 [user]
-    name = {{ github_user | quote }}
-    email = {{ github_email | quote }}
+    name = {{ .github_user | quote }}
+    email = {{ .github_email | quote }}
 
 [github]
-    user = {{ github_user | quote }}
+    user = {{ .github_user | quote }}
 
 [core]
     editor = nano
