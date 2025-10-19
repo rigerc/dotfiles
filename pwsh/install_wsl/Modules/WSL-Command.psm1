@@ -138,7 +138,7 @@ function Invoke-WSLCommandInteractive {
     }
     
     Write-LogMessage "Starting Windows Terminal process" -Level Info
-    Start-Process -FilePath "alacritty" -ArgumentList "-e wsl -d $DistroName -u $Username -- bash -i -c '$Command'" -Wait
+    Start-Process -FilePath "alacritty" -ArgumentList "-e wsl -d $DistroName -u $Username -- bash -i -c '$Command;bash'" -Wait
     #Write-LogMessage "Start-Process -FilePath `"alacritty`" -ArgumentList `"-e wsl -d $DistroName -u $Username sh -c $Command`" -Wait" -Level Debug
 }
 
