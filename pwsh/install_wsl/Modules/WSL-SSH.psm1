@@ -1,0 +1,330 @@
+# ============================================================================
+# WSL SSH Module
+# ============================================================================
+
+<#
+.SYNOPSIS
+    Provides SSH configuration functions for WSL distributions.
+
+.DESCRIPTION
+    This module contains functions for configuring SSH port forwarding,
+    managing firewall rules, and testing SSH services.
+
+.PARAMETER Parameters
+    Hashtable containing script parameters and configuration values.
+#>
+
+# Accept parameters from the main script
+param(
+    [Parameter(Mandatory)]
+    [hashtable]$Parameters
+)
+
+# Extract parameters from the hashtable
+$script:Debug = $Parameters.Debug
+$script:DefaultDistro = $Parameters.DefaultDistro
+$script:DefaultName = $Parameters.DefaultName
+$script:DefaultUsername = $Parameters.DefaultUsername
+$script:PackageManagerPackages = $Parameters.PackageManagerPackages
+$script:DistributionReadyMaxAttempts = $Parameters.DistributionReadyMaxAttempts
+$script:DistributionReadyDelaySeconds = $Parameters.DistributionReadyDelaySeconds
+
+# ============================================================================
+# SSH Functions
+# ============================================================================
+
+function Test-SSHDRunning {
+    <#
+    .SYNOPSIS
+        Checks if sshd is running in the WSL distribution.
+    .PARAMETER DistroName
+        The name of the WSL distribution.
+    .OUTPUTS
+        [bool] True if sshd is running, false otherwise.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+    
+    try {
+        $Command = "systemctl is-active sshd 2>/dev/null || service ssh status 2>/dev/null"
+        $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
+        return $Result -match "active|running"
+    }
+    catch {
+        return $false
+    }
+}
+
+function Get-SSHDPort {
+    <#
+    .SYNOPSIS
+        Retrieves the SSH port from sshd configuration.
+    .PARAMETER DistroName
+        The name of the WSL distribution.
+    .OUTPUTS
+        [int] The SSH port number (defaults to 22).
+    #>
+    [CmdletBinding()]
+    [OutputType([int])]
+    param(
+        [Parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+
+    try {
+        # Use backtick to escape $ inside the double-quoted PowerShell string so awk receives $2 literally.
+        $Command = "grep -E '^\s*Port\b' /etc/ssh/sshd_config 2>/dev/null | awk '{print `$2}'"
+        $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
+
+        if ($null -ne $Result) {
+            # If multiple lines are returned, take the first and trim whitespace/newline
+            $Result = ($Result -split "`n" | Select-Object -First 1).Trim()
+
+            if ($Result -match '^\d+$') {
+                return [int]$Result
+            }
+        }
+
+        # Default SSH port
+        return 22
+    }
+    catch {
+        Write-LogMessage "Error retrieving SSH port: $($_.Exception.Message.Trim())" -Level Warning
+        return 22
+    }
+}
+
+function Get-WSLIPAddress {
+    <#
+    .SYNOPSIS
+        Retrieves the IP address of a WSL distribution.
+    .PARAMETER DistroName
+        The name of the WSL distribution.
+    .OUTPUTS
+        [string] The IP address of the distribution.
+    #>
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+    
+    # Verify hostname command is available
+    try {
+        $HostnameCheck = wsl -d $DistroName -- which hostname 2>$null | Out-String
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrEmpty($HostnameCheck)) {
+            throw "hostname command not found in WSL distribution '$DistroName'. Please install net-tools or hostname package."
+        }
+    }
+    catch {
+        Write-LogMessage "Failed to verify hostname command in WSL distribution '$DistroName': $($_.Exception.Message.Trim())" -Level Error
+        throw
+    }
+    
+    $WslIpOutput = wsl -d $DistroName hostname -I 2>$null | Out-String
+    
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to get IP from WSL distribution '$DistroName'. Make sure the distribution is installed and running."
+    }
+    
+    $WslIp = Format-WSLOutput -Output $WslIpOutput
+    
+    if ([string]::IsNullOrEmpty($WslIp)) {
+        throw "Could not retrieve WSL IP address. WSL may not be running."
+    }
+    
+    return $WslIp
+}
+
+function New-SSHPortForward {
+    <#
+    .SYNOPSIS
+        Creates SSH port forwarding from Windows host to WSL distribution.
+    .DESCRIPTION
+        Sets up port forwarding by getting the WSL IP address and creating a netsh
+        port proxy rule to forward traffic from a Windows host port to the WSL SSH port.
+    .PARAMETER Port
+        The external port on Windows host to forward from.
+    .PARAMETER DistroName
+        The name of the WSL distribution to forward to.
+    .PARAMETER ListenAddress
+        The IP address to listen on (default: 0.0.0.0).
+    .PARAMETER ConnectPort
+        The SSH port inside WSL (default: same as Port).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateRange(1, 65535)]
+        [int]$Port,
+        
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName,
+        
+        [string]$ListenAddress = "0.0.0.0",
+        
+        [int]$ConnectPort = $Port
+    )
+    
+    Write-LogMessage "Getting WSL IP address for distribution: $DistroName" -Level Info
+    
+    try {
+        $WslIp = Get-WSLIPAddress -DistroName $DistroName
+        Write-LogMessage "WSL IP address: $WslIp" -Level Info
+        
+        # Remove existing port proxy rule (if any)
+        Write-LogMessage "Removing existing port proxy rule for port $Port..." -Level Info
+        $null = netsh interface portproxy delete v4tov4 listenport=$Port listenaddress=$ListenAddress 2>$null
+        
+        # Add new port proxy rule
+        Write-LogMessage "Adding new port proxy rule..." -Level Info
+        $AddResult = netsh interface portproxy add v4tov4 listenaddress=$ListenAddress listenport=$Port connectaddress=$WslIp connectport=$ConnectPort
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-LogMessage "SSH port forwarding created successfully" -Level Success
+            Write-LogMessage "Windows host port $Port now forwards to ${DistroName}:$ConnectPort" -Level Info
+        }
+        else {
+            throw "Failed to create port forwarding rule. Error: $AddResult"
+        }
+    }
+    catch {
+        Write-LogMessage "Failed to create SSH port forwarding: $($_.Exception.Message.Trim())" -Level Error
+        throw
+    }
+}
+
+function New-SSHFirewallRule {
+    <#
+    .SYNOPSIS
+        Creates a Windows Firewall rule for SSH port forwarding.
+    .PARAMETER Port
+        The port to create firewall rule for.
+    .PARAMETER DistroName
+        The name of the WSL distribution (used in rule name).
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateRange(1, 65535)]
+        [int]$Port,
+        
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+    
+    $RuleName = "WSL-$DistroName-SSH-$Port"
+    
+    try {
+        # Check if rule already exists
+        $ExistingRule = Get-NetFirewallRule -DisplayName $RuleName -ErrorAction SilentlyContinue
+        
+        if ($ExistingRule) {
+            Write-LogMessage "Firewall rule '$RuleName' already exists" -Level Info
+            return
+        }
+        
+        # Create new firewall rule
+        $null = New-NetFirewallRule -DisplayName $RuleName `
+            -Direction Inbound `
+            -Action Allow `
+            -Protocol TCP `
+            -LocalPort $Port `
+            -Profile Any `
+            -Description "SSH access for WSL distribution: $DistroName"
+        
+        Write-LogMessage "Created firewall rule '$RuleName' for port $Port" -Level Success
+    }
+    catch {
+        Write-LogMessage "Failed to create firewall rule: $($_.Exception.Message.Trim())" -Level Error
+        throw
+    }
+}
+
+function Invoke-SSHConfiguration {
+    <#
+    .SYNOPSIS
+        Configures SSH port forwarding and firewall rules.
+    .PARAMETER DistroName
+        The name of the WSL distribution.
+    .PARAMETER UseDefaults
+        Whether to skip prompts and use defaults.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName,
+        
+        [switch]$UseDefaults
+    )
+    
+    Write-Section "SSH Port Forwarding Configuration"
+    
+    $ConfigureSSH = $false
+    if (-not $UseDefaults) {
+        $Response = Read-Host "Configure SSH Port Forwarding? (Y/n)"
+        $ConfigureSSH = -not ($Response -eq 'n' -or $Response -eq 'N')
+    }
+    else {
+        Write-LogMessage "SSH Port Forwarding: Skipped (configure manually if needed)" -Level Info
+        return
+    }
+    
+    if (-not $ConfigureSSH) {
+        return
+    }
+    
+    # Verify sshd is running
+    if (-not (Test-SSHDRunning -DistroName $DistroName)) {
+        Write-LogMessage "sshd is not running in WSL distribution" -Level Warning
+        $StartSSHD = Read-Host "Would you like to start sshd? (Y/n)"
+        
+        if (-not ($StartSSHD -eq 'n' -or $StartSSHD -eq 'N')) {
+            try {
+                $Command = "systemctl start sshd || service ssh start"
+                Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
+                Start-Sleep -Seconds 2
+                
+                if (-not (Test-SSHDRunning -DistroName $DistroName)) {
+                    Write-LogMessage "Failed to start sshd - configuration skipped" -Level Warning
+                    return
+                }
+            }
+            catch {
+                Write-LogMessage "Failed to start sshd: $($_.Exception.Message.Trim())" -Level Error
+                return
+            }
+        }
+        else {
+            Write-LogMessage "SSH configuration skipped - sshd not running" -Level Warning
+            return
+        }
+    }
+    
+    # Get SSH port and configure forwarding
+    try {
+        $SshPort = Get-SSHDPort -DistroName $DistroName
+        Write-LogMessage "Detected SSH port: $SshPort" -Level Info
+        
+        New-SSHPortForward -Port $SshPort -DistroName $DistroName
+        New-SSHFirewallRule -Port $SshPort -DistroName $DistroName
+    }
+    catch {
+        Write-LogMessage "SSH configuration failed: $($_.Exception.Message.Trim())" -Level Warning
+    }
+}
+
+# Export functions
+Export-ModuleMember -Function Test-SSHDRunning, Get-SSHDPort, Get-WSLIPAddress, 
+                              New-SSHPortForward, New-SSHFirewallRule, Invoke-SSHConfiguration

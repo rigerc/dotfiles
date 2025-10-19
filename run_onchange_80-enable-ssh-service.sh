@@ -54,6 +54,9 @@ sudo tee "$SSHD_CONFIG" > /dev/null << 'EOF'
 # Port configuration
 Port 4444
 
+# Listen Address
+ListenAddress 0.0.0.0
+
 # Protocol version
 Protocol 2
 
