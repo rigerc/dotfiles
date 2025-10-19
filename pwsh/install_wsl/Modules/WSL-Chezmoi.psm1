@@ -147,7 +147,7 @@ function Invoke-ChezmoiSetup {
     $EscapedGitEmail = $GitEmail -replace '"', '\"'
     
     
-    $ChezmoiCommand = "chezmoi init --apply $EscapedGitName --promptString 'GitHub username=$EscapedGitName' --promptString 'GitHub email=$EscapedGitEmail'"
+    $ChezmoiCommand = "chezmoi init --apply $GitName --promptString `"GitHub\ username=$GitName`" --promptString `"GitHub\ email=$GitEmail`""
     Write-LogMessage "Starting Windows Terminal with Chezmoi setup" -Level Info
     Write-LogMessage "Chezmoi command: $ChezmoiCommand" -Level Debug
     Write-Host ""

@@ -3,11 +3,11 @@
 
 # Git configuration using prompted data
 [user]
-    name = {{ .data.github_user | quote }}
-    email = {{ .data.github_email | quote }}
+    name = {{ .github_user | quote }}
+    email = {{ .github_email | quote }}
 
 [github]
-    user = {{ .data.github_user | quote }}
+    user = {{ .github_user | quote }}
 
 [core]
     editor = nano
@@ -15,12 +15,6 @@
 
 [init]
     defaultBranch = main
-
-# Personal information
-[personal]
-    username = {{ .data.username | quote }}
-    github = {{ .data.github_user | quote }}
-    email = {{ .data.github_email | quote }}
 
 [include]
     path = ~/.config/git/alias

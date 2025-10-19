@@ -132,21 +132,14 @@ function Invoke-WSLCommandInteractive {
     }
     
     $StartInfo = @{
-        FilePath     = $WtPath
-        ArgumentList = @("wsl", "-d", $DistroName, "--user", $Username, "--exec", $Command)
-        PassThru     = $true
+        FilePath     = "alacritty"
+        ArgumentList = @("-e", "wsl -d $DistroName --user $Username --exec $Command")
         Wait         = $true
     }
     
     Write-LogMessage "Starting Windows Terminal process" -Level Info
-    $Process = Start-Process @StartInfo
-    
-    # Wait for the process to exit
-    if ($Process) {
-        Write-LogMessage "Waiting for Windows Terminal process to complete" -Level Debug
-        $Process.WaitForExit()
-        Write-LogMessage "Windows Terminal process completed with exit code: $($Process.ExitCode)" -Level Debug
-    }
+    Start-Process -FilePath "alacritty" -ArgumentList "-e wsl -d $DistroName -u $Username -- bash -i -c '$Command'" -Wait
+    #Write-LogMessage "Start-Process -FilePath `"alacritty`" -ArgumentList `"-e wsl -d $DistroName -u $Username sh -c $Command`" -Wait" -Level Debug
 }
 
 # Export functions
