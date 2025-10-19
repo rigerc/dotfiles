@@ -332,6 +332,46 @@ function Test-PackageInstalled {
     }
 }
 
+function Test-Chezmoi {
+    <#
+    .SYNOPSIS
+        Checks if the chezmoi command is available on WSL.
+    .PARAMETER DistroName
+        The name of the WSL distribution.
+    .OUTPUTS
+        [bool] True if chezmoi is available, false otherwise.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+    
+    # Pre-condition validation: Check if distribution exists first
+    if (-not (Test-DistributionExists -DistroName $DistroName)) {
+        Write-LogMessage "Cannot check chezmoi availability - distribution '$DistroName' does not exist" -Level Warning
+        return $false
+    }
+    
+    try {
+        $Command = "command -v chezmoi >/dev/null 2>&1 && echo 'available' || echo 'not_available'"
+        $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot
+        
+        # Ensure we return a boolean value
+        if ([string]::IsNullOrWhiteSpace($Result)) {
+            return $false
+        }
+        
+        return $Result -match "available"
+    }
+    catch {
+        Write-LogMessage "Error checking chezmoi availability: $($_.Exception.Message.Trim())" -Level Warning
+        return $false
+    }
+}
+
 function Test-ChezmoiConfigured {
     <#
     .SYNOPSIS
@@ -385,4 +425,4 @@ function Test-ChezmoiConfigured {
 # Export functions
 Export-ModuleMember -Function Test-ValidLinuxUsername, Test-GitAvailable, Test-DistributionExists,
                               Test-DistributionReady, Test-UserExists, Test-UserSudoAccess,
-                              Test-PacmanKeyInitialized, Test-PackageInstalled, Test-ChezmoiConfigured
+                              Test-PacmanKeyInitialized, Test-PackageInstalled, Test-Chezmoi, Test-ChezmoiConfigured
