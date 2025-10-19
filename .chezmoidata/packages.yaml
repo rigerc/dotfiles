@@ -57,8 +57,8 @@ packages  :
     - fastfetch
 
     # AI
-    - sst/tap/opencode
-    - charmbracelet/tap/mods
+    - opencode
+    - mods
 
     # Shell
     - zsh
