@@ -7,6 +7,7 @@ source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/.common.sh"
 # Configuration
 readonly SSH_PORT="4444"
 readonly SSHD_CONFIG="/etc/ssh/sshd_config"
+readonly TMP_DIR="$HOME/.tmp"
 
 # Check if systemd is available
 has_systemd() {
@@ -16,7 +17,13 @@ has_systemd() {
 # Backup file with timestamp
 backup_file() {
     local file="$1"
-    local backup="${file}.backup.$(date +%Y%m%d_%H%M%S)"
+    local backup="$TMP_DIR/${file}.backup.$(date +%Y%m%d_%H%M%S)"
+    
+    # Create $TMP_DIR if it doesn't exist
+    if [[ ! -d "$TMP_DIR" ]]; then
+        mkdir -p "$TMP_DIR"
+        log_info "Created temporary directory: $TMP_DIR"
+    fi
     
     if [[ -f "$file" ]]; then
         cp "$file" "$backup"
