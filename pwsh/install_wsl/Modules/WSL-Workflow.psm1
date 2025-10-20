@@ -240,8 +240,46 @@ function Invoke-ChezmoiWorkflow {
     
     # Verify Chezmoi installation
     if (-not (Test-ChezmoiInstallation -DistroName $Config.DistroName -Username $Config.Username)) {
-        Write-LogMessage "Chezmoi installation verification failed. Stopping script execution." -Level Error
-        throw "Chezmoi installation verification failed"
+        Write-LogMessage "Chezmoi installation verification failed" -Level Warning
+        Write-Host ""
+        Write-Host "Chezmoi verification failed. Some targets may not match their expected state." -ForegroundColor Yellow
+        Write-Host "Would you like to:" -ForegroundColor White
+        Write-Host "1. Rerun Chezmoi setup" -ForegroundColor Cyan
+        Write-Host "2. Continue without verification" -ForegroundColor Yellow
+        Write-Host "3. Stop the script" -ForegroundColor Red
+        Write-Host ""
+        
+        $Choice = Read-Host "Enter your choice (1-3)"
+        
+        switch ($Choice) {
+            "1" {
+                Write-LogMessage "Rerunning Chezmoi setup..." -Level Info
+                Invoke-ChezmoiSetup -DistroName $Config.DistroName -Username $Config.Username -GitName $Config.GitName -GitEmail $Config.GitEmail
+                Write-LogMessage "Chezmoi terminal has been closed. Verifying installation again..." -Level Info
+                Start-Sleep -Seconds 3
+                
+                # Verify again after rerunning setup
+                if (-not (Test-ChezmoiInstallation -DistroName $Config.DistroName -Username $Config.Username)) {
+                    Write-LogMessage "Chezmoi installation verification failed after rerunning setup. Stopping script execution." -Level Error
+                    throw "Chezmoi installation verification failed"
+                }
+                Write-LogMessage "Chezmoi installation verified successfully after rerunning setup" -Level Success
+            }
+            "2" {
+                Write-LogMessage "Continuing without Chezmoi verification as requested by user" -Level Warning
+            }
+            "3" {
+                Write-LogMessage "Stopping script execution as requested by user" -Level Error
+                throw "Chezmoi installation verification failed - stopped by user"
+            }
+            default {
+                Write-LogMessage "Invalid choice. Stopping script execution." -Level Error
+                throw "Chezmoi installation verification failed - invalid user choice"
+            }
+        }
+    }
+    else {
+        Write-LogMessage "Chezmoi installation verified successfully" -Level Success
     }
     
     Start-Sleep -Seconds 3

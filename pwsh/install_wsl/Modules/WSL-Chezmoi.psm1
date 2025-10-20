@@ -71,7 +71,7 @@ function Test-ChezmoiInstallation {
     .PARAMETER Username
         The username to check.
     .OUTPUTS
-        [bool] True if Chezmoi is installed, false otherwise.
+        [bool] True if Chezmoi is installed and verified, false otherwise.
     #>
     [CmdletBinding()]
     [OutputType([bool])]
@@ -93,12 +93,23 @@ function Test-ChezmoiInstallation {
         $Command = "test -d ~/.local/share/chezmoi/ && echo 'exists' || echo 'not_found'"
         $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -Username $Username -Quiet
         
-        if ($Result -match "exists") {
-            Write-LogMessage "Chezmoi installation verified - ~/.local/share/chezmoi/ directory exists" -Level Success
+        if ($Result -notmatch "exists") {
+            Write-LogMessage "Chezmoi installation failed - ~/.local/share/chezmoi/ directory not found" -Level Error
+            return $false
+        }
+        
+        Write-LogMessage "Chezmoi directory exists, running 'chezmoi verify'..." -Level Info
+        
+        # Run chezmoi verify and check exit code
+        $VerifyCommand = "chezmoi verify >/dev/null 2>&1 && echo 'verify_success' || echo 'verify_failed'"
+        $VerifyResult = Invoke-WSLCommand -DistroName $DistroName -Command $VerifyCommand -Username $Username -Quiet
+        
+        if ($VerifyResult -match "verify_success") {
+            Write-LogMessage "Chezmoi installation verified - all targets match their target state" -Level Success
             return $true
         }
         else {
-            Write-LogMessage "Chezmoi installation failed - ~/.local/share/chezmoi/ directory not found" -Level Error
+            Write-LogMessage "Chezmoi verification failed - some targets do not match their target state" -Level Warning
             return $false
         }
     }

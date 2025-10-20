@@ -102,7 +102,7 @@ generate_locales() {
         echo -e "${YELLOW}⚠ locale-gen not found, skipping locale generation${NC}"
         return 0
     fi
-    
+    sudo sed -i 's:#en_US.UTF-8 UTF-8:en_US.UTF-8 UTF-8:g' /etc/locale.gen
     echo "Generating system locales..."
     if sudo locale-gen > /dev/null 2>&1; then
         echo -e "${GREEN}✓ Locales generated successfully${NC}"

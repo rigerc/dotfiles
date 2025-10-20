@@ -44,6 +44,14 @@
 .EXAMPLE
     .\Install-WSLArchLinux.ps1 -Continue -WithDefaults
     Skips WSL installation and works with existing distribution.
+
+.EXAMPLE
+    .\Install-WSLArchLinux.ps1 -SSHOnly
+    Only configures SSH port forwarding for an existing distribution.
+
+.EXAMPLE
+    .\Install-WSLArchLinux.ps1 -SSHOnly -WithDefaults
+    Configures SSH port forwarding using default distribution name.
 #>
 
 #Requires -RunAsAdministrator
@@ -52,6 +60,7 @@ param(
     [switch]$WithChezmoi,
     [switch]$WithDefaults,
     [switch]$Continue,
+    [switch]$SSHOnly,
     [switch]$Debug
 )
 
@@ -105,6 +114,7 @@ $Global:WSLScriptParams = @{
     PackageManagerPackages = $PackageManagerPackages
     DistributionReadyMaxAttempts = $DistributionReadyMaxAttempts
     DistributionReadyDelaySeconds = $DistributionReadyDelaySeconds
+    SSHOnly = $SSHOnly
 }
 
 # Import all modules with parameters
@@ -134,9 +144,26 @@ function Main {
     param()
     
     Write-Section "WSL Distribution Setup"
-    Write-LogMessage "Script started with parameters: Continue=$Continue, WithChezmoi=$WithChezmoi, WithDefaults=$WithDefaults, Debug=$Debug" -Level Debug
+    Write-LogMessage "Script started with parameters: Continue=$Continue, WithChezmoi=$WithChezmoi, WithDefaults=$WithDefaults, SSHOnly=$SSHOnly, Debug=$Debug" -Level Debug
     
     try {
+        # Handle SSHOnly mode
+        if ($SSHOnly) {
+            Write-Section "SSH Only Mode - Skipping All WSL Installation"
+            Write-LogMessage "Running in SSHOnly mode - only configuring SSH port forwarding" -Level Info
+            
+            # Get distribution name for SSH configuration
+            $Config = @{
+                DistroName = Get-UserInput -Prompt "Distribution name to configure SSH for" -Default $DefaultName -UseDefault:$WithDefaults
+            }
+            
+            # Configure SSH
+            Invoke-SSHConfiguration -DistroName $Config.DistroName -UseDefaults:$WithDefaults
+            
+            Write-LogMessage "SSH configuration completed" -Level Success
+            return
+        }
+        
         # Install WSL features (unless in Continue mode)
         if ($Continue) {
             Write-Section "Continue Mode - Skipping WSL Feature Installation"
