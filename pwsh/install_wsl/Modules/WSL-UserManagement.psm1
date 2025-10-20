@@ -113,6 +113,8 @@ function Add-UserToSudoers {
         $Command = "echo '$systemD' | sudo tee /etc/wsl.conf > /dev/null"
         Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
 
+        $Command = "sudo chown ${Username}:wheel -R /run/user/1000"
+        Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
         # Verify sudo access
         Write-LogMessage "Verifying sudo access..." -Level Info
         Start-Sleep -Seconds 2

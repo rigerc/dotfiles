@@ -1,0 +1,21 @@
+[terminal]
+shell = { program = 'C:\Program Files\WSL\wsl.exe', args = ["-d newarchlinux -u bondg --cd ~"] }
+
+[font]
+normal = { family = "Iosevka Nerd Font", style = "Regular" }
+bold = { family = "Iosevka Nerd Font", style = "Bold" }
+italic = { family = "Iosevka Nerd Font", style = "Italic" }
+bold_italic = { family = "Iosevka Nerd Font", style = "Bold Italic" }
+size = 12.0
+
+[window]
+opacity = 0.9
+blur = true
+
+[cursor]
+style = { shape = "Block", blinking = "On"}
+
+[general]
+import = [
+    "./themes/monokai_charcoal.toml"
+]
