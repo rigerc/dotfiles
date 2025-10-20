@@ -22,4 +22,4 @@ else
     fi
 fi
 
-export BW_SESSION=$(bw login --raw)
+BW_SESSION=$(bw login --raw)
