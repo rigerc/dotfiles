@@ -17,7 +17,8 @@ has_systemd() {
 # Backup file with timestamp
 backup_file() {
     local file="$1"
-    local backup="$TMP_DIR/${file}.backup.$(date +%Y%m%d_%H%M%S)"
+    local filename=$(basename "$file")
+    local backup="$TMP_DIR/${filename}.backup.$(date +%Y%m%d_%H%M%S)"
     
     # Create $TMP_DIR if it doesn't exist
     if [[ ! -d "$TMP_DIR" ]]; then
