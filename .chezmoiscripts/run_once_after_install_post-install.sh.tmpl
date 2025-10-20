@@ -1,0 +1,206 @@
+#!/bin/bash
+set -euo pipefail
+
+# Source common functions
+source "$(dirname "$0")/common.sh"
+
+# Configuration
+readonly TMUX_PLUGIN_PATH="$HOME/.config/tmux/plugins/tpm/bin/install_plugins"
+readonly ALACRITTY_SOURCE="$HOME/.config/alacritty/alacritty.toml"
+readonly ALACRITTY_TARGET="/mnt/c/Users/bondg/appdata/roaming/alacritty/alacritty.toml"
+readonly ALACRITTY_THEMES_SOURCE="$HOME/.config/alacritty/themes"
+readonly ALACRITTY_THEMES_TARGET="/mnt/c/Users/bondg/appdata/roaming/alacritty/themes"
+
+# Check if running on WSL
+is_wsl() {
+    [[ -f /proc/version ]] && grep -qi microsoft /proc/version
+}
+
+# Set default shell
+set_default_shell() {
+    local shell_name="$1"
+    
+    if ! command_exists "$shell_name"; then
+        log_error "$shell_name not found"
+        return 1
+    fi
+    
+    local shell_path
+    shell_path=$(command -v "$shell_name")
+    
+    # Add to /etc/shells if needed
+    if ! grep -q "^${shell_path}$" /etc/shells 2>/dev/null; then
+        echo "$shell_path" | sudo tee -a /etc/shells >/dev/null
+        log_success "Added $shell_name to /etc/shells"
+    fi
+    
+    # Set as default if not already
+    if [[ "$SHELL" != "$shell_path" ]]; then
+        sudo chsh -s "$shell_path" "$(whoami)"
+        log_success "Set $shell_name as default shell"
+    else
+        log_info "$shell_name already set as default"
+    fi
+}
+
+setup_zsh() {
+    log_step "Setting up Zsh as default shell"
+    
+    if set_default_shell "zsh"; then
+        log_success "Zsh setup completed"
+        return 0
+    else
+        log_error "Zsh setup failed"
+        return 1
+    fi
+}
+
+cleanup_lazyvim() {
+    log_step "Cleaning up LazyVim"
+    
+    if [[ -d "$HOME/.config/nvim/.git" ]]; then
+        rm -rf "$HOME/.config/nvim/.git"
+        log_success "LazyVim .git directory removed"
+    else
+        log_info "LazyVim already clean (no .git directory)"
+    fi
+    return 0
+}
+
+rebuild_fonts() {
+    log_step "Rebuilding font cache"
+    
+    if ! command_exists fc-cache; then
+        log_warning "fc-cache not found, skipping"
+        return 0
+    fi
+    
+    if fc-cache -f -v >/dev/null 2>&1; then
+        log_success "Font cache rebuilt"
+        return 0
+    else
+        log_warning "Font cache rebuild had issues"
+        return 1
+    fi
+}
+
+generate_locales() {
+    log_step "Generating system locales"
+    
+    if ! command_exists locale-gen; then
+        log_warning "locale-gen not found, skipping"
+        return 0
+    fi
+    
+    sudo sed -i 's:#en_US.UTF-8 UTF-8:en_US.UTF-8 UTF-8:g' /etc/locale.gen 2>/dev/null || true
+    
+    if sudo locale-gen >/dev/null 2>&1; then
+        log_success "Locales generated"
+        return 0
+    else
+        log_warning "Locale generation had issues"
+        return 1
+    fi
+}
+
+install_tmux_plugins() {
+    log_step "Installing Tmux plugins"
+    
+    if [[ ! -x "$TMUX_PLUGIN_PATH" ]]; then
+        log_warning "Tmux plugin manager not found at $TMUX_PLUGIN_PATH"
+        return 0
+    fi
+    
+    if "$TMUX_PLUGIN_PATH" >/dev/null 2>&1; then
+        log_success "Tmux plugins installed"
+        return 0
+    else
+        log_warning "Tmux plugin installation had issues"
+        return 1
+    fi
+}
+
+copy_alacritty_config() {
+    log_step "Copying Alacritty configuration"
+    
+    if ! is_wsl; then
+        log_info "Not running on WSL, skipping Alacritty copy"
+        return 0
+    fi
+    
+    local success=true
+    
+    # Copy alacritty.toml
+    if [[ -f "$ALACRITTY_SOURCE" ]]; then
+        if safe_copy "$ALACRITTY_SOURCE" "$ALACRITTY_TARGET"; then
+            log_success "Alacritty config copied"
+        else
+            log_warning "Failed to copy Alacritty config"
+            success=false
+        fi
+    else
+        log_warning "Alacritty config not found at $ALACRITTY_SOURCE"
+    fi
+    
+    # Copy themes directory
+    if [[ -d "$ALACRITTY_THEMES_SOURCE" ]]; then
+        if safe_copy "$ALACRITTY_THEMES_SOURCE" "$ALACRITTY_THEMES_TARGET"; then
+            log_success "Alacritty themes copied"
+        else
+            log_warning "Failed to copy Alacritty themes"
+            success=false
+        fi
+    else
+        log_warning "Alacritty themes not found at $ALACRITTY_THEMES_SOURCE"
+    fi
+    
+    [[ "$success" == true ]]
+}
+
+main() {
+    log_header "Running Post-Installation Operations"
+    
+    # Load environment
+    source "$HOME/.bashrc" 2>/dev/null || true
+    load_homebrew || true
+    
+    log_info "Running as user: $(whoami)"
+    echo ""
+    
+    # Track overall success
+    local all_success=true
+    
+    # Run all operations
+    local operations=(
+        "setup_zsh"
+        "cleanup_lazyvim"
+        "rebuild_fonts"
+        "generate_locales"
+        "install_tmux_plugins"
+        "copy_alacritty_config"
+    )
+    
+    for operation in "${operations[@]}"; do
+        if ! $operation; then
+            all_success=false
+        fi
+        echo ""
+    done
+    
+    # Print final status
+    if [[ "$all_success" == true ]]; then
+        log_header "All Post-Installation Operations Completed Successfully!"
+        echo ""
+        log_warning "Please restart your shell to apply all changes"
+        log_info "Run: exec \$SHELL"
+        return 0
+    else
+        log_header "Post-Installation Completed With Some Warnings"
+        echo ""
+        log_info "Review the output above for details"
+        log_warning "Please restart your shell to apply changes"
+        return 0  # Don't fail the script for warnings
+    fi
+}
+
+main "$@"

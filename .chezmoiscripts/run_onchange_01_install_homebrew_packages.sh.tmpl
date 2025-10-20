@@ -1,0 +1,35 @@
+#!/bin/bash
+set -euo pipefail
+
+# Source common functions
+source "$(dirname "$0")/common.sh"
+
+main() {
+    log_header "Installing Homebrew Packages"
+    
+    # Ensure Homebrew is available
+    if ! load_homebrew; then
+        log_error "Homebrew not available"
+        log_info "Please install Homebrew first by running:"
+        log_info "  chezmoi apply --include scripts"
+        return 1
+    fi
+    
+    log_success "Homebrew found: $(command -v brew)"
+    log_info "Version: $(brew --version | head -n1)"
+    
+    # Install packages using Brewfile from stdin
+    log_info "Installing packages..."
+    brew bundle --file=/dev/stdin <<EOF
+{{ range .packages.brews -}}
+brew {{ . | quote }}
+{{ end -}}
+{{ range .packages.casks -}}
+cask {{ . | quote }}
+{{ end -}}
+EOF
+    
+    log_success "Homebrew package installation completed"
+}
+
+main "$@"

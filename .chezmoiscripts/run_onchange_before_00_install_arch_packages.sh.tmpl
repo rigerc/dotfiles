@@ -1,0 +1,61 @@
+#!/bin/bash
+set -euo pipefail
+
+# Source common functions
+source "$(dirname "$0")/common.sh"
+
+# Install package on Arch Linux
+install_arch_package() {
+    local package="$1"
+    
+    if ! command_exists pacman; then
+        log_error "Not an Arch-based system"
+        return 1
+    fi
+    
+    if pacman -Qi "$package" &>/dev/null; then
+        log_info "$package is already installed"
+        return 0
+    fi
+    
+    log_info "Installing $package..."
+    sudo pacman -S --noconfirm --needed "$package" >/dev/null
+    log_success "Installed $package"
+}
+
+main() {
+    log_header "Installing Arch Linux Packages"
+    
+    # Check if on Arch Linux
+    if ! command_exists pacman; then
+        log_info "Not an Arch-based system, skipping"
+        return 0
+    fi
+    
+    # Uncomment locale if needed
+    sudo sed -i 's:#en_US.UTF-8 UTF-8:en_US.UTF-8 UTF-8:g' /etc/locale.gen 2>/dev/null || true
+    
+    {{- if .packages.arch_packages }}
+    log_info "Installing Arch packages..."
+    local failed_packages=()
+    
+    {{- range .packages.arch_packages }}
+    if ! install_arch_package "{{ . }}"; then
+        failed_packages+=("{{ . }}")
+    fi
+    {{- end }}
+    
+    if [[ ${#failed_packages[@]} -gt 0 ]]; then
+        log_warning "Failed to install some packages:"
+        for pkg in "${failed_packages[@]}"; do
+            log_warning "  - $pkg"
+        done
+    fi
+    
+    log_success "Arch package installation completed"
+    {{- else }}
+    log_info "No Arch packages defined in packages.yaml"
+    {{- end }}
+}
+
+main "$@"
