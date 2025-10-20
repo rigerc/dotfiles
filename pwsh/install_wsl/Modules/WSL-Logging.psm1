@@ -22,6 +22,7 @@ param(
 
 # Extract parameters from the hashtable
 $script:Debug = $Parameters.Debug
+$script:DryRun = $Parameters.DryRun
 $script:DefaultDistro = $Parameters.DefaultDistro
 $script:DefaultName = $Parameters.DefaultName
 $script:DefaultUsername = $Parameters.DefaultUsername
@@ -163,30 +164,70 @@ function Write-ProgressLog {
     param(
         [Parameter(Mandatory)]
         [string]$Activity,
-        
+
         [string]$Status = "",
         [int]$PercentComplete = -1,
         [int]$SecondsRemaining = -1,
         [string]$CurrentOperation = "",
         [switch]$Complete
     )
-    
+
+    # Skip progress bars in dry run mode
+    if ($script:DryRun) {
+        return
+    }
+
     if ($Complete) {
         Write-Progress -Activity $Activity -Completed
         return
     }
-    
+
     $ProgressParams = @{
         Activity = $Activity
     }
-    
+
     if ($Status) { $ProgressParams.Status = $Status }
     if ($PercentComplete -ge 0) { $ProgressParams.PercentComplete = $PercentComplete }
     if ($SecondsRemaining -ge 0) { $ProgressParams.SecondsRemaining = $SecondsRemaining }
     if ($CurrentOperation) { $ProgressParams.CurrentOperation = $CurrentOperation }
-    
+
     Write-Progress @ProgressParams
 }
 
+function Write-DryRunAction {
+    <#
+    .SYNOPSIS
+        Writes a dry run action message showing what would be executed.
+    .PARAMETER Action
+        The action that would be performed.
+    .PARAMETER Target
+        The target of the action.
+    .PARAMETER Details
+        Additional details about the action.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Action,
+
+        [string]$Target = "",
+        [string]$Details = ""
+    )
+
+    if (-not $script:DryRun) {
+        return
+    }
+
+    $Message = "Would $Action"
+    if ($Target) {
+        $Message += " '$Target'"
+    }
+    if ($Details) {
+        $Message += " ($Details)"
+    }
+
+    Write-Host "  🔄 $Message" -ForegroundColor Cyan
+}
+
 # Export functions
-Export-ModuleMember -Function Write-LogMessage, Write-Section, Write-ProgressLog
+Export-ModuleMember -Function Write-LogMessage, Write-Section, Write-ProgressLog, Write-DryRunAction

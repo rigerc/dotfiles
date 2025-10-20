@@ -22,6 +22,7 @@ param(
 
 # Extract parameters from the hashtable
 $script:Debug = $Parameters.Debug
+$script:DryRun = $Parameters.DryRun
 $script:DefaultDistro = $Parameters.DefaultDistro
 $script:DefaultName = $Parameters.DefaultName
 $script:DefaultUsername = $Parameters.DefaultUsername
@@ -171,6 +172,17 @@ function Invoke-NormalModeWorkflow {
     )
 
     Write-Section "Installing WSL Distribution"
+
+    # Show what would be done in dry run mode
+    if ($script:DryRun) {
+        Write-DryRunAction -Action "install WSL distribution" -Target $Config.DistroImage -Details "name: $($Config.DistroName)"
+        Write-DryRunAction -Action "initialize package manager" -Target $Config.DistroName
+        Write-DryRunAction -Action "create user" -Target $Config.Username -Details "with sudo access"
+        Write-DryRunAction -Action "configure system" -Target $Config.DistroName
+        Write-DryRunAction -Action "restart distribution" -Target $Config.DistroName
+        return
+    }
+
     Write-ProgressLog -Activity "WSL Setup" -Status "Installing ArchLinux distribution" -PercentComplete 25
 
     # Install the distribution
@@ -216,18 +228,25 @@ function Invoke-ChezmoiWorkflow {
         [Parameter(Mandatory)]
         [hashtable]$Config
     )
-    
+
     if (-not $Config.UseChezmoi) {
         return
     }
-    
+
+    # Show what would be done in dry run mode
+    if ($script:DryRun) {
+        Write-DryRunAction -Action "setup Chezmoi dotfiles" -Target $Config.DistroName -Details "Git: $($Config.GitName) <$($Config.GitEmail)>"
+        Write-DryRunAction -Action "open interactive terminal" -Details "for Chezmoi setup"
+        return
+    }
+
     Start-Sleep -Seconds 5
     Write-LogMessage "Opening Chezmoi terminal. Script will pause until you complete the setup and close the terminal." -Level Info
-    
+
     Invoke-ChezmoiSetup -DistroName $Config.DistroName -Username $Config.Username -GitName $Config.GitName -GitEmail $Config.GitEmail
-    
+
     Write-LogMessage "Chezmoi terminal has been closed. Continuing with script execution." -Level Info
-    
+
     # Verify Chezmoi installation
     if (-not (Test-ChezmoiInstallation -DistroName $Config.DistroName -Username $Config.Username)) {
         Write-LogMessage "Chezmoi installation verification failed" -Level Warning
@@ -238,16 +257,16 @@ function Invoke-ChezmoiWorkflow {
         Write-Host "2. Continue without verification" -ForegroundColor Yellow
         Write-Host "3. Stop the script" -ForegroundColor Red
         Write-Host ""
-        
+
         $Choice = Read-Host "Enter your choice (1-3)"
-        
+
         switch ($Choice) {
             "1" {
                 Write-LogMessage "Rerunning Chezmoi setup..." -Level Info
                 Invoke-ChezmoiSetup -DistroName $Config.DistroName -Username $Config.Username -GitName $Config.GitName -GitEmail $Config.GitEmail
                 Write-LogMessage "Chezmoi terminal has been closed. Verifying installation again..." -Level Info
                 Start-Sleep -Seconds 3
-                
+
                 # Verify again after rerunning setup
                 if (-not (Test-ChezmoiInstallation -DistroName $Config.DistroName -Username $Config.Username)) {
                     Write-LogMessage "Chezmoi installation verification failed after rerunning setup. Stopping script execution." -Level Error
@@ -271,9 +290,9 @@ function Invoke-ChezmoiWorkflow {
     else {
         Write-LogMessage "Chezmoi installation verified successfully" -Level Success
     }
-    
+
     Start-Sleep -Seconds 3
-    
+
 }
 
 function Show-CompletionSummary {
@@ -288,6 +307,21 @@ function Show-CompletionSummary {
         [Parameter(Mandatory)]
         [hashtable]$Config
     )
+
+    if ($script:DryRun) {
+        Write-Section "Dry Run Complete!"
+        Write-Host "🔍 This was a simulation - no actions were executed" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "The following would have been performed:" -ForegroundColor White
+        Write-Host "• Install WSL distribution '$($Config.DistroName)'" -ForegroundColor Gray
+        Write-Host "• Create user '$($Config.Username)' with sudo access" -ForegroundColor Gray
+        if ($Config.UseChezmoi) {
+            Write-Host "• Setup Chezmoi dotfiles" -ForegroundColor Gray
+        }
+        Write-Host ""
+        Write-Host "Run without -DryRun to execute these actions." -ForegroundColor Green
+        return
+    }
 
     Write-Section "Complete!"
     Write-Host "✅ WSL ArchLinux setup completed successfully" -ForegroundColor Green

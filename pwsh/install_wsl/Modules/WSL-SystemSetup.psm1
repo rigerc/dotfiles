@@ -22,6 +22,7 @@ param(
 
 # Extract parameters from the hashtable
 $script:Debug = $Parameters.Debug
+$script:DryRun = $Parameters.DryRun
 $script:DefaultDistro = $Parameters.DefaultDistro
 $script:DefaultName = $Parameters.DefaultName
 $script:DefaultUsername = $Parameters.DefaultUsername
@@ -46,6 +47,16 @@ function Install-WSLFeatures {
     [CmdletBinding()]
     [OutputType([bool])]
     param()
+
+    # Show what would be done in dry run mode
+    if ($script:DryRun) {
+        Write-DryRunAction -Action "check Windows Subsystem for Linux feature"
+        Write-DryRunAction -Action "check Virtual Machine Platform feature"
+        Write-DryRunAction -Action "update WSL kernel"
+        Write-DryRunAction -Action "set WSL2 as default version"
+        Write-DryRunAction -Action "install WSL features if needed"
+        return $false
+    }
 
     $RebootRequired = $false
     $FeaturesInstalled = @()

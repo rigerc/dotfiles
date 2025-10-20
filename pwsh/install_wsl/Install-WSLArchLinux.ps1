@@ -52,6 +52,14 @@
 .EXAMPLE
     .\Install-WSLArchLinux.ps1 -SSHOnly -WithDefaults
     Configures SSH port forwarding using default distribution name.
+
+.EXAMPLE
+    .\Install-WSLArchLinux.ps1 -DryRun
+    Shows what actions would be performed without executing them.
+
+.EXAMPLE
+    .\Install-WSLArchLinux.ps1 -DryRun -Debug
+    Shows detailed actions with debug information.
 #>
 
 #Requires -RunAsAdministrator
@@ -61,7 +69,8 @@ param(
     [switch]$WithDefaults,
     [switch]$Continue,
     [switch]$SSHOnly,
-    [switch]$Debug
+    [switch]$Debug,
+    [switch]$DryRun
 )
 
 # ============================================================================
@@ -108,6 +117,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 # Create a hashtable to pass parameters to modules
 $Global:WSLScriptParams = @{
     Debug = $Debug
+    DryRun = $DryRun
     DefaultDistro = $DefaultDistro
     DefaultName = $DefaultName
     DefaultUsername = $DefaultUsername
@@ -144,7 +154,7 @@ function Main {
     param()
 
     # Display ASCII banner
-    Write-Host @"
+    $BannerText = @"
 `8.`888b                 ,8' d888888o.   8 8888          8 8888 b.             8    d888888o. 8888888 8888888888   .8.          8 8888         8 8888         8 8888888888   8 888888888o.
  `8.`888b               ,8'.`8888:' `88. 8 8888          8 8888 888o.          8  .`8888:' `88.     8 8888        .888.         8 8888         8 8888         8 8888    `88.
   `8.`888b             ,8' 8.`8888.   Y8 8 8888          8 8888 Y88888o.       8  8.`8888.   Y8     8 8888       :88888.        8 8888         8 8888         8 8888     `88
@@ -155,8 +165,16 @@ function Main {
        `8.`888`8.`88'     8b   `8.`8888. 8 8888          8 8888 8      `Y8o. `Y8 8b   `8.`8888.     8 8888 .888888888. `88888.  8 8888         8 8888         8 8888         8 8888 `8b.
         `8.`8' `8,`'      `8b.  ;8.`8888 8 8888          8 8888 8         `Y8o.` `8b.  ;8.`8888     8 8888 .8'   `8. `88888.   8 8888         8 8888         8 8888         8 8888   `8b.
          `8.`   `8'        `Y8888P ,88P' 8 888888888888  8 8888 8            `Yo  `Y8888P ,88P'     8 8888.8'       `8. `88888. 8 888888888888 8 888888888888 8 888888888888 8 8888     `88.
-"@ -ForegroundColor Cyan
-    Write-Host ""
+"@
+
+    Write-Host $BannerText -ForegroundColor Cyan
+
+    if ($DryRun) {
+        Write-Host ""
+        Write-Host "🔍 DRY RUN MODE - No actions will be executed" -ForegroundColor Yellow
+        Write-Host "   This is a simulation showing what would be performed" -ForegroundColor Gray
+        Write-Host ""
+    }
 
     Write-Section "WSL Distribution Setup"
     Write-LogMessage "Script started with parameters: Continue=$Continue, WithChezmoi=$WithChezmoi, WithDefaults=$WithDefaults, SSHOnly=$SSHOnly, Debug=$Debug" -Level Debug

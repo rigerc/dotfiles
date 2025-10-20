@@ -79,7 +79,7 @@ function Get-SSHDPort {
 
     try {
         # Use backtick to escape $ inside the double-quoted PowerShell string so awk receives $2 literally.
-        $Command = "grep -E '^\s*Port\b' /etc/ssh/sshd_config 2>/dev/null | awk '{print `$2}'"
+        $Command = "grep `"^Port`" /etc/ssh/sshd_config 2>/dev/null | awk '{print `$2}'"
         $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
 
         if ($null -ne $Result) {
@@ -117,20 +117,9 @@ function Get-WSLIPAddress {
         [string]$DistroName
     )
     
-    # Verify hostname command is available
-    try {
-        $HostnameCheck = wsl -d $DistroName -- which hostname 2>$null | Out-String
-        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrEmpty($HostnameCheck)) {
-            throw "hostname command not found in WSL distribution '$DistroName'. Please install net-tools or hostname package."
-        }
-    }
-    catch {
-        Write-LogMessage "Failed to verify hostname command in WSL distribution '$DistroName': $($_.Exception.Message.Trim())" -Level Error
-        throw
-    }
+    $WslIpOutput = wsl -d $DistroName hostname -i 2>$null | Out-String
     
-    $WslIpOutput = wsl -d $DistroName hostname -I 2>$null | Out-String
-    
+
     if ($LASTEXITCODE -ne 0) {
         throw "Failed to get IP from WSL distribution '$DistroName'. Make sure the distribution is installed and running."
     }
@@ -140,7 +129,7 @@ function Get-WSLIPAddress {
     if ([string]::IsNullOrEmpty($WslIp)) {
         throw "Could not retrieve WSL IP address. WSL may not be running."
     }
-    
+    Write-LogMessage "Found IP: $WslIpOutput" -Level Debug
     return $WslIp
 }
 

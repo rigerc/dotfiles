@@ -9,7 +9,7 @@ alias rm="rm -i"
 alias du="du -h"
 alias df="df -h"
 alias cat="bat"
-alias grep="ripgrep"
+alias grep="rg"
 alias z="zoxide"
 
 # Development
