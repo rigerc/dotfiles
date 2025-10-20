@@ -56,6 +56,17 @@ param(
 )
 
 # ============================================================================
+# Administrative Privileges Check
+# ============================================================================
+
+# Check if the script is running with administrator privileges
+if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Host "Error: This script requires administrator privileges to run." -ForegroundColor Red
+    Write-Host "Please right-click the PowerShell script and select 'Run as Administrator' or run it from an elevated PowerShell session." -ForegroundColor Yellow
+    exit 1
+}
+
+# ============================================================================
 # Configuration and Constants
 # ============================================================================
 

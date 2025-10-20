@@ -105,13 +105,19 @@ X11Forwarding no
 PrintMotd no
 PrintLastLog yes
 TCPKeepAlive yes
-UsePrivilegeSeparation yes
 
 # Banner (optional)
 # Banner /etc/issue.net
 EOF
 
 log_success "SSH configuration updated"
+
+if sudo ssh-keygen -A; then
+    log_success "SSH host keys generated"
+else
+    log_error "SSH host key generation failed"
+    exit 1
+fi
 
 # Set proper permissions for sshd_config
 sudo chmod 644 "$SSHD_CONFIG"
@@ -159,16 +165,5 @@ fi
 
 # Display configuration summary
 log_success "SSH service configuration completed!"
-echo ""
-echo "=== SSH Configuration Summary ==="
-echo "Port: 4444"
-echo "Authentication: Password only (passwordless allowed)"
-echo "Users: All users allowed"
-echo "Root login: Enabled"
-echo "Public key auth: Disabled"
-echo ""
-echo "To connect to this SSH server:"
-echo "ssh username@hostname -p 4444"
-echo ""
 echo "SSH service status:"
 sudo systemctl status sshd --no-pager --lines=3

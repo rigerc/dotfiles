@@ -272,19 +272,15 @@ function Invoke-SSHConfiguration {
     Write-Section "SSH Port Forwarding Configuration"
     
     $ConfigureSSH = $false
-    if (-not $UseDefaults) {
-        $Response = Read-Host "Configure SSH Port Forwarding? (Y/n)"
-        $ConfigureSSH = -not ($Response -eq 'n' -or $Response -eq 'N')
-    }
-    else {
-        Write-LogMessage "SSH Port Forwarding: Skipped (configure manually if needed)" -Level Info
-        return
-    }
+
+    $Response = Read-Host "Configure SSH Port Forwarding? (Y/n)"
+    $ConfigureSSH = -not ($Response -eq 'n' -or $Response -eq 'N')
     
     if (-not $ConfigureSSH) {
         return
     }
     
+    Start-Sleep 5
     # Verify sshd is running
     if (-not (Test-SSHDRunning -DistroName $DistroName)) {
         Write-LogMessage "sshd is not running in WSL distribution" -Level Warning

@@ -25,6 +25,7 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 echo -e "${YELLOW}Homebrew initialization...${NC}"
+export NONINTERACTIVE=1
 exec /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 
