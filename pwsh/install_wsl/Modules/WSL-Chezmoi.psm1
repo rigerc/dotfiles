@@ -151,15 +151,11 @@ function Invoke-ChezmoiSetup {
         [string]$GitEmail
     )    
     
-    
+    $ChezmoiCommand = "chezmoi init --apply $GitName --promptString `"GitHub\ username=$GitName`" --promptString `"GitHub\ email=$GitEmail`""
     # Validate Bitwarden CLI is available before proceeding
-    if (-not (Test-BitwardenAvailable -DistroName $DistroName)) {
-        Write-LogMessage "Bitwarden CLI (bw) is not available." -Level Info
-        $ChezmoiCommand = "chezmoi init --apply $GitName --promptString `"GitHub\ username=$GitName`" --promptString `"GitHub\ email=$GitEmail`""
-        else {
+    if ((Test-BitwardenAvailable -DistroName $DistroName)) {
         Write-LogMessage "Bitwarden CLI (bw) is available." -Level Info
         $ChezmoiCommand = "export BW_SESSION=`$(bw login --raw) && chezmoi init --apply $GitName --promptString `"GitHub\ username=$GitName`" --promptString `"GitHub\ email=$GitEmail`""
-        }
     }
 
     Write-LogMessage "Starting Windows Terminal with Chezmoi setup" -Level Info

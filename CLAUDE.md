@@ -78,7 +78,7 @@ chezmoi forget ~/.config/some-app/config
 ### Script System
 
 #### Chezmoi Scripts (.chezmoiscripts/)
-- **common.sh**: Shared utilities, logging, and Homebrew management functions
+- **.common.sh**: Shared utilities, logging, and Homebrew management functions
 - **run_once_00-install-homebrew.sh**: Automated Homebrew installation
 - **run_onchange_01_install_homebrew_packages.sh.tmpl**: Package installation via Brewfile
 - **Scripts execute** automatically during `chezmoi apply` based on their filename pattern

@@ -441,6 +441,7 @@ function Test-BitwardenAvailable {
     Write-LogMessage "Checking Bitwarden CLI availability" -Level Debug
     try {
         Invoke-WSLCommand -DistroName $DistroName -Command "command -v bw" -AsRoot -Quiet
+        Write-LogMessage "Bitwarden available" -Level Debug
         return $LASTEXITCODE -eq 0
     }
     catch {

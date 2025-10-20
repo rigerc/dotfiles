@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Source common functions
-source "$(dirname "$0")/common.sh"
+source "$(dirname "$0")/.common.sh"
 
 # Configuration
 readonly SSH_PORT="4444"

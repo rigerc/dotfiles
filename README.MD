@@ -123,7 +123,7 @@ sh -c "$(curl -fsLS get.chezmoi.io)" -- init --apply rigerc
 
 ### Installation Scripts
 
-#### `.chezmoiscripts/common.sh` - Shared Utilities
+#### `.chezmoiscripts/.common.sh` - Shared Utilities
 **Purpose**: Common functions for all Chezmoi scripts
 **Key Changes**:
 - Color-coded logging system (info, success, warning, error)
