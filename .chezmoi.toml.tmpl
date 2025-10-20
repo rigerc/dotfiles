@@ -12,4 +12,4 @@
     ZAI_API_KEY = {{ (bitwardenFields "item" "ZAI_API_KEY").Token.value | quote }}
 
 [hooks.read-source-state.pre]
-    script = ".local/share/chezmoi/.install-essentials.sh"
+    command = "sh ~/.local/share/chezmoi/.install-essentials.sh"

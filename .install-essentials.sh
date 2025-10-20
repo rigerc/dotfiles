@@ -51,39 +51,29 @@ get_credentials() {
 
 # Check if already logged in
 is_logged_in() {
-    if bw status &> /dev/null; then
-        return 0
-    fi
-    return 1
+    bw status &> /dev/null
 }
 
 # Perform login
 login() {
     echo -e "${YELLOW}[INFO] Attempting to login as: $BW_EMAIL${NC}"
     
-    if SESSION_OUTPUT=$(bw login "$BW_EMAIL" "$BW_MASTER_PASSWORD" --raw 2>&1); then
-        # Session token is returned on successful login
-        BW_SESSION="$SESSION_OUTPUT"
-        export BW_SESSION
-        success "Successfully logged in to Bitwarden"
-        return 0
-    else
+    if ! export BW_SESSION=$(bw login "$BW_EMAIL" "$BW_MASTER_PASSWORD" --raw); then
         error "Failed to login. Check credentials and try again."
     fi
+    
+    success "Successfully logged in to Bitwarden"
 }
 
 # Unlock vault (if already logged in)
 unlock_vault() {
     echo -e "${YELLOW}[INFO] Unlocking Bitwarden vault${NC}"
     
-    if UNLOCK_OUTPUT=$(bw unlock "$BW_MASTER_PASSWORD" --raw 2>&1); then
-        BW_SESSION="$UNLOCK_OUTPUT"
-        export BW_SESSION
-        success "Vault unlocked successfully"
-        return 0
-    else
+    if ! export BW_SESSION=$(bw unlock "$BW_MASTER_PASSWORD" --raw); then
         error "Failed to unlock vault"
     fi
+    
+    success "Vault unlocked successfully"
 }
 
 # Main execution
@@ -96,9 +86,6 @@ main() {
         get_credentials
         login
     fi
-    
-    # Export session for use in other commands
-    export BW_SESSION
     
     # Verify login by syncing
     if bw sync &> /dev/null; then
