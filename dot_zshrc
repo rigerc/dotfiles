@@ -34,6 +34,8 @@ zinit ice lucid wait='1' atload'_zsh_autosuggest_start'
 
 zinit light zsh-users/zsh-autosuggestions
 
+zinit light marlonrichert/zsh-autocomplete
+
 zinit ice lucid wait='1' blockf atpull'zinit creinstall -q .'
 zinit light zsh-users/zsh-completions
 
