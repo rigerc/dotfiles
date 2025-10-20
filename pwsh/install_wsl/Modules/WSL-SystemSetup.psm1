@@ -46,100 +46,73 @@ function Install-WSLFeatures {
     [CmdletBinding()]
     [OutputType([bool])]
     param()
-    
+
     $RebootRequired = $false
-    
+    $FeaturesInstalled = @()
+
     # Install WSL feature
     try {
-        Write-LogMessage "Checking for Windows Subsystem for Linux..." -Level Info
         $WslFeature = Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
-        
+
         if ($WslFeature.State -ne 'Enabled') {
-            Write-LogMessage "Installing Windows Subsystem for Linux..." -Level Info
             $WslInstall = Enable-WindowsOptionalFeature -Online -NoRestart -FeatureName Microsoft-Windows-Subsystem-Linux
-            
             if ($WslInstall.RestartNeeded) {
-                Write-LogMessage "Windows Subsystem for Linux installation requires restart" -Level Warning
                 $RebootRequired = $true
             }
-            else {
-                Write-LogMessage "Windows Subsystem for Linux installed successfully" -Level Success
-            }
-        }
-        else {
-            Write-LogMessage "Windows Subsystem for Linux already installed" -Level Info
+            $FeaturesInstalled += "Windows Subsystem for Linux"
         }
     }
     catch {
         Write-LogMessage "Failed to install Windows Subsystem for Linux: $($_.Exception.Message.Trim())" -Level Error
         throw
     }
-    
+
     # Install Virtual Machine Platform
     try {
-        Write-LogMessage "Checking for Virtual Machine Platform..." -Level Info
         $VmpFeature = Get-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
-        
+
         if ($VmpFeature.State -ne 'Enabled') {
-            Write-LogMessage "Installing Virtual Machine Platform..." -Level Info
             $VmpInstall = Enable-WindowsOptionalFeature -Online -NoRestart -FeatureName VirtualMachinePlatform
-            
             if ($VmpInstall.RestartNeeded) {
-                Write-LogMessage "Virtual Machine Platform installation requires restart" -Level Warning
                 $RebootRequired = $true
             }
-            else {
-                Write-LogMessage "Virtual Machine Platform installed successfully" -Level Success
-            }
-        }
-        else {
-            Write-LogMessage "Virtual Machine Platform already installed" -Level Info
+            $FeaturesInstalled += "Virtual Machine Platform"
         }
     }
     catch {
         Write-LogMessage "Failed to install Virtual Machine Platform: $($_.Exception.Message.Trim())" -Level Error
         throw
     }
-    
+
     # Update WSL kernel
     try {
-        Write-LogMessage "Updating WSL kernel..." -Level Info
         $null = wsl --update 2>&1
-        
-        if ($LASTEXITCODE -eq 0) {
-            Write-LogMessage "WSL kernel updated successfully" -Level Success
-        }
-        else {
-            Write-LogMessage "WSL kernel update completed with warnings" -Level Warning
-        }
     }
     catch {
         Write-LogMessage "WSL kernel update failed: $($_.Exception.Message.Trim())" -Level Warning
     }
-    
+
     # Set WSL2 as default
     try {
-        Write-LogMessage "Setting WSL2 as default version..." -Level Info
         $null = wsl --set-default-version 2 2>&1
-        
-        if ($LASTEXITCODE -eq 0) {
-            Write-LogMessage "WSL2 set as default version" -Level Success
-        }
-        else {
-            Write-LogMessage "WSL2 set as default with warnings" -Level Warning
-        }
     }
     catch {
         Write-LogMessage "Failed to set WSL2 as default: $($_.Exception.Message.Trim())" -Level Warning
     }
-    
-    if ($RebootRequired) {
-        Write-LogMessage "WSL feature installation completed - restart required" -Level Warning
+
+    # Report results
+    if ($FeaturesInstalled.Count -gt 0) {
+        if ($RebootRequired) {
+            Write-LogMessage "WSL features installed - restart required" -Level Warning
+        }
+        else {
+            Write-LogMessage "WSL features installed successfully" -Level Success
+        }
     }
     else {
-        Write-LogMessage "WSL feature installation completed successfully" -Level Success
+        Write-LogMessage "WSL features already configured" -Level Success
     }
-    
+
     return $RebootRequired
 }
 

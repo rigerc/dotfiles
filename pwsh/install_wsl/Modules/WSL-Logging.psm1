@@ -36,9 +36,9 @@ $script:DistributionReadyDelaySeconds = $Parameters.DistributionReadyDelaySecond
 function Write-LogMessage {
     <#
     .SYNOPSIS
-        Writes formatted log messages with timestamps and enhanced colors.
+        Writes formatted log messages with simplified output for non-debug modes.
     .DESCRIPTION
-        Outputs log messages with consistent formatting, timestamp, and color-coded severity levels.
+        Outputs log messages with clean formatting in normal mode and full detail in debug mode.
     .PARAMETER Message
         The message to log.
     .PARAMETER Level
@@ -48,11 +48,12 @@ function Write-LogMessage {
     param(
         [Parameter(Mandatory, ValueFromPipeline)]
         [string]$Message,
-        
+
         [ValidateSet('Info', 'Warning', 'Error', 'Success', 'Debug')]
         [string]$Level = 'Info'
     )
 
+    # Skip debug messages unless in debug mode
     if ($Level -eq 'Debug' -and -not $script:Debug) {
         return
     }
@@ -61,6 +62,31 @@ function Write-LogMessage {
         $Message = $Message.Trim()
     }
 
+    # Simplified formatting for non-debug modes
+    if (-not $script:Debug) {
+        # Use icons for quick visual recognition
+        $Icon = switch ($Level) {
+            'Warning' { "⚠️ " }
+            'Error' { "❌ " }
+            'Success' { "✅ " }
+            default { "" }
+        }
+
+        $Color = @{
+            'Warning' = 'Yellow'
+            'Error' = 'Red'
+            'Success' = 'Green'
+        }[$Level]
+
+        if ($Color) {
+            Write-Host "$Icon$Message" -ForegroundColor $Color
+        } else {
+            Write-Host $Message
+        }
+        return
+    }
+
+    # Full formatting for debug mode (current behavior)
     $Timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
     $Color = @{
         'Info'    = 'Cyan'
@@ -69,7 +95,7 @@ function Write-LogMessage {
         'Success' = 'Green'
         'Debug'   = 'Magenta'
     }[$Level]
-    
+
     # Get calling function name for debug mode
     $CallerInfo = ""
     if ($script:Debug) {
@@ -81,7 +107,7 @@ function Write-LogMessage {
             }
         }
     }
-    
+
     Write-Host "[$Timestamp] " -ForegroundColor Gray -NoNewline
     Write-Host "[$Level] " -ForegroundColor $Color -NoNewline
     if ($CallerInfo) {
@@ -93,7 +119,7 @@ function Write-LogMessage {
 function Write-Section {
     <#
     .SYNOPSIS
-        Writes a formatted section header with enhanced colors.
+        Writes a formatted section header with simplified output for non-debug modes.
     .PARAMETER Title
         The section title to display.
     #>
@@ -102,7 +128,14 @@ function Write-Section {
         [Parameter(Mandatory)]
         [string]$Title
     )
-    
+
+    # Simplified section headers for non-debug modes
+    if (-not $script:Debug) {
+        Write-Host "`n▶ $Title" -ForegroundColor White
+        return
+    }
+
+    # Full section headers for debug mode (current behavior)
     Write-Host "`n" -NoNewline
     Write-Host ("=" * 70) -ForegroundColor Magenta
     Write-Host $Title -ForegroundColor Magenta -BackgroundColor Black

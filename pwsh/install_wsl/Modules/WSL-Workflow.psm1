@@ -55,42 +55,36 @@ function Invoke-ContinueChecks {
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$DistroName,
-        
+
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$Username,
-        
+
         [bool]$UseChezmoi
     )
-    
-    Write-Section "Continue Mode - Checking Distribution Status"
-    
-    # Check if distribution exists
-    Write-LogMessage "Verifying distribution '$DistroName' exists..." -Level Info
+
+    Write-Section "Checking Existing Distribution"
+
+    # Check if distribution exists and is ready
     if (-not (Test-DistributionExists -DistroName $DistroName)) {
         throw "Distribution '$DistroName' does not exist. Cannot use Continue mode."
     }
-    Write-LogMessage "Distribution '$DistroName' exists" -Level Success
-    
-    # Check if distribution is ready
-    Write-LogMessage "Checking if distribution '$DistroName' is ready..." -Level Info
     if (-not (Wait-ForDistributionReady -DistroName $DistroName)) {
         throw "Distribution '$DistroName' is not ready. Cannot proceed."
     }
-    Write-LogMessage "Distribution '$DistroName' is ready" -Level Success
-    
+
     # Check package manager initialization
     $PackageManagerStatus = Test-PackageManagerInitialized -DistroName $DistroName
-    
+
     # Check if user exists
     $UserExists = Test-UserExists -DistroName $DistroName -Username $Username
-    
+
     # Check if Chezmoi is configured (if requested)
     $ChezmoiConfigured = $false
     if ($UseChezmoi -and $UserExists) {
         $ChezmoiConfigured = Test-ChezmoiConfigured -DistroName $DistroName -Username $Username
     }
-    
+
     # Return status object
     return @{
         PackageManagerStatus = $PackageManagerStatus
@@ -115,57 +109,49 @@ function Invoke-ContinueModeWorkflow {
         [Parameter(Mandatory)]
         [hashtable]$Config
     )
-    
-    Write-Section "Continue Mode - Checking Existing Distribution"
-    
+
+    Write-Section "Configuring Existing Distribution"
+
     # Perform Continue checks
     $Status = Invoke-ContinueChecks -DistroName $Config.DistroName -Username $Config.Username -UseChezmoi $Config.UseChezmoi
-    
+
     # Handle package manager initialization
-    $PackageManagerReady = $Status.PackageManagerStatus.SudoAvailable -and 
-                          $Status.PackageManagerStatus.KeyringInitialized -and 
+    $PackageManagerReady = $Status.PackageManagerStatus.SudoAvailable -and
+                          $Status.PackageManagerStatus.KeyringInitialized -and
                           $Status.PackageManagerStatus.AllPackagesInstalled
-    
+
     if (-not $PackageManagerReady) {
-        Write-LogMessage "Package manager not fully initialized" -Level Warning
-        
+        Write-LogMessage "Initializing package manager..." -Level Info
+
         # Try to install missing packages first
         if ($Status.PackageManagerStatus.MissingPackages.Count -gt 0) {
-            Write-LogMessage "Installing missing packages..." -Level Info
             $Result = Install-MissingPackages -DistroName $Config.DistroName -PackageNames $Status.PackageManagerStatus.MissingPackages
-            
+
             if (-not $Result) {
-                Write-LogMessage "Failed to install some packages - running full initialization..." -Level Warning
                 Initialize-PackageManager -DistroName $Config.DistroName
             }
         }
         else {
-            Write-LogMessage "Running full package manager initialization..." -Level Info
             Initialize-PackageManager -DistroName $Config.DistroName
         }
+        Write-LogMessage "Package manager initialized" -Level Success
     }
-    else {
-        Write-LogMessage "Package manager already initialized - skipping" -Level Success
-    }
-    
+
     # Handle user creation
     if (-not $Status.UserExists) {
-        Write-LogMessage "User does not exist - creating user..." -Level Warning
+        Write-LogMessage "Creating user '$($Config.Username)'..." -Level Info
         New-WSLUser -DistroName $Config.DistroName -Username $Config.Username
         Add-UserToSudoers -DistroName $Config.DistroName -Username $Config.Username
+        Write-LogMessage "User created with sudo access" -Level Success
     }
     else {
-        Write-LogMessage "User already exists - checking sudo access..." -Level Success
-        
         if (-not (Test-UserSudoAccess -DistroName $Config.DistroName -Username $Config.Username)) {
-            Write-LogMessage "User exists but sudo access not working - configuring sudo..." -Level Warning
+            Write-LogMessage "Configuring sudo access for existing user..." -Level Info
             Add-UserToSudoers -DistroName $Config.DistroName -Username $Config.Username
-        }
-        else {
-            Write-LogMessage "User exists with working sudo access" -Level Success
+            Write-LogMessage "Sudo access configured" -Level Success
         }
     }
-    
+
     # Verify configuration
     Test-Configuration -DistroName $Config.DistroName -Username $Config.Username
     Restart-WSLDistribution -DistroName $Config.DistroName
@@ -183,32 +169,36 @@ function Invoke-NormalModeWorkflow {
         [Parameter(Mandatory)]
         [hashtable]$Config
     )
-    
-    Write-Section "Starting WSL Distribution Setup"
-    
+
+    Write-Section "Installing WSL Distribution"
+    Write-ProgressLog -Activity "WSL Setup" -Status "Installing ArchLinux distribution" -PercentComplete 25
+
     # Install the distribution
     Install-WSLDistribution -ImageName $Config.DistroImage -DistroName $Config.DistroName
-    
-    # Verify distribution was registered
-    Write-LogMessage "Verifying distribution registration..." -Level Info
+
+    # Verify distribution was registered and ready
     if (-not (Test-DistributionExists -DistroName $Config.DistroName)) {
         throw "Distribution was not successfully registered with WSL"
     }
-    Write-LogMessage "Distribution registered successfully" -Level Success
-    
-    # Wait for distribution to be ready
-    Write-LogMessage "Checking distribution readiness..." -Level Info
     if (-not (Wait-ForDistributionReady -DistroName $Config.DistroName)) {
         throw "Distribution failed to become ready"
     }
-    
+
+    Write-LogMessage "Distribution '$($Config.DistroName)' installed successfully" -Level Success
+    Write-ProgressLog -Activity "WSL Setup" -Status "Configuring system" -PercentComplete 50
+
     # Initialize package manager
     Initialize-PackageManager -DistroName $Config.DistroName
-    
+
+    Write-ProgressLog -Activity "WSL Setup" -Status "Creating user account" -PercentComplete 75
+
     # Create user and configure sudo
     New-WSLUser -DistroName $Config.DistroName -Username $Config.Username
     Add-UserToSudoers -DistroName $Config.DistroName -Username $Config.Username
-    
+
+    Write-LogMessage "User '$($Config.Username)' created with sudo access" -Level Success
+    Write-ProgressLog -Activity "WSL Setup" -Status "Finalizing setup" -PercentComplete 100 -Complete
+
     # Verify configuration
     Test-Configuration -DistroName $Config.DistroName -Username $Config.Username
     Restart-WSLDistribution -DistroName $Config.DistroName
@@ -298,39 +288,30 @@ function Show-CompletionSummary {
         [Parameter(Mandatory)]
         [hashtable]$Config
     )
-    
-    Write-Section "Setup Complete!"
-    Write-Host "Your WSL ArchLinux distribution is ready." -ForegroundColor Green
-    Write-Host "Distribution Name: " -ForegroundColor White -NoNewline
-    Write-Host $Config.DistroName -ForegroundColor Cyan
-    Write-Host "Username:          " -ForegroundColor White -NoNewline
-    Write-Host $Config.Username -ForegroundColor Cyan
+
+    Write-Section "Complete!"
+    Write-Host "✅ WSL ArchLinux setup completed successfully" -ForegroundColor Green
     Write-Host ""
-    Write-Host "To connect to your distribution, use:" -ForegroundColor Yellow
-    Write-Host "  wsl -d $($Config.DistroName) -u $($Config.Username)" -ForegroundColor Green -BackgroundColor Black
+    Write-Host "Distribution: $($Config.DistroName)" -ForegroundColor White
+    Write-Host "Username:     $($Config.Username)" -ForegroundColor White
     Write-Host ""
-    
+    Write-Host "Connect with:" -ForegroundColor Gray
+    Write-Host "  wsl -d $($Config.DistroName) -u $($Config.Username)" -ForegroundColor Cyan
+    Write-Host ""
+
     # Ask if user wants to set this distribution as default
-    Write-Host "Would you like to set '$($Config.DistroName)' as your default WSL distribution?" -ForegroundColor Yellow
-    Write-Host "This will make it open automatically when you run 'wsl' without parameters." -ForegroundColor Gray
-    $SetDefault = Read-Host "Set as default? (Y/n)"
-    
+    Write-Host "Set '$($Config.DistroName)' as default WSL distribution? (Y/n)" -ForegroundColor Yellow
+    $SetDefault = Read-Host
+
     if ($SetDefault -ne 'n' -and $SetDefault -ne 'N') {
         try {
             Set-WSLDefaultDistribution -DistroName $Config.DistroName
-            Write-Host "Default distribution set successfully!" -ForegroundColor Green
+            Write-LogMessage "Default distribution set" -Level Success
         }
         catch {
-            Write-Host "Failed to set default distribution: $($_.Exception.Message)" -ForegroundColor Red
             Write-LogMessage "Failed to set default distribution: $($_.Exception.Message)" -Level Warning
         }
     }
-    else {
-        Write-Host "Default distribution not changed." -ForegroundColor Gray
-    }
-    
-    Write-Host ""
-    Write-LogMessage "Setup completed successfully" -Level Success
 }
 
 # Export functions

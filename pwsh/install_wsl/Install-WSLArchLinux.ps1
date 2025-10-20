@@ -142,42 +142,54 @@ function Main {
     #>
     [CmdletBinding()]
     param()
-    
+
+    # Display ASCII banner
+    Write-Host @"
+`8.`888b                 ,8' d888888o.   8 8888          8 8888 b.             8    d888888o. 8888888 8888888888   .8.          8 8888         8 8888         8 8888888888   8 888888888o.
+ `8.`888b               ,8'.`8888:' `88. 8 8888          8 8888 888o.          8  .`8888:' `88.     8 8888        .888.         8 8888         8 8888         8 8888    `88.
+  `8.`888b             ,8' 8.`8888.   Y8 8 8888          8 8888 Y88888o.       8  8.`8888.   Y8     8 8888       :88888.        8 8888         8 8888         8 8888     `88
+   `8.`888b     .b    ,8'  `8.`8888.     8 8888          8 8888 .`Y888888o.    8  `8.`8888.         8 8888      . `88888.       8 8888         8 8888         8 8888     ,88
+    `8.`888b    88b  ,8'    `8.`8888.    8 8888          8 8888 8o. `Y888888o. 8   `8.`8888.        8 8888     .8. `88888.      8 8888         8 8888         8 888888888888 8 8888.   ,88'
+     `8.`888b .`888b,8'      `8.`8888.   8 8888          8 8888 8`Y8o. `Y88888o8    `8.`8888.       8 8888   .8`8. `88888.     8 8888         8 8888         8 8888         8 888888888P'
+      `8.`888b8.`8888'        `8.`8888.  8 8888          8 8888 8   `Y8o. `Y8888     `8.`8888.      8 8888  .8' `8. `88888.    8 8888         8 8888         8 8888         8 8888`8b
+       `8.`888`8.`88'     8b   `8.`8888. 8 8888          8 8888 8      `Y8o. `Y8 8b   `8.`8888.     8 8888 .888888888. `88888.  8 8888         8 8888         8 8888         8 8888 `8b.
+        `8.`8' `8,`'      `8b.  ;8.`8888 8 8888          8 8888 8         `Y8o.` `8b.  ;8.`8888     8 8888 .8'   `8. `88888.   8 8888         8 8888         8 8888         8 8888   `8b.
+         `8.`   `8'        `Y8888P ,88P' 8 888888888888  8 8888 8            `Yo  `Y8888P ,88P'     8 8888.8'       `8. `88888. 8 888888888888 8 888888888888 8 888888888888 8 8888     `88.
+"@ -ForegroundColor Cyan
+    Write-Host ""
+
     Write-Section "WSL Distribution Setup"
     Write-LogMessage "Script started with parameters: Continue=$Continue, WithChezmoi=$WithChezmoi, WithDefaults=$WithDefaults, SSHOnly=$SSHOnly, Debug=$Debug" -Level Debug
     
     try {
         # Handle SSHOnly mode
         if ($SSHOnly) {
-            Write-Section "SSH Only Mode - Skipping All WSL Installation"
-            Write-LogMessage "Running in SSHOnly mode - only configuring SSH port forwarding" -Level Info
-            
+            Write-Section "SSH Configuration"
+            Write-LogMessage "Configuring SSH port forwarding for existing distribution" -Level Info
+
             # Get distribution name for SSH configuration
             $Config = @{
                 DistroName = Get-UserInput -Prompt "Distribution name to configure SSH for" -Default $DefaultName -UseDefault:$WithDefaults
             }
-            
+
             # Configure SSH
             Invoke-SSHConfiguration -DistroName $Config.DistroName -UseDefaults:$WithDefaults
-            
+
             Write-LogMessage "SSH configuration completed" -Level Success
             return
         }
         
         # Install WSL features (unless in Continue mode)
         if ($Continue) {
-            Write-Section "Continue Mode - Skipping WSL Feature Installation"
-            Write-LogMessage "Skipping WSL feature installation as requested" -Level Info
+            Write-Section "Configuring Existing Distribution"
         }
         else {
             Write-Section "Installing WSL System Components"
             $RebootRequired = Install-WSLFeatures
-            
+
             if ($RebootRequired) {
-                Write-LogMessage "System restart is required to complete WSL installation." -Level Warning
-                Write-LogMessage "Please restart your computer and run this script again." -Level Warning
-                Write-Host ""
-                Write-LogMessage "After restarting, you can continue with the distribution setup." -Level Info
+                Write-LogMessage "System restart required to complete WSL installation" -Level Warning
+                Write-LogMessage "Restart your computer and run this script again to continue" -Level Info
                 return
             }
         }
