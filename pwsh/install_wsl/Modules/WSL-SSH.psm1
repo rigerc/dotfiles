@@ -78,20 +78,51 @@ function Get-SSHDPort {
     )
 
     try {
-        # Use backtick to escape $ inside the double-quoted PowerShell string so awk receives $2 literally.
-        $Command = "grep `"^Port`" /etc/ssh/sshd_config 2>/dev/null | awk '{print `$2}'"
-        $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
+        # Try multiple methods to get the SSH port
+        $Commands = @(
+            # Method 1: Use sed to extract Port line and get the number
+            "sed -n 's/^Port\s\+\([0-9]\+\).*/\1/p' /etc/ssh/sshd_config 2>/dev/null | head -n1",
+            # Method 2: Use grep and awk (fixed escaping)
+            "grep '^Port\>' /etc/ssh/sshd_config 2>/dev/null | awk '{print \$2}' | head -n1",
+            # Method 3: Use awk directly
+            "awk '/^Port\>/ {print \$2; exit}' /etc/ssh/sshd_config 2>/dev/null"
+        )
 
-        if ($null -ne $Result) {
-            # If multiple lines are returned, take the first and trim whitespace/newline
-            $Result = ($Result -split "`n" | Select-Object -First 1).Trim()
+        foreach ($Cmd in $Commands) {
+            try {
+                $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Cmd -AsRoot -Quiet
 
-            if ($Result -match '^\d+$') {
-                return [int]$Result
+                if ($null -ne $Result -and $Result.Trim() -ne '') {
+                    $PortString = $Result.Trim()
+
+                    # Remove any additional whitespace or newlines
+                    $PortString = ($PortString -split '[\r\n\s]+' | Select-Object -First 1).Trim()
+
+                    if ($PortString -match '^\d+$') {
+                        $Port = [int]$PortString
+                        Write-LogMessage "Successfully retrieved SSH port: $Port" -Level Debug
+                        return $Port
+                    }
+                }
+            }
+            catch {
+                Write-LogMessage "SSH port detection method failed: $($_.Exception.Message.Trim())" -Level Debug
+                continue
             }
         }
 
-        # Default SSH port
+        # If all methods fail, try to get default port by checking if sshd is running on default port
+        Write-LogMessage "Could not extract SSH port from config, checking if default port 22 is in use" -Level Debug
+        $DefaultPortCheck = "ss -tlnp 2>/dev/null | grep ':22\s'"
+        $DefaultPortResult = Invoke-WSLCommand -DistroName $DistroName -Command $DefaultPortCheck -AsRoot -Quiet
+
+        if ($null -ne $DefaultPortResult -and $DefaultPortResult.Trim() -ne '') {
+            Write-LogMessage "SSH daemon appears to be running on default port 22" -Level Debug
+            return 22
+        }
+
+        # Default SSH port if nothing else works
+        Write-LogMessage "Using default SSH port 22 (could not determine from config)" -Level Warning
         return 22
     }
     catch {
