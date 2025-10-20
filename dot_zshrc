@@ -1,145 +1,138 @@
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-
-# Skip global compinit (zinit handles it)
-skip_global_compinit=1
-
-# Only run in interactive login shells
-   if [[ -o login ]] && command -v fastfetch &> /dev/null; then
-     fastfetch
-   fi
-
-# History configuration
-HISTFILE=~/.zsh_history
-HISTSIZE=10000
-SAVEHIST=10000
-setopt SHARE_HISTORY
-setopt HIST_IGNORE_DUPS
-setopt HIST_FIND_NO_DUPS
-setopt HIST_IGNORE_SPACE      # Don't save commands starting with space
-setopt HIST_REDUCE_BLANKS     # Remove superfluous blanks
-setopt HIST_VERIFY            # Show command before executing from history
-setopt INC_APPEND_HISTORY     # Write immediately, not on exit
-
-# Initialize zinit
-ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
-if [ ! -d "$ZINIT_HOME" ]; then
-  mkdir -p "$(dirname $ZINIT_HOME)"
-  git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
+#!/usr/bin/env zsh
+#
+# numToStr zinit configuration
+#
+#
+#=== HELPER METHODS ===================================
+function error() { print -P "%F{160}[ERROR] ---%f%b $1" >&2 && exit 1; }
+function info() { print -P "%F{34}[INFO] ---%f%b $1"; }
+#=== ZINIT ============================================
+typeset -gAH ZINIT;
+ZINIT[HOME_DIR]=$XDG_DATA_HOME/zsh/zinit  ZPFX=$ZINIT[HOME_DIR]/polaris
+ZINIT[BIN_DIR]=$ZINIT[HOME_DIR]/zinit.git ZINIT[OPTIMIZE_OUT_DISK_ACCESSES]=1
+ZINIT[COMPLETIONS_DIR]=$ZINIT[HOME_DIR]/completions ZINIT[SNIPPETS_DIR]=$ZINIT[HOME_DIR]/snippets
+ZINIT[ZCOMPDUMP_PATH]=$ZINIT[HOME_DIR]/zcompdump    ZINIT[PLUGINS_DIR]=$ZINIT[HOME_DIR]/plugins
+ZI_REPO='zdharma-continuum'; GH_RAW_URL='https://raw.githubusercontent.com'
+if [[ ! -e $ZINIT[BIN_DIR] ]]; then
+  info 'Downloading Zinit' \
+    && command git clone \
+        --branch 'bugfix/system-gh-r-selection' \
+        https://github.com/$ZI_REPO/zinit \
+        $ZINIT[BIN_DIR] \
+    || error 'Unable to download zinit' \
+    && info 'Installing Zinit' \
+    && command chmod g-rwX $ZINIT[HOME_DIR] \
+    && zcompile $ZINIT[BIN_DIR]/zinit.zsh \
+    && info 'Successfully installed Zinit' \
+    || error 'Unable to install Zinit'
 fi
-source "${ZINIT_HOME}/zinit.zsh"
+source $ZINIT[BIN_DIR]/zinit.zsh \
+  && autoload -Uz _zinit \
+  && (( ${+_comps} )) \
+  && _comps[zinit]=_zinit
+#####################
+# PROMPT            #
+#####################
+zinit lucid for \
+    as"command" \
+    from"gh-r" \
+    atinit'export N_PREFIX="$HOME/n"; [[ :$PATH: == *":$N_PREFIX/bin:"* ]] || PATH+=":$N_PREFIX/bin"' atload'eval "$(starship init zsh)"' \
+    starship/starship
+##########################
+# OMZ Libs and Plugins   #
+##########################
+# IMPORTANT:
+# Ohmyzsh plugins and libs are loaded first as some these sets some defaults which are required later on.
+# Otherwise something will look messed up
+# ie. some settings help zsh-autosuggestions to clear after tab completion
+setopt promptsubst
+# Explanation:
+# 1. Loading tmux first, to prevent jumps when tmux is loaded after .zshrc
+# 2. History plugin is loaded early (as it has some defaults) to prevent empty history stack for other plugins
+zinit lucid for \
+    atinit"
+      ZSH_TMUX_FIXTERM=false
+      ZSH_TMUX_AUTOSTART=true
+      ZSH_TMUX_AUTOCONNECT=true" \
+  OMZP::tmux \
+  atinit"HIST_STAMPS=dd.mm.yyyy" \
+  OMZL::history.zsh \
 
-# Styling
-source $HOME/.config/zsh/.zstyle.zsh
-
-# Load zinit plugins with optimized completion handling
-zinit light zdharma-continuum/fast-syntax-highlighting
-zinit ice lucid wait='1' atload'_zsh_autosuggest_start'
-
-zinit light zsh-users/zsh-autosuggestions
-
-zinit light marlonrichert/zsh-autocomplete
-
-zinit ice lucid wait='1' blockf atpull'zinit creinstall -q .'
-zinit light zsh-users/zsh-completions
-
-zinit pack for fzf
-zinit ice lucid wait='1' from"gh-r" as"program"
-
-zinit light junegunn/fzf
-
-# fzf-tab
-zinit light Aloxaf/fzf-tab
-# disable sort when completing `git checkout`
-zstyle ':completion:*:git-checkout:*' sort false
-# set descriptions format to enable group support
-# NOTE: don't use escape sequences (like '%F{red}%d%f') here, fzf-tab will ignore them
-zstyle ':completion:*:descriptions' format '[%d]'
-# set list-colors to enable filename colorizing
-zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
-# force zsh not to show completion menu, which allows fzf-tab to capture the unambiguous prefix
-zstyle ':completion:*' menu no
-# preview directory's content with eza when completing cd
-zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
-# custom fzf flags
-# NOTE: fzf-tab does not follow FZF_DEFAULT_OPTS by default
-zstyle ':fzf-tab:*' fzf-flags --color=fg:1,fg+:2 --bind=tab:accept
-# To make fzf-tab follow FZF_DEFAULT_OPTS.
-# NOTE: This may lead to unexpected behavior since some flags break this plugin. See Aloxaf/fzf-tab#455.
-zstyle ':fzf-tab:*' use-fzf-default-opts yes
-# switch group using `<` and `>`
-zstyle ':fzf-tab:*' switch-group '<' '>'
-
-# fzf-tmux-popup
-zstyle ':fzf-tab:*' fzf-command ftb-tmux-popup
-
-#Starship prompt
-zinit ice as"command" from"gh-r" \
-          atclone"./starship init zsh > init.zsh; ./starship completions zsh > _starship" \
-          atpull"%atclone" src"init.zsh"
-zinit light starship/starship
-
-# Eza (modern ls replacement) aliases
-if command -v eza &> /dev/null; then
-  alias ls='eza --color=always --group-directories-first --icons'
-  alias ll='eza -la --icons --octal-permissions --group-directories-first'
-  alias l='eza -bGF --header --git --color=always --group-directories-first --icons'
-  alias llm='eza -lbGd --header --git --sort=modified --color=always --group-directories-first --icons' 
-  alias la='eza --long --all --group --group-directories-first'
-  alias lx='eza -lbhHigUmuSa@ --time-style=long-iso --git --color-scale --color=always --group-directories-first --icons'
-
-  alias lS='eza -1 --color=always --group-directories-first --icons'
-  alias lt='eza --tree --level=2 --color=always --group-directories-first --icons'
-  alias l.="eza -a | grep -E '^\.'"
-else
-  # Fallback to standard ls if eza is not available
-  alias ls="ls -la"
-  alias ll="ls -lh"
-  alias la="ls -la"
-fi
-
-
-# Zoxide integration (if zoxide is installed)
-if command -v zoxide &> /dev/null; then
-zinit ice lucid wait='1' as"command" from"gh-r" \
-  atclone"./zoxide init zsh --cmd cd > init.zsh" \
-  atpull"%atclone" src"init.zsh"
-zinit light ajeetdsouza/zoxide
-
-  # zoxide with fzf integration - interactive directory jumping
-  if command -v fzf &> /dev/null; then
-    # Function to use zoxide with fzf for interactive directory selection
-    zif() {
-      local dir
-      dir=$(zoxide query -l | fzf --height 40% --reverse --prompt="cd> ")
-      if [[ -n "$dir" ]]; then
-        cd "$dir"
-      fi
-    }
-
-    # Function to use zoxide with fzf for interactive directory selection with preview
-    zif_preview() {
-      local dir
-      if command -v eza &> /dev/null; then
-        dir=$(zoxide query -l | fzf --height 40% --reverse --prompt="cd> " --preview="eza -la --git --icons {}" --preview-window=right:30%)
-      else
-        dir=$(zoxide query -l | fzf --height 40% --reverse --prompt="cd> " --preview="ls -la {}" --preview-window=right:30%)
-      fi
-      if [[ -n "$dir" ]]; then
-        cd "$dir"
-      fi
-    }
-  fi
-fi
-
-# Python virtual environment prompt
-export VIRTUAL_ENV_DISABLE_PROMPT=1
-
-# Load custom aliases
-if [[ -f "$HOME/.config/zsh/aliases.zsh" ]]; then
-    source "$HOME/.config/zsh/aliases.zsh"
-fi
-
-# Load tmux integration (auto-start tmux)
-if [[ -f "$HOME/.config/zsh/tmux.zsh" ]]; then
-    source "$HOME/.config/zsh/tmux.zsh"
-fi
+zinit wait lucid for \
+	OMZL::clipboard.zsh \
+	OMZL::compfix.zsh \
+	OMZL::completion.zsh \
+	OMZL::correction.zsh \
+    atload"
+      alias ..='cd ..'
+      alias ...='cd ../..'
+      alias ....='cd ../../..'
+      alias .....='cd ../../../..'" \
+	OMZL::directories.zsh \
+	OMZL::git.zsh \
+	OMZL::grep.zsh \
+	OMZL::key-bindings.zsh \
+	OMZL::spectrum.zsh \
+	OMZL::termsupport.zsh \
+    atload"alias gcd='gco dev'" \
+	OMZP::git \
+	OMZP::fzf \
+    atload"
+      alias dcupb='docker-compose up --build'" \
+	OMZP::docker-compose \
+    as"completion" \
+  OMZP::docker/_docker \
+  djui/alias-tips \
+  hlissner/zsh-autopair \
+  chriskempson/base16-shell
+#####################
+# PLUGINS           #
+#####################
+zinit wait lucid for \
+    light-mode atinit"ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=20" atload"_zsh_autosuggest_start" \
+  zsh-users/zsh-autosuggestions \
+    light-mode atinit"
+      typeset -gA FAST_HIGHLIGHT; FAST_HIGHLIGHT[git-cmsg-len]=100;
+      zpcompinit; zpcdreplay" \
+  zdharma-continuum/fast-syntax-highlighting \
+    atpull'zinit creinstall -q .' \
+    atinit"
+      zstyle ':completion:*' completer _expand _complete _ignored _approximate
+      zstyle ':completion:*' matcher-list 'm:{a-z}={A-Z}'
+      zstyle ':completion:*' menu select=2
+      zstyle ':completion:*' select-prompt '%SScrolling active: current selection at %p%s'
+      zstyle ':completion:*:*:*:*:processes' command 'ps -u $USER -o pid,user,comm,cmd -w -w'
+      zstyle ':completion:*:descriptions' format '-- %d --'
+      zstyle ':completion:*:processes' command 'ps -au$USER'
+      zstyle ':completion:complete:*:options' sort false
+      zstyle ':fzf-tab:complete:_zlua:*' query-string input
+      zstyle ':fzf-tab:complete:cd:*' extra-opts --preview=$extract'exa -1 --color=always ${~ctxt[hpre]}$in'
+      zstyle ':fzf-tab:complete:kill:argument-rest' extra-opts --preview=$extract'ps --pid=$in[(w)1] -o cmd --no-headers -w -w' --preview-window=down:3:wrap" \
+    blockf light-mode \
+  zsh-users/zsh-completions \
+    atinit"
+      zstyle :history-search-multi-word page-size 10
+      zstyle :history-search-multi-word highlight-color fg=red,bold
+      zstyle :plugin:history-search-multi-word reset-prompt-protect 1" \
+    bindmap"^R -> ^H" \
+  zdharma-continuum/history-search-multi-word \
+    atclone"
+      local P=${${(M)OSTYPE:#*darwin*}:+g}
+      \${P}sed -i \
+      '/DIR/c\DIR 38;5;63;1' LS_COLORS; \
+      \${P}dircolors -b LS_COLORS > c.zsh" \
+    atload'zstyle ":completion:*" list-colors “${(s.:.)LS_COLORS}”' \
+    atpull'%atclone' pick"c.zsh" nocompile'!' reset-prompt \
+  trapd00r/LS_COLORS
+#####################
+# PROGRAMS          #
+#####################
+zinit wait'1' lucid light-mode for \
+    pick"z.sh" \
+  knu/z \
+    as'command' \
+    atinit'export N_PREFIX="$HOME/n"; [[ :$PATH: == *":$N_PREFIX/bin:"* ]] || PATH+=":$N_PREFIX/bin"' \
+    pick"**/n" \
+  tj/n \
+    from'gh-r' as'command' atinit'export PATH="$HOME/.yarn/bin:$PATH"' mv'yarn* -> yarn' pick"yarn/bin/yarn" bpick'*.tar.gz' \
+  yarnpkg/yarn

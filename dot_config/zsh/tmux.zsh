@@ -1,5 +1,4 @@
 # Tmux integration for Zsh managed by chezmoi
-# Place at ~/.local/share/chezmoi/dot_config/zsh/tmux.zsh
 
 # Auto-start tmux on shell launch (only if not already in tmux)
 if command -v tmux &> /dev/null && [[ -z "$TMUX" && -z "$INSIDE_EMACS" && -z "$SSH_TTY" ]]; then

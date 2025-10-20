@@ -407,7 +407,7 @@ function Test-ChezmoiConfigured {
     }
 
     try {
-        $Command = "command -v chezmoi >/dev/null 2>&1 && test -d ~/.local/share/chezmoi && echo 'configured' || echo 'not_configured'"
+        $Command = "test -d ~/.local/share/chezmoi && echo 'configured' || echo 'not_configured'"
         $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -Username $Username
 
         # Ensure we return a boolean value
