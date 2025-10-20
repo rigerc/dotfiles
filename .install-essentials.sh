@@ -16,9 +16,10 @@ else
     # Verify installation
     if command -v bw &> /dev/null; then
         echo -e "✓ Successfully installed bw"
-        export BW_SESSION=$(bw login --raw)
     else
         echo -e "✗ Installation failed"
         exit 1
     fi
 fi
+
+export BW_SESSION=$(bw login --raw)
