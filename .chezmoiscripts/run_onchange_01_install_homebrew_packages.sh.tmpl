@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Source common functions
-source "$(chezmoi source-path)/.chezmoiscripts/.common.sh"
+source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/.common.sh"
 
 main() {
     log_header "Installing Homebrew Packages"

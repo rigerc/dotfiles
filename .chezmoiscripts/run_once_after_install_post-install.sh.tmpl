@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Source common functions
-source "$(chezmoi source-path)/.chezmoiscripts/.common.sh"
+source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/.common.sh"
 
 # Configuration
 readonly TMUX_PLUGIN_PATH="$HOME/.config/tmux/plugins/tpm/bin/install_plugins"
