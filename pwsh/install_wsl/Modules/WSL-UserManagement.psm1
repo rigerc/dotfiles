@@ -109,7 +109,7 @@ function Add-UserToSudoers {
 
         # Configure systemd
         Write-LogMessage "Configuring systemd" -Level Info
-        $systemD= "[boot]`nsystemd=true`n[user]`ndefault=$username]"
+        $systemD= "[boot]`nsystemd=true`n`n[user]`ndefault=$username`n`n"
         $Command = "echo '$systemD' | sudo tee /etc/wsl.conf > /dev/null"
         Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
 

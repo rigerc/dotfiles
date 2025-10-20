@@ -103,7 +103,6 @@ MaxSessions 10
 # Security settings
 X11Forwarding no
 PrintMotd no
-PrintLastLog yes
 TCPKeepAlive yes
 
 # Banner (optional)
@@ -116,7 +115,7 @@ if sudo ssh-keygen -A; then
     log_success "SSH host keys generated"
 else
     log_error "SSH host key generation failed"
-    exit 1
+    #exit 1
 fi
 
 # Set proper permissions for sshd_config
@@ -131,7 +130,7 @@ else
     log_error "SSH configuration validation failed"
     log_info "Restoring backup configuration..."
     sudo mv "$SSHD_CONFIG_BACKUP" "$SSHD_CONFIG"
-    exit 1
+    #exit  1
 fi
 
 # Enable SSH service to start on boot

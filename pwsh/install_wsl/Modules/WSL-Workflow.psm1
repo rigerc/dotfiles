@@ -271,6 +271,27 @@ function Show-CompletionSummary {
     Write-Host "To connect to your distribution, use:" -ForegroundColor Yellow
     Write-Host "  wsl -d $($Config.DistroName) -u $($Config.Username)" -ForegroundColor Green -BackgroundColor Black
     Write-Host ""
+    
+    # Ask if user wants to set this distribution as default
+    Write-Host "Would you like to set '$($Config.DistroName)' as your default WSL distribution?" -ForegroundColor Yellow
+    Write-Host "This will make it open automatically when you run 'wsl' without parameters." -ForegroundColor Gray
+    $SetDefault = Read-Host "Set as default? (Y/n)"
+    
+    if ($SetDefault -ne 'n' -and $SetDefault -ne 'N') {
+        try {
+            Set-WSLDefaultDistribution -DistroName $Config.DistroName
+            Write-Host "Default distribution set successfully!" -ForegroundColor Green
+        }
+        catch {
+            Write-Host "Failed to set default distribution: $($_.Exception.Message)" -ForegroundColor Red
+            Write-LogMessage "Failed to set default distribution: $($_.Exception.Message)" -Level Warning
+        }
+    }
+    else {
+        Write-Host "Default distribution not changed." -ForegroundColor Gray
+    }
+    
+    Write-Host ""
     Write-LogMessage "Setup completed successfully" -Level Success
 }
 

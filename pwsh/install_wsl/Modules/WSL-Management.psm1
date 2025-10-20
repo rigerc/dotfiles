@@ -188,6 +188,34 @@ function Stop-WSLDistribution {
     }
 }
 
+function Set-WSLDefaultDistribution {
+    <#
+    .SYNOPSIS
+        Sets a WSL distribution as the default.
+    .PARAMETER DistroName
+        The name of the distribution to set as default.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+    
+    Write-LogMessage "Setting '$DistroName' as the default WSL distribution..." -Level Info
+    
+    try {
+        $Output = wsl --set-default $DistroName 2>&1
+        Test-WSLExitCode -Operation "Setting default distribution"
+        Write-LogMessage "'$DistroName' is now the default WSL distribution" -Level Success
+    }
+    catch {
+        Write-LogMessage "Failed to set default distribution: $($_.Exception.Message.Trim())" -Level Error
+        throw
+    }
+}
+
 # Export functions
-Export-ModuleMember -Function Remove-WSLDistribution, Install-WSLDistribution, 
-                              Wait-ForDistributionReady, Stop-WSLDistribution
+Export-ModuleMember -Function Remove-WSLDistribution, Install-WSLDistribution,
+                              Wait-ForDistributionReady, Stop-WSLDistribution,
+                              Set-WSLDefaultDistribution

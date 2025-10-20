@@ -6,6 +6,7 @@ packages  :
   # Arch Linux packages (pacman)
   arch_packages:
     - openssh
+    - net-tools
     - git
     - curl
     - grep
