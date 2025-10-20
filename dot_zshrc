@@ -28,6 +28,9 @@ if [ ! -d "$ZINIT_HOME" ]; then
 fi
 source "${ZINIT_HOME}/zinit.zsh"
 
+# Styling
+source $HOME/.config/zsh/zstyle.zsh
+
 # Load zinit plugins with optimized completion handling
 zinit light zdharma-continuum/fast-syntax-highlighting
 zinit ice lucid wait='1' atload'_zsh_autosuggest_start'
