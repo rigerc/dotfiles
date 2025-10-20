@@ -41,6 +41,6 @@ export BAT_CONFIG_PATH="$HOME/.config/bat/config"
 export BAT_THEME="GitHub"
 
 # TOKENS
-#export OPENROUTER_API_KEY=""
-#export ZAI_API_KEY=""
-#export GITHUB_TOKEN=""
+export OPENROUTER_API_KEY="{{ .OPENROUTER_API_KEY }}"
+export ZAI_API_KEY="{{ .ZAI_API_KEY }}"
+export GITHUB_TOKEN="{{ .GITHUB_TOKEN }}"

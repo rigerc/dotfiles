@@ -83,7 +83,7 @@ $script:DefaultName = 'newarchlinux'
 $script:DefaultUsername = $FirstName.ToLower()
 
 # Define the packages to be installed/checked - these are accessible to imported modules
-$script:PackageManagerPackages = @('archinstall', 'sudo', 'chezmoi')
+$script:PackageManagerPackages = @('archinstall', 'sudo', 'chezmoi', 'bitwarden-cli')
 
 # Timeout and retry constants
 $script:DistributionReadyMaxAttempts = 30
