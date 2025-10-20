@@ -149,16 +149,19 @@ function Invoke-ChezmoiSetup {
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$GitEmail
-    )
-    
-    Write-Section "Opening Chezmoi Setup Terminal"
-    
-    # Escape special characters for shell
-    $EscapedGitName = $GitName -replace '"', '\"'
-    $EscapedGitEmail = $GitEmail -replace '"', '\"'
+    )    
     
     
-    $ChezmoiCommand = "export BW_SESSION=`$(bw login --raw) && chezmoi init --apply $GitName --promptString `"GitHub\ username=$GitName`" --promptString `"GitHub\ email=$GitEmail`""
+    # Validate Bitwarden CLI is available before proceeding
+    if (-not (Test-BitwardenAvailable -DistroName $DistroName)) {
+        Write-LogMessage "Bitwarden CLI (bw) is not available." -Level Info
+        $ChezmoiCommand = "chezmoi init --apply $GitName --promptString `"GitHub\ username=$GitName`" --promptString `"GitHub\ email=$GitEmail`""
+        else {
+        Write-LogMessage "Bitwarden CLI (bw) is available." -Level Info
+        $ChezmoiCommand = "export BW_SESSION=`$(bw login --raw) && chezmoi init --apply $GitName --promptString `"GitHub\ username=$GitName`" --promptString `"GitHub\ email=$GitEmail`""
+        }
+    }
+
     Write-LogMessage "Starting Windows Terminal with Chezmoi setup" -Level Info
     Write-LogMessage "Chezmoi command: $ChezmoiCommand" -Level Debug
     Write-Host ""

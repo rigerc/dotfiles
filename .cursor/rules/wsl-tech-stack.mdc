@@ -1,0 +1,374 @@
+# WSL PowerShell Automation Tech Stack Documentation
+
+## Overview
+
+This is a comprehensive Windows Subsystem for Linux (WSL) automation system built entirely in PowerShell. The system provides end-to-end automation for installing, configuring, and managing WSL ArchLinux distributions with advanced features like user management, package installation, SSH configuration, and Chezmoi dotfiles integration.
+
+- **Primary Language:** PowerShell 7+ (cross-platform)
+- **Target Platform:** Windows 11 with WSL2
+- **Architecture:** Modular PowerShell modules with dependency injection
+- **Primary Use Case:** Automated WSL ArchLinux distribution setup and management
+- **Total Codebase:** ~3,000 lines across 12 specialized modules
+
+## Programming Language & Runtime
+
+### PowerShell Core 7.x
+- **Version Requirements:** PowerShell 7+ for cross-platform compatibility
+- **Execution Policy:** Requires `RemoteSigned` or `Unrestricted` execution policy
+- **Administrative Privileges:** `#Requires -RunAsAdministrator` enforced
+- **Error Handling:** `$ErrorActionPreference = 'Stop'` for strict error management
+- **Debug Support:** Comprehensive debug logging with `-Debug` parameter
+
+### Script Architecture
+- **Entry Point:** `Install-WSLArchLinux.ps1` (227 lines)
+- **Module System:** 12 specialized `.psm1` modules
+- **Parameter Passing:** Hashtable-based dependency injection pattern
+- **Function Export:** Explicit function exports per module
+- **Documentation:** Comprehensive comment-based help for all functions
+
+## Frontend (User Interface)
+
+### Command-Line Interface
+- **Interactive Mode:** User prompts with default values
+- **Automated Mode:** `-WithDefaults` flag for silent operation
+- **Continue Mode:** `-Continue` flag for resuming interrupted installations
+- **SSH-Only Mode:** `-SSHOnly` for configuring existing distributions
+- **Debug Mode:** `-Debug` flag for verbose troubleshooting
+
+### User Experience Features
+- **Progress Logging:** Color-coded output with timestamps
+- **Section Headers:** Visual organization with formatted sections
+- **Progress Bars:** Real-time progress indication for long operations
+- **Confirmation Prompts:** User verification before critical operations
+- **Error Recovery:** Graceful handling with retry mechanisms
+
+### Input Validation
+- **Parameter Validation:** `[ValidateNotNullOrEmpty()]` attributes
+- **User Input Sanitization:** Input validation functions
+- **Configuration Confirmation:** Summary display before execution
+- **Choice Prompts:** Interactive selection for recovery options
+
+## Backend (PowerShell Modules)
+
+### Module Architecture (12 Modules)
+
+#### Core Infrastructure
+1. **WSL-Logging.psm1** (158 lines) - Centralized logging system
+2. **WSL-Helpers.psm1** (194 lines) - Utility functions and helpers
+3. **WSL-Input.psm1** (266 lines) - User input handling and validation
+
+#### System Management
+4. **WSL-SystemSetup.psm1** (146 lines) - WSL feature installation
+5. **WSL-Management.psm1** (220 lines) - WSL distribution management
+6. **WSL-Validation.psm1** (456 lines) - System validation and testing
+
+#### Application Layer
+7. **WSL-PackageManager.psm1** (342 lines) - Pacman package management
+8. **WSL-UserManagement.psm1** (184 lines) - User creation and sudo configuration
+9. **WSL-Command.psm1** (145 lines) - WSL command execution interface
+10. **WSL-SSH.psm1** (325 lines) - SSH server configuration and port forwarding
+
+#### Integration & Workflow
+11. **WSL-Chezmoi.psm1** (174 lines) - Chezmoi dotfiles integration
+12. **WSL-Workflow.psm1** (338 lines) - Main workflow orchestration
+
+### Parameter System
+```powershell
+# Global parameter hashtable injected into all modules
+$Global:WSLScriptParams = @{
+    Debug = $Debug
+    DefaultDistro = $DefaultDistro
+    DefaultName = $DefaultName
+    DefaultUsername = $DefaultUsername
+    PackageManagerPackages = $PackageManagerPackages
+    DistributionReadyMaxAttempts = $DistributionReadyMaxAttempts
+    DistributionReadyDelaySeconds = $DistributionReadyDelaySeconds
+    SSHOnly = $SSHOnly
+}
+```
+
+## Database & Storage
+
+### Configuration Storage
+- **Runtime Configuration:** In-memory hashtable objects
+- **User Preferences:** Interactive input with default fallbacks
+- **System State:** WSL distribution status tracking
+- **Logging Output:** Console output with optional file logging
+
+### State Management
+- **Distribution Registry:** Windows WSL distribution registration
+- **Package Manager State:** Pacman database and keyring status
+- **User Configuration:** Sudoers file and user accounts
+- **SSH Configuration:** Port forwarding and firewall rules
+
+## Development Tools & Workflow
+
+### PowerShell Development Environment
+- **IDE Support:** Compatible with VS Code PowerShell extension
+- **Debugging:** Comprehensive debug logging and error tracing
+- **Testing:** Built-in validation functions and self-tests
+- **Documentation:** Comment-based help for all functions
+
+### Code Quality Features
+- **Error Handling:** Comprehensive try-catch blocks with detailed error messages
+- **Logging Framework:** Structured logging with severity levels and timestamps
+- **Input Validation:** Parameter validation and user input sanitization
+- **Modular Design:** Separation of concerns across specialized modules
+
+### Development Workflow
+- **Module Loading:** Dynamic module import with parameter injection
+- **Function Exports:** Explicit export declarations for clean API
+- **Dependency Management:** Clear dependency hierarchy between modules
+- **Testing Framework:** Built-in validation and verification functions
+
+## Deployment & Infrastructure
+
+### WSL Infrastructure Components
+
+#### Windows Features
+- **Windows Subsystem for Linux:** Core WSL feature installation
+- **Virtual Machine Platform:** Required for WSL2
+- **WSL2 Kernel Update:** Latest kernel installation
+- **Default Version:** WSL2 set as default
+
+#### Distribution Management
+- **Arch Linux Installation:** Automated distribution setup
+- **Distribution Registration:** Windows WSL integration
+- **Readiness Monitoring:** Distribution availability checking
+- **Default Configuration:** System initialization
+
+#### Network Configuration
+- **SSH Server Setup:** OpenSSH server installation and configuration
+- **Port Forwarding:** Windows firewall rule configuration
+- **Service Management:** SSH daemon startup and monitoring
+- **Connection Testing:** Port accessibility verification
+
+### Deployment Modes
+
+#### Fresh Installation Mode
+```powershell
+.\Install-WSLArchLinux.ps1
+```
+- Installs WSL system components
+- Creates new ArchLinux distribution
+- Sets up user accounts and packages
+- Configures SSH and optional Chezmoi
+
+#### Continue Mode
+```powershell
+.\Install-WSLArchLinux.ps1 -Continue
+```
+- Skips WSL feature installation
+- Works with existing distributions
+- Completes interrupted installations
+- Repairs broken configurations
+
+#### Automated Mode
+```powershell
+.\Install-WSLArchLinux.ps1 -WithDefaults -WithChezmoi
+```
+- Uses all default settings
+- No user interaction required
+- Fully automated installation
+- Includes dotfiles setup
+
+#### SSH Configuration Only
+```powershell
+.\Install-WSLArchLinux.ps1 -SSHOnly
+```
+- Configures SSH port forwarding
+- Sets up firewall rules
+- Tests SSH connectivity
+- No WSL installation
+
+## External Integrations
+
+### Windows System Integration
+- **Windows Features:** `Enable-WindowsOptionalFeature` for WSL components
+- **WSL Commands:** Native `wsl.exe` command integration
+- **Firewall Management:** Windows Defender Firewall rule configuration
+- **User Management:** Integration with Windows user accounts
+
+### Linux System Integration
+- **Pacman Package Manager:** Arch Linux package installation and management
+- **Systemd Services:** SSH daemon and system service management
+- **User Management:** Linux user creation and sudo configuration
+- **File System:** WSL file system access and management
+
+### Chezmoi Integration
+- **Dotfiles Management:** Automated Chezmoi setup and configuration
+- **Git Integration:** Repository initialization and configuration
+- **Template Processing:** Dynamic configuration with user data
+- **Verification System:** Installation verification and validation
+
+### External Tools
+- **Bitwarden CLI:** Secure credential management for Chezmoi
+- **Arch Install Scripts:** Automated Arch Linux installation
+- **SSH Tools:** OpenSSH server and client configuration
+- **Git:** Version control for dotfiles management
+
+## Quality Assurance & Testing
+
+### Built-in Validation Functions
+- **Distribution Testing:** `Test-DistributionExists` and readiness checking
+- **Package Manager Validation:** Pacman keyring and package installation verification
+- **User Access Testing:** Sudo access and user account validation
+- **SSH Service Testing:** SSH daemon status and connectivity verification
+- **Chezmoi Verification:** Dotfiles installation validation
+
+### Error Recovery Mechanisms
+- **Retry Logic:** Automatic retry for transient failures
+- **Graceful Degradation:** Continue operation when non-critical components fail
+- **User Choice Recovery:** Interactive recovery options for failed operations
+- **Rollback Capabilities:** Safe failure handling without system damage
+
+### Logging and Monitoring
+- **Structured Logging:** Timestamped, color-coded log output
+- **Debug Tracing:** Detailed execution path logging
+- **Progress Tracking:** Real-time progress indication
+- **Error Reporting:** Comprehensive error messages with stack traces
+
+## Schemas & Data Models
+
+### Configuration Schema
+```powershell
+# Main configuration object
+$Config = @{
+    DistroName = "archlinux"           # WSL distribution name
+    DistroImage = "newarchlinux"       # Distribution image identifier
+    Username = "username"              # Linux username
+    GitName = "Full Name"              # Git user.name configuration
+    GitEmail = "email@example.com"     # Git user.email configuration
+    UseChezmoi = $true/$false          # Chezmoi dotfiles setup flag
+}
+```
+
+### Package Manager Schema
+```powershell
+# Package management configuration
+$PackageManagerPackages = @(
+    'archinstall',    # Arch Linux installation script
+    'sudo',           # Privilege escalation
+    'chezmoi',        # Dotfiles management
+    'bitwarden-cli'   # Password manager CLI
+)
+```
+
+### Status Reporting Schema
+```powershell
+# Continue mode status object
+$Status = @{
+    PackageManagerStatus = @{
+        SudoAvailable = $true/$false
+        KeyringInitialized = $true/$false
+        AllPackagesInstalled = $true/$false
+        MissingPackages = @('package1', 'package2')
+    }
+    UserExists = $true/$false
+    ChezmoiConfigured = $true/$false
+}
+```
+
+## Commands Reference
+
+### Main Script Commands
+```powershell
+# Basic installation with interactive prompts
+.\Install-WSLArchLinux.ps1
+
+# Automated installation with defaults
+.\Install-WSLArchLinux.ps1 -WithDefaults
+
+# Include Chezmoi dotfiles setup
+.\Install-WSLArchLinux.ps1 -WithChezmoi
+
+# Fully automated with defaults and Chezmoi
+.\Install-WSLArchLinux.ps1 -WithDefaults -WithChezmoi
+
+# Continue interrupted installation
+.\Install-WSLArchLinux.ps1 -Continue -WithDefaults
+
+# SSH configuration only
+.\Install-WSLArchLinux.ps1 -SSHOnly
+
+# Debug mode with verbose logging
+.\Install-WSLArchLinux.ps1 -Debug
+```
+
+### Module Function Examples
+```powershell
+# Logging functions (from WSL-Logging.psm1)
+Write-LogMessage -Message "Operation completed" -Level Success
+Write-Section "Installation Phase"
+Write-ProgressLog -Activity "Installing packages" -PercentComplete 50
+
+# WSL command execution (from WSL-Command.psm1)
+Invoke-WSLCommand -DistroName "archlinux" -Command "ls -la" -AsRoot
+Invoke-WSLCommandInteractive -DistroName "archlinux" -Command "bash"
+
+# Validation functions (from WSL-Validation.psm1)
+Test-DistributionExists -DistroName "archlinux"
+Test-PackageManagerInitialized -DistroName "archlinux"
+Test-UserExists -DistroName "archlinux" -Username "user"
+```
+
+### WSL Management Commands
+```powershell
+# Distribution management (from WSL-Management.psm1)
+Install-WSLDistribution -ImageName "newarchlinux" -DistroName "archlinux"
+Restart-WSLDistribution -DistroName "archlinux"
+Set-WSLDefaultDistribution -DistroName "archlinux"
+
+# User management (from WSL-UserManagement.psm1)
+New-WSLUser -DistroName "archlinux" -Username "user"
+Add-UserToSudoers -DistroName "archlinux" -Username "user"
+Test-UserSudoAccess -DistroName "archlinux" -Username "user"
+```
+
+## Architecture Patterns
+
+### Modular Architecture Pattern
+- **Single Responsibility:** Each module handles one specific domain
+- **Dependency Injection:** Parameters passed via hashtable to all modules
+- **Interface Segregation:** Clean function exports per module
+- **Open/Closed Principle:** Easy to extend with new modules
+
+### Error Handling Pattern
+- **Fail Fast:** `$ErrorActionPreference = 'Stop'` for immediate error detection
+- **Structured Logging:** Consistent error reporting with context
+- **Graceful Recovery:** Retry mechanisms and user choice options
+- **Clean Shutdown:** Proper resource cleanup on failure
+
+### Workflow Orchestration Pattern
+- **State Machine:** Clear workflow states and transitions
+- **Conditional Execution:** Mode-specific behavior (Normal/Continue/SSH-Only)
+- **Validation Gates:** Pre-flight checks before critical operations
+- **Rollback Safety:** Safe failure points without system damage
+
+### Configuration Management Pattern
+- **Parameter Centralization:** Single source of truth for configuration
+- **Default Value Strategy:** Sensible defaults with override capability
+- **User Input Validation:** Comprehensive input sanitization
+- **Confirmation Workflow**: User verification before destructive operations
+
+## Security Considerations
+
+### Administrative Privileges
+- **Elevation Requirement:** `#Requires -RunAsAdministrator` enforcement
+- **Privilege Verification:** Administrative rights check at startup
+- **Secure Execution:** Protected execution context for system modifications
+- **Access Control:** Principle of least privilege in operations
+
+### System Security
+- **Sudo Configuration:** Passwordless sudo for user convenience
+- **SSH Security:** Key-based authentication configuration
+- **Firewall Management:** Controlled port forwarding rules
+- **User Isolation:** Proper user account separation
+
+### Credential Management
+- **No Hardcoded Secrets:** All sensitive data via user input or external tools
+- **Bitwarden Integration:** Secure credential storage for Chezmoi
+- **Temporary Sessions:** Limited lifetime for sensitive operations
+- **Audit Trail:** Comprehensive logging of all operations
+
+This WSL PowerShell automation system represents a sophisticated approach to Windows Linux integration, providing enterprise-grade automation capabilities with comprehensive error handling, modular architecture, and extensive configuration options. The system demonstrates advanced PowerShell techniques including modular design, dependency injection, and robust error recovery mechanisms.

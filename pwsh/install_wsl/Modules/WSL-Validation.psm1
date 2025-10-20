@@ -389,32 +389,32 @@ function Test-ChezmoiConfigured {
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$DistroName,
-        
+
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [string]$Username
     )
-    
+
     # Pre-condition validation: Check if distribution exists and user exists first
     if (-not (Test-DistributionExists -DistroName $DistroName)) {
         Write-LogMessage "Cannot check Chezmoi configuration for user '$Username' - distribution '$DistroName' does not exist" -Level Warning
         return $false
     }
-    
+
     if (-not (Test-UserExists -DistroName $DistroName -Username $Username)) {
         Write-LogMessage "Cannot check Chezmoi configuration - user '$Username' does not exist in distribution '$DistroName'" -Level Warning
         return $false
     }
-    
+
     try {
         $Command = "command -v chezmoi >/dev/null 2>&1 && test -d ~/.local/share/chezmoi && echo 'configured' || echo 'not_configured'"
         $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -Username $Username
-        
+
         # Ensure we return a boolean value
         if ([string]::IsNullOrWhiteSpace($Result)) {
             return $false
         }
-        
+
         return $Result -match "configured"
     }
     catch {
@@ -422,7 +422,35 @@ function Test-ChezmoiConfigured {
     }
 }
 
+function Test-BitwardenAvailable {
+    <#
+    .SYNOPSIS
+        Checks if the Bitwarden CLI (bw) command is available on WSL.
+    .PARAMETER DistroName
+        The name of the WSL distribution.
+    .OUTPUTS
+        [bool] True if Bitwarden CLI is available, false otherwise.
+    #>
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidateNotNullOrEmpty()]
+        [string]$DistroName
+    )
+    Write-LogMessage "Checking Bitwarden CLI availability" -Level Debug
+    try {
+        Invoke-WSLCommand -DistroName $DistroName -Command "command -v bw" -AsRoot -Quiet
+        return $LASTEXITCODE -eq 0
+    }
+    catch {
+        Write-LogMessage "Error checking Bitwarden CLI availability: $($_.Exception.Message.Trim())" -Level Warning
+        return $false
+    }
+}
+
 # Export functions
 Export-ModuleMember -Function Test-ValidLinuxUsername, Test-GitAvailable, Test-DistributionExists,
                               Test-DistributionReady, Test-UserExists, Test-UserSudoAccess,
-                              Test-PacmanKeyInitialized, Test-PackageInstalled, Test-Chezmoi, Test-ChezmoiConfigured
+                              Test-PacmanKeyInitialized, Test-PackageInstalled, Test-Chezmoi, Test-ChezmoiConfigured,
+                              Test-BitwardenAvailable
