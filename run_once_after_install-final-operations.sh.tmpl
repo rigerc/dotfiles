@@ -3,14 +3,10 @@ set -euo pipefail
 
 # Constants
 readonly TMUX_PLUGIN_PATH="$HOME/.config/tmux/plugins/tpm/bin/install_plugins"
-readonly WSL_SOURCE_PATH="$HOME/tmp/wsl.conf"
-readonly WSL_TARGET_PATH="/etc/wsl.conf"
 readonly ALACRITTY_SOURCE_PATH="$HOME/.config/alacritty/alacritty.toml"
 readonly ALACRITTY_TARGET_PATH="/mnt/c/Users/bondg/appdata/roaming/alacritty/alacritty.toml"
 readonly ALACRITTY_THEMES_SOURCE_PATH="$HOME/.config/alacritty/themes"
 readonly ALACRITTY_THEMES_TARGET_PATH="/mnt/c/Users/bondg/appdata/roaming/alacritty/themes"
-readonly TEMP_DIR="$HOME/tmp"
-readonly SCRIPT_TIMEOUT=30
 
 # Colors for output
 readonly RED='\033[0;31m'
@@ -22,7 +18,7 @@ readonly NC='\033[0m' # No Color
 setup_environment() {
     source "$HOME/.bashrc"
     test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)"
-    test -d /home/linuxbrew/.linuxbrew && eval "$( /home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
     echo -e "${YELLOW}Finishing up installation and setting up Zsh...${NC}"
     echo -e "${YELLOW}Running as user: $(whoami)${NC}"
@@ -36,30 +32,11 @@ cleanup_on_error() {
 # Set trap for cleanup on error
 trap cleanup_on_error ERR
 
-# Improved run command function with timeout and better error handling
-run_command() {
-    local description="$1"
-    local command="$2"
-    local timeout="${3:-$SCRIPT_TIMEOUT}"
-
-    echo -e "${YELLOW}${description}${NC}"
-
-    # Run with timeout and capture both stdout and stderr
-    if timeout "$timeout" bash -c "$command" 2>&1; then
-        echo -e "${GREEN}✓ ${description} completed successfully${NC}"
-        return 0
-    else
-        local exit_code=$?
-        echo -e "${RED}✗ ${description} failed (exit code: $exit_code)${NC}"
-        return $exit_code
-    fi
-}
-
 # Setup Zsh as default shell
 setup_zsh_shell() {
     local zsh_path
-    zsh_path=$(which zsh) || {
-        echo "✗ Zsh not found in PATH"
+    zsh_path=$(which zsh 2>/dev/null) || {
+        echo -e "${RED}✗ Zsh not found in PATH${NC}"
         return 1
     }
 
@@ -67,24 +44,24 @@ setup_zsh_shell() {
     if ! grep -q "^${zsh_path}$" /etc/shells 2>/dev/null; then
         echo "Adding Zsh to /etc/shells..."
         if ! echo "$zsh_path" | sudo tee -a /etc/shells >/dev/null; then
-            echo "✗ Failed to add Zsh to /etc/shells"
+            echo -e "${RED}✗ Failed to add Zsh to /etc/shells${NC}"
             return 1
         fi
-        echo "✓ Zsh added to /etc/shells"
+        echo -e "${GREEN}✓ Zsh added to /etc/shells${NC}"
     else
-        echo "✓ Zsh already in /etc/shells"
+        echo -e "${GREEN}✓ Zsh already in /etc/shells${NC}"
     fi
 
     # Set as default shell if not already
     if [[ "$SHELL" != "$zsh_path" ]]; then
         echo "Setting Zsh as default shell..."
         if ! sudo chsh -s "$zsh_path" "$(whoami)"; then
-            echo "✗ Failed to set Zsh as default shell"
+            echo -e "${RED}✗ Failed to set Zsh as default shell${NC}"
             return 1
         fi
-        echo "✓ Zsh set as default shell"
+        echo -e "${GREEN}✓ Zsh set as default shell${NC}"
     else
-        echo "✓ Zsh already set as default shell"
+        echo -e "${GREEN}✓ Zsh already set as default shell${NC}"
     fi
 
     return 0
@@ -95,80 +72,73 @@ cleanup_lazyvim() {
     if [[ -d "$HOME/.config/nvim/.git" ]]; then
         echo "Cleaning up LazyVim git repository..."
         rm -rf "$HOME/.config/nvim/.git"
-        echo "✓ LazyVim cleanup completed"
+        echo -e "${GREEN}✓ LazyVim cleanup completed${NC}"
     else
-        echo "✓ LazyVim already clean (no .git directory found)"
+        echo -e "${GREEN}✓ LazyVim already clean (no .git directory found)${NC}"
     fi
     return 0
 }
 
 # Rebuild font cache
 rebuild_font_cache() {
+    if ! command -v fc-cache &> /dev/null; then
+        echo -e "${YELLOW}⚠ fc-cache not found, skipping font cache rebuild${NC}"
+        return 0
+    fi
+    
     echo "Rebuilding font cache..."
-    fc-cache -f -v
-    return 0
+    if fc-cache -f -v > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Font cache rebuilt successfully${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ Failed to rebuild font cache${NC}"
+        return 1
+    fi
 }
 
 # Generate system locales
 generate_locales() {
+    if ! command -v locale-gen &> /dev/null; then
+        echo -e "${YELLOW}⚠ locale-gen not found, skipping locale generation${NC}"
+        return 0
+    fi
+    
     echo "Generating system locales..."
-    locale-gen
-    return 0
+    if sudo locale-gen > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Locales generated successfully${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ Failed to generate locales${NC}"
+        return 1
+    fi
 }
 
 # Install Tmux plugins
 install_tmux_plugins() {
-    if [[ -x "$TMUX_PLUGIN_PATH" ]]; then
-        echo "Installing Tmux plugins..."
-        "$TMUX_PLUGIN_PATH"
+    if [[ ! -x "$TMUX_PLUGIN_PATH" ]]; then
+        echo -e "${YELLOW}⚠ Tmux plugin manager not found at $TMUX_PLUGIN_PATH, skipping${NC}"
+        return 0
+    fi
+    
+    echo "Installing Tmux plugins..."
+    if "$TMUX_PLUGIN_PATH" > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Tmux plugins installed successfully${NC}"
         return 0
     else
-        echo "✗ Tmux plugin manager not found at $TMUX_PLUGIN_PATH"
+        echo -e "${RED}✗ Failed to install Tmux plugins${NC}"
         return 1
     fi
 }
 
-# Move WSL configuration and cleanup temp directory
-move_wsl_config() {
-    if [[ ! -f "$WSL_SOURCE_PATH" ]]; then
-        echo "No wsl.conf found in $TEMP_DIR, skipping WSL configuration"
-        return 0
-    fi
 
-    echo "Moving wsl.conf to $WSL_TARGET_PATH..."
-    if ! sudo mv "$WSL_SOURCE_PATH" "$WSL_TARGET_PATH"; then
-        echo "✗ Failed to move wsl.conf to $WSL_TARGET_PATH"
-        return 1
-    fi
-
-    # Verify the move was successful
-    if [[ -f "$WSL_TARGET_PATH" ]]; then
-        echo "✓ wsl.conf successfully moved to $WSL_TARGET_PATH"
-
-        # Clean up temp directory if it's empty or contains only the wsl.conf
-        if [[ -d "$TEMP_DIR" ]]; then
-            local remaining_files
-            remaining_files=$(find "$TEMP_DIR" -mindepth 1 -maxdepth 1 2>/dev/null | wc -l)
-            if [[ "$remaining_files" -eq 0 ]]; then
-                echo "Removing $TEMP_DIR directory (empty)..."
-                rm -rf "$TEMP_DIR"
-                echo "✓ $TEMP_DIR directory removed"
-            else
-                echo "✓ $TEMP_DIR directory retained (contains other files)"
-            fi
-        fi
-        return 0
-    else
-        echo "✗ Verification failed: $WSL_TARGET_PATH not found after move"
-        return 1
-    fi
-}
 
 # Copy Alacritty configuration to Windows
 copy_alacritty_config() {
+    local config_copied=false
+    
     # Copy alacritty.toml file
     if [[ ! -f "$ALACRITTY_SOURCE_PATH" ]]; then
-        echo "No alacritty.toml found at $ALACRITTY_SOURCE_PATH, skipping Alacritty configuration copy"
+        echo -e "${YELLOW}⚠ No alacritty.toml found at $ALACRITTY_SOURCE_PATH, skipping config copy${NC}"
     else
         # Create target directory if it doesn't exist
         local target_dir
@@ -176,62 +146,68 @@ copy_alacritty_config() {
         if [[ ! -d "$target_dir" ]]; then
             echo "Creating target directory: $target_dir"
             if ! mkdir -p "$target_dir"; then
-                echo "✗ Failed to create target directory: $target_dir"
+                echo -e "${RED}✗ Failed to create target directory: $target_dir${NC}"
                 return 1
             fi
-            echo "✓ Target directory created: $target_dir"
+            echo -e "${GREEN}✓ Target directory created: $target_dir${NC}"
         fi
 
         echo "Copying alacritty.toml to Windows..."
         if ! cp "$ALACRITTY_SOURCE_PATH" "$ALACRITTY_TARGET_PATH"; then
-            echo "✗ Failed to copy alacritty.toml to $ALACRITTY_TARGET_PATH"
+            echo -e "${RED}✗ Failed to copy alacritty.toml to $ALACRITTY_TARGET_PATH${NC}"
             return 1
         fi
 
         # Verify the copy was successful
         if [[ -f "$ALACRITTY_TARGET_PATH" ]]; then
-            echo "✓ alacritty.toml successfully copied to $ALACRITTY_TARGET_PATH"
+            echo -e "${GREEN}✓ alacritty.toml successfully copied to $ALACRITTY_TARGET_PATH${NC}"
+            config_copied=true
         else
-            echo "✗ Verification failed: $ALACRITTY_TARGET_PATH not found after copy"
+            echo -e "${RED}✗ Verification failed: $ALACRITTY_TARGET_PATH not found after copy${NC}"
             return 1
         fi
     fi
 
     # Copy themes folder
     if [[ ! -d "$ALACRITTY_THEMES_SOURCE_PATH" ]]; then
-        echo "No themes folder found at $ALACRITTY_THEMES_SOURCE_PATH, skipping themes copy"
-        return 0
+        echo -e "${YELLOW}⚠ No themes folder found at $ALACRITTY_THEMES_SOURCE_PATH, skipping themes copy${NC}"
+        if [[ "$config_copied" == true ]]; then
+            return 0
+        else
+            return 0
+        fi
+    fi
+
+    # Create parent directory for themes
+    local themes_parent
+    themes_parent=$(dirname "$ALACRITTY_THEMES_TARGET_PATH")
+    if [[ ! -d "$themes_parent" ]]; then
+        echo "Creating themes parent directory: $themes_parent"
+        if ! mkdir -p "$themes_parent"; then
+            echo -e "${RED}✗ Failed to create themes parent directory${NC}"
+            return 1
+        fi
     fi
 
     echo "Copying Alacritty themes folder to Windows..."
+    # Remove existing themes directory if it exists to ensure clean copy
+    if [[ -d "$ALACRITTY_THEMES_TARGET_PATH" ]]; then
+        rm -rf "$ALACRITTY_THEMES_TARGET_PATH"
+    fi
+    
     if ! cp -r "$ALACRITTY_THEMES_SOURCE_PATH" "$ALACRITTY_THEMES_TARGET_PATH"; then
-        echo "✗ Failed to copy themes folder to $ALACRITTY_THEMES_TARGET_PATH"
+        echo -e "${RED}✗ Failed to copy themes folder to $ALACRITTY_THEMES_TARGET_PATH${NC}"
         return 1
     fi
 
     # Verify the copy was successful
     if [[ -d "$ALACRITTY_THEMES_TARGET_PATH" ]]; then
-        echo "✓ Themes folder successfully copied to $ALACRITTY_THEMES_TARGET_PATH"
+        echo -e "${GREEN}✓ Themes folder successfully copied to $ALACRITTY_THEMES_TARGET_PATH${NC}"
         return 0
     else
-        echo "✗ Verification failed: $ALACRITTY_THEMES_TARGET_PATH not found after copy"
+        echo -e "${RED}✗ Verification failed: $ALACRITTY_THEMES_TARGET_PATH not found after copy${NC}"
         return 1
     fi
-}
-
-# Get description for operation
-get_description() {
-    local operation="$1"
-    case "$operation" in
-        "setup_zsh_shell") echo "Setting up Zsh as default shell..." ;;
-        "cleanup_lazyvim") echo "Cleaning up LazyVim..." ;;
-        "rebuild_font_cache") echo "Rebuilding font cache..." ;;
-        "generate_locales") echo "Generating locales..." ;;
-        "install_tmux_plugins") echo "Installing Tmux plugins..." ;;
-        "move_wsl_config") echo "Moving WSL configuration and cleaning up..." ;;
-        "copy_alacritty_config") echo "Copying Alacritty configuration to Windows..." ;;
-        *) echo "Running $operation..." ;;
-    esac
 }
 
 # Print final status
@@ -239,21 +215,26 @@ print_status() {
     local all_success="$1"
     echo ""
     if [[ "$all_success" == true ]]; then
+        echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
         echo -e "${GREEN}All operations completed successfully!${NC}"
+        echo -e "${GREEN}═══════════════════════════════════════════════════${NC}"
     else
+        echo -e "${YELLOW}═══════════════════════════════════════════════════${NC}"
         echo -e "${YELLOW}Some operations failed. Please review the output above.${NC}"
+        echo -e "${YELLOW}═══════════════════════════════════════════════════${NC}"
     fi
 }
 
 # Main execution function
 main() {
     local all_success=true
+    local operation_status
 
     # Setup environment
     setup_environment
 
     # Define operations to run in order
-    local operations=(
+    declare -a operations=(
         "setup_zsh_shell"
         "cleanup_lazyvim"
         "rebuild_font_cache"
@@ -264,9 +245,15 @@ main() {
 
     # Execute all operations
     for operation in "${operations[@]}"; do
-        if ! run_command "$(get_description "$operation")" "$operation"; then
+        echo ""
+        echo -e "${YELLOW}───────────────────────────────────────────────────${NC}"
+        if $operation; then
+            operation_status="${GREEN}✓ Success${NC}"
+        else
             all_success=false
+            operation_status="${RED}✗ Failed${NC}"
         fi
+        echo -e "Status: $operation_status"
     done
 
     # Print final status
@@ -274,9 +261,12 @@ main() {
 
     # Exit with appropriate code
     if [[ "$all_success" == true ]]; then
-        echo -e "${RED}Restart shell to finish...${NC}"
-        sleep 10
+        echo ""
+        echo -e "${RED}Please restart your shell to apply all changes!${NC}"
+        sleep 5
         exit 0
+    else
+        exit 1
     fi
 }
 
