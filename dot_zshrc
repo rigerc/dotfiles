@@ -28,7 +28,7 @@ setopt magicequalsubst
     mkdir -p ~/.local/share/znap
     git clone --depth 1 -- https://github.com/marlonrichert/zsh-snap.git ~/.local/share/znap
 }
-source ~/.local/share/znap.zsh
+source ~/.local/share/znap/znap.zsh
 
 # =====================================================
 #   THEME SETUP - POWERLEVEL10K
