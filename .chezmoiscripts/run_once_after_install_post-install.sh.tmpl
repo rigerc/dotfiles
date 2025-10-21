@@ -55,6 +55,18 @@ setup_zsh() {
     fi
 }
 
+setup_fish() {
+    log_step "Setting up Fish as default shell"
+    
+    if set_default_shell "fish"; then
+        log_success "fish setup completed"
+        return 0
+    else
+        log_error "fish setup failed"
+        return 1
+    fi
+}
+
 cleanup_lazyvim() {
     log_step "Cleaning up LazyVim"
     
@@ -173,6 +185,7 @@ main() {
     # Run all operations
     local operations=(
         "setup_zsh"
+        "setup_fish"
         "cleanup_lazyvim"
         "rebuild_fonts"
         "generate_locales"
