@@ -5,3 +5,5 @@ alias grep='rg'
 alias please="sudo !!"
 alias pacman="sudo pacman --noconfirm"
 alias config="cd ~/.config"
+alias dotfiles="chezmoi cd"
+alias lg="lazygit"
