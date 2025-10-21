@@ -64,6 +64,8 @@ packages  :
     # Shell
     - zsh
     - tmux
+    - fish
+    - starship
 
   casks:
     - claude-code
