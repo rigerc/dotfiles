@@ -36,7 +36,7 @@ set_default_shell() {
     
     # Set as default if not already
     if [[ "$SHELL" != "$shell_path" ]]; then
-        sudo chsh -s "$shell_path"
+        sudo chsh -s "$shell_path" bondg
         log_success "Set $shell_name as default shell"
     else
         log_info "$shell_name already set as default"

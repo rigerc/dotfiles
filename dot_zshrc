@@ -16,7 +16,7 @@ ZI_REPO='zdharma-continuum'; GH_RAW_URL='https://raw.githubusercontent.com'
 if [[ ! -e $ZINIT[BIN_DIR] ]]; then
   info 'Downloading Zinit' \
     && command git clone \
-        --branch 'bugfix/system-gh-r-selection' \
+        --branch 'main' \
         https://github.com/$ZI_REPO/zinit \
         $ZINIT[BIN_DIR] \
     || error 'Unable to download zinit' \
