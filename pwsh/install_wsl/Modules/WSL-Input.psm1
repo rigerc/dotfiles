@@ -151,6 +151,7 @@ function Get-ConfigurationInput {
             UseChezmoi = $false
             GitName = $null
             GitEmail = $null
+            BW_CLIENTSECRET = $null
         }
         
         # Gather basic inputs
@@ -200,6 +201,13 @@ function Get-ConfigurationInput {
                 $DefaultGitEmail = Get-GitConfig -ConfigKey "user.email"
                 $Config.GitEmail = Get-UserInput -Prompt "Github email" -Default $DefaultGitEmail -UseDefault:$UseDefaults
                 
+                # Get Bitwarden Client Secret for Chezmoi
+                if (-not $UseDefaults) {
+                    Write-Host "`nBitwarden configuration (for Chezmoi):`n"
+                }
+                
+                $Config.BW_CLIENTSECRET = Get-UserInput -Prompt "Bitwarden Client Secret" -Default "" -UseDefault:$UseDefaults
+                
                 if (-not $Config.GitName -or -not $Config.GitEmail) {
                     Write-LogMessage "Git configuration incomplete. Chezmoi setup will be skipped." -Level Warning
                     $Config.UseChezmoi = $false
@@ -248,6 +256,12 @@ function Show-ConfigurationSummary {
         Write-Host $Config.GitName -ForegroundColor Cyan
         Write-Host "Git Email:          " -ForegroundColor White -NoNewline
         Write-Host $Config.GitEmail -ForegroundColor Cyan
+        
+        if ($Config.BW_CLIENTSECRET) {
+            $MaskedSecret = "*" * $Config.BW_CLIENTSECRET.Length
+            Write-Host "Bitwarden Secret:   " -ForegroundColor White -NoNewline
+            Write-Host $MaskedSecret -ForegroundColor Green
+        }
     }
     else {
         Write-Host "Chezmoi:            " -ForegroundColor White -NoNewline

@@ -243,7 +243,7 @@ function Invoke-ChezmoiWorkflow {
     Start-Sleep -Seconds 5
     Write-LogMessage "Opening Chezmoi terminal. Script will pause until you complete the setup and close the terminal." -Level Info
 
-    Invoke-ChezmoiSetup -DistroName $Config.DistroName -Username $Config.Username -GitName $Config.GitName -GitEmail $Config.GitEmail
+    Invoke-ChezmoiSetup -DistroName $Config.DistroName -Username $Config.Username -GitName $Config.GitName -GitEmail $Config.GitEmail -BW_CLIENTSECRET $Config.BW_CLIENTSECRET
 
     Write-LogMessage "Chezmoi terminal has been closed. Continuing with script execution." -Level Info
 
@@ -263,7 +263,7 @@ function Invoke-ChezmoiWorkflow {
         switch ($Choice) {
             "1" {
                 Write-LogMessage "Rerunning Chezmoi setup..." -Level Info
-                Invoke-ChezmoiSetup -DistroName $Config.DistroName -Username $Config.Username -GitName $Config.GitName -GitEmail $Config.GitEmail
+                Invoke-ChezmoiSetup -DistroName $Config.DistroName -Username $Config.Username -GitName $Config.GitName -GitEmail $Config.GitEmail -BW_CLIENTSECRET $Config.BW_CLIENTSECRET
                 Write-LogMessage "Chezmoi terminal has been closed. Verifying installation again..." -Level Info
                 Start-Sleep -Seconds 3
 

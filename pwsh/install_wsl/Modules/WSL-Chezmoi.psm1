@@ -148,14 +148,17 @@ function Invoke-ChezmoiSetup {
         
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
-        [string]$GitEmail
-    )    
+        [string]$GitEmail,
+        
+        [Parameter()]
+        [string]$BW_CLIENTSECRET
+    )
     
     $ChezmoiCommand = "chezmoi init --apply $GitName --promptString `"GitHub\ username=$GitName`" --promptString `"GitHub\ email=$GitEmail`""
     # Validate Bitwarden CLI is available before proceeding
-    if ((Test-BitwardenAvailable -DistroName $DistroName)) {
-        Write-LogMessage "Bitwarden CLI (bw) is available." -Level Info
-        $ChezmoiCommand = "export BW_SESSION=`$(bw login --raw) && chezmoi init --apply $GitName --promptString `"GitHub\ username=$GitName`" --promptString `"GitHub\ email=$GitEmail`""
+    if ((Test-BitwardenAvailable -DistroName $DistroName) -and $BW_CLIENTSECRET) {
+        Write-LogMessage "Bitwarden CLI (bw) is available and client secret provided." -Level Info
+        $ChezmoiCommand = "export BW_CLIENTID=`"user.e4878fd7-8be5-4510-b457-ac6a00a44fff`" && export BW_CLIENTSECRET=`"$BW_CLIENTSECRET`" && export BW_SESSION=`$(bw login --apikey) && chezmoi init --apply $GitName --promptString `"GitHub\ username=$GitName`" --promptString `"GitHub\ email=$GitEmail`""
     }
 
     Write-LogMessage "Starting Windows Terminal with Chezmoi setup" -Level Info
