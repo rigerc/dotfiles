@@ -14,8 +14,7 @@ eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 # start fish/tmux
 # Auto-start tmux on login
 if command -v tmux >/dev/null 2>&1; then
-  # Only run if not already inside tmux and in an interactive login shell
-  if [ -z "$TMUX" ] && [[ $- == *l* ]]; then
-    tmux attach -t main 2>/dev/null || tmux new -s main
+  if [[ -z "$TMUX" ]] && [[ $- == *i* ]]; then
+    tmux attach -t main || tmux new -s main
   fi
 fi
