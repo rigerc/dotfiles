@@ -9,7 +9,7 @@ bold_italic = { family = "Iosevka Nerd Font", style = "Bold Italic" }
 size = 12.0
 
 [window]
-opacity = 0.9
+opacity = 0.95
 padding = { x = 5, y = 5 }
 blur = true
 
