@@ -10,3 +10,6 @@ alias grep='grep --color=auto'
 PS1='[\u@\h \W]\$ '
 
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+# start fish/tmux
+exec tmux
