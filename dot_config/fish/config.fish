@@ -1,14 +1,22 @@
 if status is-interactive; and begin
     set fish_tmux_autostart true
+    fastfetch
 end
 
+# shared .env file zsh/fish
+function setenv
+    if [ $argv[1] = PATH ]
+        # Replace colons and spaces with newlines
+        set -gx PATH (echo $argv[2] | tr ': ' \n)
+    else
+        set -gx $argv
+    end
+ end
 
-alias ls='eza --all --long --group --group-directories-first --icons --header --time-style long-iso'
-alias tree='eza --tree'
-alias cat='bat'
-alias grep='rg'
-alias please="sudo !!"
-alias pacman="sudo pacman --noconfirm"
-alias config="cd ~/.config"
+source ~/.env
 
+# aliases
+source ~/.aliases
+
+# starship prompt
 starship init fish | source
