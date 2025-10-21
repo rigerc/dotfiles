@@ -11,5 +11,7 @@
     GITHUB_TOKEN = {{ (bitwardenFields "item" "GITHUB_TOKEN").Token.value | quote }}
     ZAI_API_KEY = {{ (bitwardenFields "item" "ZAI_API_KEY").Token.value | quote }}
 
+[bitwarden]
+  unlock = "auto"
 #[hooks.read-source-state.pre]
 #    command = "sh ~/.local/share/chezmoi/.install-essentials.sh"
