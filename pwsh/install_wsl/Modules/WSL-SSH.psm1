@@ -52,7 +52,7 @@ function Test-SSHDRunning {
     
     try {
         $Command = "systemctl is-active sshd 2>/dev/null || service ssh status 2>/dev/null"
-        $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot -Quiet
+        $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Command -AsRoot
         return $Result -match "active|running"
     }
     catch {
@@ -90,7 +90,7 @@ function Get-SSHDPort {
 
         foreach ($Cmd in $Commands) {
             try {
-                $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Cmd -AsRoot -Quiet
+                $Result = Invoke-WSLCommand -DistroName $DistroName -Command $Cmd -AsRoot
 
                 if ($null -ne $Result -and $Result.Trim() -ne '') {
                     $PortString = $Result.Trim()
@@ -114,7 +114,7 @@ function Get-SSHDPort {
         # If all methods fail, try to get default port by checking if sshd is running on default port
         Write-LogMessage "Could not extract SSH port from config, checking if default port 22 is in use" -Level Debug
         $DefaultPortCheck = "ss -tlnp 2>/dev/null | grep ':22\s'"
-        $DefaultPortResult = Invoke-WSLCommand -DistroName $DistroName -Command $DefaultPortCheck -AsRoot -Quiet
+        $DefaultPortResult = Invoke-WSLCommand -DistroName $DistroName -Command $DefaultPortCheck -AsRoot
 
         if ($null -ne $DefaultPortResult -and $DefaultPortResult.Trim() -ne '') {
             Write-LogMessage "SSH daemon appears to be running on default port 22" -Level Debug
@@ -148,20 +148,37 @@ function Get-WSLIPAddress {
         [string]$DistroName
     )
     
-    $WslIpOutput = wsl -d $DistroName hostname -i 2>$null | Out-String
+    # Try multiple methods to get the WSL IP address
+    $Methods = @(
+        # Method 1: hostname -I (may not be available in all distributions)
+        "hostname -I 2>/dev/null | awk '{print `$1}'",
+        # Method 2: ip command to get eth0 address
+        "ip -4 addr show eth0 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1",
+        # Method 3: ip command with full path
+        "/sbin/ip -4 addr show eth0 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | head -n1",
+        # Method 4: Try all interfaces
+        "ip -4 addr show 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | head -n1"
+    )
     
-
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to get IP from WSL distribution '$DistroName'. Make sure the distribution is installed and running."
+    foreach ($Method in $Methods) {
+        try {
+            $WslIpOutput = Invoke-WSLCommand -DistroName $DistroName -Command $Method -AsRoot
+            $WslIp = $WslIpOutput.Trim()
+            
+            # Validate IP address format
+            if ($WslIp -match '^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$') {
+                Write-LogMessage "Found WSL IP address using method: $Method" -Level Debug
+                Write-LogMessage "IP Address: $WslIp" -Level Debug
+                return $WslIp
+            }
+        }
+        catch {
+            Write-LogMessage "IP detection method failed: $Method" -Level Debug
+            continue
+        }
     }
     
-    $WslIp = Format-WSLOutput -Output $WslIpOutput
-    
-    if ([string]::IsNullOrEmpty($WslIp)) {
-        throw "Could not retrieve WSL IP address. WSL may not be running."
-    }
-    Write-LogMessage "Found IP: $WslIpOutput" -Level Debug
-    return $WslIp
+    throw "Could not retrieve WSL IP address using any available method. Make sure the distribution is running and has network connectivity."
 }
 
 function New-SSHPortForward {

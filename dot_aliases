@@ -11,16 +11,5 @@ alias lg="lazygit"
 
 function gobuild
     mkdir -p "$HOME/.local/bin"
-    set appname (go list -f '{{.Name}}' 2>/dev/null)
-    if test -z "$appname"
-        echo "Error: could not determine app name from go list"
-        return 1
-    end
-    set outfile "$HOME/.local/bin/$appname"
-    go build -o "$outfile"
-    if test $status -eq 0
-        echo "✅ Built $appname → $outfile"
-    else
-        echo "❌ Build failed"
-    end
+    go build -o "$HOME/.local/bin/"
 end
