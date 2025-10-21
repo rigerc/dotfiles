@@ -28,8 +28,6 @@ egrep "^export " ~/.env | while read e
 	set -xg $var $value
 end
 
-source ~/.env
-
 # aliases
 source ~/.aliases
 
