@@ -1,6 +1,6 @@
 if status is-interactive
-    set fish_tmux_autostart true
-    fastfetch
+    #set fish_tmux_autostart true
+    #fastfetch
 end
 
 # shared .env file zsh/fish
