@@ -26,6 +26,12 @@ install_arch_package() {
 main() {
     log_header "Installing Arch Linux Packages"
     
+    if is_wsl; then
+        log_info "Installing WSLU"
+        curl -sL https://raw.githubusercontent.com/wslutilities/wslu/master/extras/scripts/wslu-install | bash
+        return 0
+    fi
+
     # Check if on Arch Linux
     if ! command_exists pacman; then
         log_info "Not an Arch-based system, skipping"

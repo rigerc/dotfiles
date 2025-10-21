@@ -1,0 +1,4 @@
+[".local/bin/shai"]
+    type = "file"
+    url = {{ gitHubLatestReleaseAssetURL "ovh/shai" "shai-linux-x86_64" | quote }}
+    executable = true

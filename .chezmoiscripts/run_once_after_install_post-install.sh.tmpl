@@ -11,11 +11,6 @@ readonly ALACRITTY_TARGET="/mnt/c/Users/bondg/appdata/roaming/alacritty/alacritt
 readonly ALACRITTY_THEMES_SOURCE="$HOME/.config/alacritty/themes"
 readonly ALACRITTY_THEMES_TARGET="/mnt/c/Users/bondg/appdata/roaming/alacritty/themes"
 
-# Check if running on WSL
-is_wsl() {
-    [[ -f /proc/version ]] && grep -qi microsoft /proc/version
-}
-
 # Set default shell
 set_default_shell() {
     local shell_name="$1"

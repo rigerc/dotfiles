@@ -106,6 +106,11 @@ safe_copy() {
     fi
 }
 
+# Check if running on WSL
+is_wsl() {
+    [[ -f /proc/version ]] && grep -qi microsoft /proc/version
+}
+
 # -----------------------------------------------------------------------------
 # Homebrew Functions
 # -----------------------------------------------------------------------------
