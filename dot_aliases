@@ -8,3 +8,19 @@ alias config="cd ~/.config"
 alias dotfiles="chezmoi cd"
 alias chezmoi-update="chezmoi update && exec fish"
 alias lg="lazygit"
+
+function gobuild
+    mkdir -p "$HOME/.local/bin"
+    set appname (go list -f '{{.Name}}' 2>/dev/null)
+    if test -z "$appname"
+        echo "Error: could not determine app name from go list"
+        return 1
+    end
+    set outfile "$HOME/.local/bin/$appname"
+    go build -o "$outfile"
+    if test $status -eq 0
+        echo "✅ Built $appname → $outfile"
+    else
+        echo "❌ Build failed"
+    end
+end
