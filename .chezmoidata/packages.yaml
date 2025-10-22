@@ -1,8 +1,8 @@
 packages:
   linux:
     arch:
-      yay:
-
+      npm:
+        - musistudio/claude-code-router
       pacman:
         - openssh
         - net-tools
