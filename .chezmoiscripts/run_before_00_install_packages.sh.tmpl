@@ -47,7 +47,7 @@ install_termux_package() {
         log_success "Installed $package"
         return 0
     else
-        log_error "Failed to install $package"
+        log_error "Failed to install $package: $?"
         return 1
     fi
 }
@@ -253,32 +253,22 @@ init_android_packages() {
     # Setup storage and repository
     log_info "Setting up Termux environment..."
 
-# Check if storage is already set up
-if [[ ! -d "$HOME/storage" ]]; then
-    log_info "Setting up Termux storage (may require user interaction)..."
-    if termux-setup-storage; then
-        log_success "Termux storage configured successfully"
+    # Check if storage is already set up
+    if [[ ! -d "$HOME/storage" ]]; then
+        log_info "Setting up Termux storage (may require user interaction)..."
+        if termux-setup-storage; then
+            log_success "Termux storage configured successfully"
+        else
+            log_warning "Storage setup failed or was cancelled"
+        fi
     else
-        log_warning "Storage setup failed or was cancelled"
+        log_success "Termux storage already configured"
     fi
-else
-    log_success "Termux storage already configured"
-fi
-
-if termux-change-repo 2>/dev/null; then
-    log_success "Termux repository configured"
-else
-    log_warning "termux-change-repo failed (may already be configured)"
-fi
     
     {{- if .packages.android.termux }}
-    log_info "Updating pkg repo & upgrading..."
-    if ! pkg update -y >/dev/null 2>&1; then
-        log_error "pkg update failed"
-        return 1
-    fi
+    log_info "Ugrading packages..."
     
-    if ! pkg upgrade -y >/dev/null 2>&1; then
+    if ! pkg upgrade -y; then
         log_warning "pkg upgrade had issues (continuing anyway)"
     fi
 
