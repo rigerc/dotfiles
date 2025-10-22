@@ -5,12 +5,12 @@ set -uo pipefail
 source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/common.sh"
 
 # Configuration
-{{- $windows_user := .windows_user | default "bondg" }}
+
 readonly TMUX_PLUGIN_PATH="$HOME/.config/tmux/plugins/tpm/bin/install_plugins"
 readonly ALACRITTY_SOURCE="$HOME/.config/alacritty/alacritty.toml"
-readonly ALACRITTY_TARGET="/mnt/c/Users/{{ $windows_user }}/appdata/roaming/alacritty/alacritty.toml"
+readonly ALACRITTY_TARGET="/mnt/c/Users/bondg/appdata/roaming/alacritty/alacritty.toml"
 readonly ALACRITTY_THEMES_SOURCE="$HOME/.config/alacritty/themes"
-readonly ALACRITTY_THEMES_TARGET="/mnt/c/Users/{{ $windows_user }}/appdata/roaming/alacritty/themes"
+readonly ALACRITTY_THEMES_TARGET="/mnt/c/Users/bondg/appdata/roaming/alacritty/themes"
 
 # Set default shell
 set_default_shell() {
