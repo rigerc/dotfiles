@@ -134,13 +134,23 @@ SSHD_EOF
 
 configure_sshd() {
     log_header "Configuring SSH Service"
-    
+
     # Check for systemd
     if ! has_systemd; then
         log_error "systemd not available - cannot manage SSH service"
         return 1
     fi
-    
+
+    # Check if SSH is already running on configured port
+    log_info "Checking if SSH is already running on port $SSH_PORT..."
+    if check_ssh_port "$SSH_PORT"; then
+        log_success "SSH is already running on port $SSH_PORT"
+        log_header "SSH Service Configuration Completed"
+        echo ""
+        sudo systemctl status sshd --no-pager --lines=3
+        return 0
+    fi
+
     # Backup existing configuration
     if [[ -f "$SSHD_CONFIG" ]]; then
         backup_file "$SSHD_CONFIG"
@@ -233,7 +243,7 @@ generate_ssh_key() {
             return 1
         fi
     else
-        log_info "Found SSH public key: $ssh_key"
+        log_success "Found SSH public key: $ssh_key"
     fi
     
     # Read the public key content

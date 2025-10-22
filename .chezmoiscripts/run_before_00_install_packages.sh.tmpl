@@ -14,7 +14,7 @@ install_pacman_package() {
     fi
     
     if pacman -Qi "$package" &>/dev/null; then
-        log_info "$package is already installed"
+        log_success "$package is already installed"
         return 0
     fi
     
@@ -38,7 +38,7 @@ install_termux_package() {
     fi
     
     if pkg list-installed 2>/dev/null | grep -q "^$package/"; then
-        log_info "$package is already installed"
+        log_success "$package is already installed"
         return 0
     fi
     
@@ -57,7 +57,7 @@ install_homebrew_package() {
     local package="$1"
     
     if brew list "$package" &>/dev/null; then
-        log_info "$package is already installed"
+        log_success "$package is already installed"
         return 0
     fi
     
@@ -76,7 +76,7 @@ install_homebrew_cask_package() {
     local package="$1"
     
     if brew list "$package" &>/dev/null; then
-        log_info "$package is already installed"
+        log_success "$package is already installed"
         return 0
     fi
     
@@ -95,7 +95,7 @@ install_npm_package() {
     local package="$1"
     
     if npm list -g "$package" &>/dev/null; then
-        log_info "$package is already installed"
+        log_success "$package is already installed"
         return 0
     fi
     
