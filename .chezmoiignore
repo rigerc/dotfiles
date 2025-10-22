@@ -5,12 +5,16 @@ pwsh/*
 docs/*
 .bw_session
 {{- if eq .chezmoi.os "android" }}
+.local/bin
 .config/alacritty
 .config/mods
 .config/nano
 .config/opencode
 .config/zsh
 .config/starship.toml
+.tmux.config
+.claude.json
+.bashrc
 {{- else if eq .chezmoi.os "linux" }}
 .shortcuts/
 {{- end }}
