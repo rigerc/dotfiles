@@ -15,7 +15,7 @@
 {{-   $os = "linux" -}}
 {{- end -}}
 
-{{- $version := .ohmyposh.version | default "latest" -}}
+{{- $version := "latest" -}}
 {{- $target := printf "%s-%s" $os $arch -}}
 
 # Oh My Posh executable
