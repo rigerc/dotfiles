@@ -11,12 +11,8 @@
 {{- end -}}
 
 {{- /* Map OS names */ -}}
-{{- if eq $os "darwin" -}}
-{{-   $os = "darwin" -}}
-{{- else if eq $os "linux" -}}
-{{-   $os = "linux" -}}
-{{- else if eq $os "freebsd" -}}
-{{-   $os = "freebsd" -}}
+{{- if or (eq $os "darwin") (eq $os "linux") (eq $os "freebsd") -}}
+{{-   /* No change needed - use as-is */ -}}
 {{- else if eq $os "android" -}}
 {{-   $os = "linux" -}}
 {{- end -}}

@@ -80,7 +80,7 @@ install_npm_package() {
     fi
     
     log_info "Installing $package..."
-    npm install -g "\@$package" >/dev/null
+    npm install -g "@$package" >/dev/null
     log_success "Installed $package"
 }
 
@@ -200,9 +200,9 @@ init_android_packages() {
     
     export DEBIAN_FRONTEND=noninteractive
     termux-setup-storage
-    termux-chage-repo
+    termux-change-repo
+    
     {{- if .packages.android.termux }}
-
     log_info "Updating pkg repo & upgrading..."
     pkg update -y >/dev/null
     pkg upgrade -y >/dev/null
@@ -214,11 +214,11 @@ init_android_packages() {
     if ! install_termux_package "{{ . }}"; then
         failed_packages+=("{{ . }}")
     fi
+    {{- end }}
 
     log_info "Cleaning pkg..."
     pkg clean >/dev/null
     pkg autoclean >/dev/null
-    {{- end }}
     
     if [[ ${#failed_packages[@]} -gt 0 ]]; then
         log_warning "Failed to install some Termux packages:"
@@ -257,7 +257,7 @@ main() {
                 log_success "WSLU installed successfully"
             else
                 log_error "Failed to install WSLU"
-                log_warning "Continuing with despite WSLU failure"
+                log_warning "Continuing despite WSLU failure"
             fi
         fi
     fi

@@ -1,11 +1,15 @@
-{{ if eq .chezmoi.os "linux" }}
-{{- $github_user := promptStringOnce . "github_user" "GitHub username" -}}
-{{- $github_email := promptStringOnce . "github_email" "GitHub email" -}}
-{{ end }}
+{{- $github_user := "" -}}
+{{- $github_email := "" -}}
+
+{{- if eq .chezmoi.os "linux" }}
+{{-   $github_user = promptStringOnce . "github_user" "GitHub username" -}}
+{{-   $github_email = promptStringOnce . "github_email" "GitHub email" -}}
+{{- end }}
+
 [tmpDir]
     path = ".local/share/chezmoi/.tmp"
 
-    {{- if ne .chezmoi.os "android" }}
+{{- if ne .chezmoi.os "android" }}
 [data]
     github_user = {{ $github_user | quote }}
     github_email = {{ $github_email | quote }}
@@ -15,7 +19,8 @@
     ZAI_API_KEY = {{ (bitwardenFields "item" "ZAI_API_KEY").Token.value | quote }}
 
 [bitwarden]
-  unlock = "auto"
-    {{ end }}
+    unlock = "auto"
+{{- end }}
+
 #[hooks.read-source-state.pre]
 #    command = "sh ~/.local/share/chezmoi/.install-essentials.sh"
