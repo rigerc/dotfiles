@@ -1,8 +1,8 @@
 #!{{ lookPath "bash" }}
-set -euo pipefail
+set -uo pipefail
 
 # Source common functions
-source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/.common.sh"
+source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/common.sh"
 
 # Install package on Arch Linux using pacman
 install_pacman_package() {
@@ -19,8 +19,13 @@ install_pacman_package() {
     fi
     
     log_info "Installing $package..."
-    sudo pacman -S --noconfirm --needed "$package" >/dev/null
-    log_success "Installed $package"
+    if sudo pacman -S --noconfirm --needed "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package"
+        return 1
+    fi
 }
 
 # Install package on Termux
@@ -38,8 +43,13 @@ install_termux_package() {
     fi
     
     log_info "Installing $package..."
-    pkg install -y "$package" >/dev/null
-    log_success "Installed $package"
+    if pkg install -y "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package"
+        return 1
+    fi
 }
 
 # Install package using Homebrew
@@ -52,8 +62,13 @@ install_homebrew_package() {
     fi
     
     log_info "Installing $package..."
-    brew install "$package" >/dev/null
-    log_success "Installed $package"
+    if brew install "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package"
+        return 1
+    fi
 }
 
 # Install package using Homebrew (Cask)
@@ -66,8 +81,13 @@ install_homebrew_cask_package() {
     fi
     
     log_info "Installing $package..."
-    brew install "$package" >/dev/null
-    log_success "Installed $package"
+    if brew install "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package"
+        return 1
+    fi
 }
 
 # Install package using npm
@@ -80,8 +100,13 @@ install_npm_package() {
     fi
     
     log_info "Installing $package..."
-    npm install -g "@$package" >/dev/null
-    log_success "Installed $package"
+    if npm install -g "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package"
+        return 1
+    fi
 }
 
 # Initialize Arch Linux packages
@@ -90,6 +115,8 @@ init_arch_packages() {
         log_info "Not an Arch Linux system, skipping Arch packages"
         return 0
     fi
+    
+    local overall_success=true
     
     # Pacman packages
     if ! command_exists pacman; then
@@ -102,8 +129,8 @@ init_arch_packages() {
     local failed_packages=()
     
     {{- range .packages.linux.arch.pacman }}
-    if ! install_pacman_package "{{ . }}"; then
-        failed_packages+=("{{ . }}")
+    if ! install_pacman_package {{ . | quote }}; then
+        failed_packages+=({{ . | quote }})
     fi
     {{- end }}
     
@@ -112,23 +139,30 @@ init_arch_packages() {
         for pkg in "${failed_packages[@]}"; do
             log_warning "  - $pkg"
         done
+        overall_success=false
     fi
     {{- end }}
     
-    # Homebrew packages
+    # Homebrew installation
     if ! command_exists brew; then
         log_info "Installing Homebrew..."
-        install_homebrew
+        if ! install_homebrew; then
+            log_error "Homebrew installation failed"
+            log_warning "Skipping Homebrew packages"
+            overall_success=false
+            # Don't return - continue with other package managers
+        fi
     fi
     
+    # Homebrew packages
     if command_exists brew; then
         {{- if .packages.linux.arch.brew }}
         log_info "Installing Homebrew packages..."
         local failed_packages=()
         
         {{- range .packages.linux.arch.brew }}
-        if ! install_homebrew_package "{{ . }}"; then
-            failed_packages+=("{{ . }}")
+        if ! install_homebrew_package {{ . | quote }}; then
+            failed_packages+=({{ . | quote }})
         fi
         {{- end }}
         
@@ -137,6 +171,7 @@ init_arch_packages() {
             for pkg in "${failed_packages[@]}"; do
                 log_warning "  - $pkg"
             done
+            overall_success=false
         fi
         {{- end }}
         
@@ -145,8 +180,8 @@ init_arch_packages() {
         local failed_packages=()
         
         {{- range .packages.linux.arch.casks }}
-        if ! install_homebrew_cask_package "{{ . }}"; then
-            failed_packages+=("{{ . }}")
+        if ! install_homebrew_cask_package {{ . | quote }}; then
+            failed_packages+=({{ . | quote }})
         fi
         {{- end }}
         
@@ -155,24 +190,31 @@ init_arch_packages() {
             for pkg in "${failed_packages[@]}"; do
                 log_warning "  - $pkg"
             done
+            overall_success=false
         fi
         {{- end }}
     fi
     
-    # NPM packages
+    # NPM installation
     if ! command_exists npm; then
         log_info "Installing npm..."
-        install_npm
+        if ! install_npm; then
+            log_error "npm installation failed"
+            log_warning "Skipping npm packages"
+            overall_success=false
+            # Don't return - continue
+        fi
     fi
     
+    # NPM packages
     if command_exists npm; then
         {{- if .packages.linux.arch.npm }}
         log_info "Installing npm packages..."
         local failed_packages=()
         
         {{- range .packages.linux.arch.npm }}
-        if ! install_npm_package "{{ . }}"; then
-            failed_packages+=("{{ . }}")
+        if ! install_npm_package {{ . | quote }}; then
+            failed_packages+=({{ . | quote }})
         fi
         {{- end }}
         
@@ -181,8 +223,16 @@ init_arch_packages() {
             for pkg in "${failed_packages[@]}"; do
                 log_warning "  - $pkg"
             done
+            overall_success=false
         fi
         {{- end }}
+    fi
+    
+    if [[ "$overall_success" == true ]]; then
+        return 0
+    else
+        log_warning "Some package installations failed"
+        return 1
     fi
 }
 
@@ -199,52 +249,88 @@ init_android_packages() {
     fi
     
     export DEBIAN_FRONTEND=noninteractive
-    termux-setup-storage
-    termux-change-repo
+    
+    # Setup storage and repository
+    log_info "Setting up Termux environment..."
+
+# Check if storage is already set up
+if [[ ! -d "$HOME/storage" ]]; then
+    log_info "Setting up Termux storage (may require user interaction)..."
+    if termux-setup-storage; then
+        log_success "Termux storage configured successfully"
+    else
+        log_warning "Storage setup failed or was cancelled"
+    fi
+else
+    log_success "Termux storage already configured"
+fi
+
+if termux-change-repo 2>/dev/null; then
+    log_success "Termux repository configured"
+else
+    log_warning "termux-change-repo failed (may already be configured)"
+fi
     
     {{- if .packages.android.termux }}
     log_info "Updating pkg repo & upgrading..."
-    pkg update -y >/dev/null
-    pkg upgrade -y >/dev/null
+    if ! pkg update -y >/dev/null 2>&1; then
+        log_error "pkg update failed"
+        return 1
+    fi
+    
+    if ! pkg upgrade -y >/dev/null 2>&1; then
+        log_warning "pkg upgrade had issues (continuing anyway)"
+    fi
 
     log_info "Installing Termux packages..."
     local failed_packages=()
     
     {{- range .packages.android.termux.pkg }}
-    if ! install_termux_package "{{ . }}"; then
-        failed_packages+=("{{ . }}")
+    if ! install_termux_package {{ . | quote }}; then
+        failed_packages+=({{ . | quote }})
     fi
     {{- end }}
 
     log_info "Cleaning pkg..."
-    pkg clean >/dev/null
-    pkg autoclean >/dev/null
+    pkg clean >/dev/null 2>&1 || log_warning "pkg clean had issues"
+    pkg autoclean >/dev/null 2>&1 || log_warning "pkg autoclean had issues"
     
     if [[ ${#failed_packages[@]} -gt 0 ]]; then
         log_warning "Failed to install some Termux packages:"
         for pkg in "${failed_packages[@]}"; do
             log_warning "  - $pkg"
         done
+        return 1
     fi
     {{- else }}
     log_info "No Termux packages defined in configuration"
     {{- end }}
+    
+    return 0
 }
 
 main() {
     log_header "Installing Packages"
     
+    local install_success=true
+    
     # Initialize packages based on platform
     if is_arch; then
-        init_arch_packages
+        if ! init_arch_packages; then
+            log_warning "Arch package installation had some failures"
+            install_success=false
+        fi
     elif is_android; then
-        init_android_packages
+        if ! init_android_packages; then
+            log_warning "Android package installation had some failures"
+            install_success=false
+        fi
     else
         log_warning "Unknown platform, skipping package installation"
         return 0
     fi
     
-    # Handle WSL-specific installation first (WSL can also be Arch-based)
+    # Handle WSL-specific installation (WSL can also be Arch-based)
     if is_wsl; then
         log_info "Detected WSL environment"
         
@@ -253,16 +339,24 @@ main() {
             log_info "WSLU is already installed"
         else
             log_info "Installing WSLU..."
-            if curl -fsSL https://raw.githubusercontent.com/wslutilities/wslu/master/extras/scripts/wslu-install | bash; then
+            if curl -fsSL https://raw.githubusercontent.com/wslutilities/wslu/master/extras/scripts/wslu-install 2>/dev/null | bash; then
                 log_success "WSLU installed successfully"
             else
                 log_error "Failed to install WSLU"
                 log_warning "Continuing despite WSLU failure"
+                install_success=false
             fi
         fi
     fi
 
-    log_success "Package installation completed"
+    if [[ "$install_success" == true ]]; then
+        log_success "Package installation completed successfully"
+        return 0
+    else
+        log_warning "Package installation completed with some failures"
+        log_info "Review the warnings above for details"
+        return 1
+    fi
 }
 
 main "$@"

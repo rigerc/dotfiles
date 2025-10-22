@@ -1,8 +1,8 @@
 #!{{ lookPath "bash" }}
-set -euo pipefail
+set -uo pipefail
 
 # Source common functions
-source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/.common.sh"
+source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/common.sh"
 
 # Configuration
 readonly SSH_PORT="4444"
@@ -46,16 +46,29 @@ validate_sshd_config() {
 # Check if SSH is listening on port
 check_ssh_port() {
     local port="$1"
-    sleep 2  # Give service time to start
+    local max_attempts=10
+    local attempt=0
     
-    if command_exists ss; then
-        ss -tlnp 2>/dev/null | grep -q ":${port}.*LISTEN"
-    elif command_exists netstat; then
-        netstat -tlnp 2>/dev/null | grep -q ":${port}.*LISTEN"
-    else
-        log_warning "Cannot verify port (ss/netstat not found)"
-        return 0
+    # Check if we have the required tools
+    if ! command_exists ss && ! command_exists netstat; then
+        log_warning "Neither ss nor netstat available, cannot verify port"
+        return 0  # Assume success
     fi
+    
+    while [[ $attempt -lt $max_attempts ]]; do
+        if command_exists ss; then
+            if ss -tlnp 2>/dev/null | grep -q ":${port}.*LISTEN"; then
+                return 0
+            fi
+        elif command_exists netstat; then
+            if netstat -tlnp 2>/dev/null | grep -q ":${port}.*LISTEN"; then
+                return 0
+            fi
+        fi
+        sleep 1
+        ((attempt++))
+    done
+    return 1
 }
 
 create_sshd_config() {
@@ -112,7 +125,7 @@ PrintMotd no
 TCPKeepAlive yes
 
 # Subsystem configuration
-Subsystem sftp /usr/lib/openssh/sftp-server
+Subsystem sftp internal-sftp
 SSHD_EOF
     
     sudo chmod 644 "$SSHD_CONFIG"
@@ -200,11 +213,12 @@ configure_sshd() {
 
 # Copy SSH public key to remote WSL instance via Samba
 generate_ssh_key() {
-    local ssh_key="${HOME}/.ssh/id_ed25519.pub"
+    local ssh_key="${HOME}/.ssh/id_ed25519"  # Private key (no .pub)
+    local ssh_pub_key="${ssh_key}.pub"
     log_header "Generating SSH key"
     
     # Generate SSH key if it doesn't exist
-    if [[ ! -f "$ssh_key" ]]; then
+    if [[ ! -f "$ssh_pub_key" ]]; then
         log_info "SSH public key not found, generating new key..."
         
         # Create .ssh directory if needed
@@ -212,7 +226,7 @@ generate_ssh_key() {
         chmod 700 "${HOME}/.ssh"
         
         # Generate ed25519 key without passphrase
-        if ssh-keygen -t ed25519 -f "$ssh_private_key" -N "" -C "${USER}@$(hostname)"; then
+        if ssh-keygen -t ed25519 -f "$ssh_key" -N "" -C "${USER}@$(hostname)"; then
             log_success "SSH key generated: $ssh_key"
         else
             log_error "Failed to generate SSH key"
@@ -224,18 +238,17 @@ generate_ssh_key() {
     
     # Read the public key content
     local pub_key_content
-    pub_key_content=$(cat "$ssh_key")
+    pub_key_content=$(cat "$ssh_pub_key")
     
     log_info "Public key:"
-    echo -e $pub_key_content
+    echo "$pub_key_content"
 }
 
 main() {
     if is_arch; then
         configure_sshd
-        elif is_android; then
-            generate_ssh_key
-        fi
+    elif is_android; then
+        generate_ssh_key
     fi
 }
 main "$@"

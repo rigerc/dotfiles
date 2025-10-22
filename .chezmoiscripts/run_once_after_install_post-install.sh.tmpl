@@ -1,15 +1,16 @@
 #!{{ lookPath "bash" }}
-set -euo pipefail
+set -uo pipefail
 
 # Source common functions
-source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/.common.sh"
+source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/common.sh"
 
 # Configuration
+{{- $windows_user := .windows_user | default "bondg" }}
 readonly TMUX_PLUGIN_PATH="$HOME/.config/tmux/plugins/tpm/bin/install_plugins"
 readonly ALACRITTY_SOURCE="$HOME/.config/alacritty/alacritty.toml"
-readonly ALACRITTY_TARGET="/mnt/c/Users/bondg/appdata/roaming/alacritty/alacritty.toml"
+readonly ALACRITTY_TARGET="/mnt/c/Users/{{ $windows_user }}/appdata/roaming/alacritty/alacritty.toml"
 readonly ALACRITTY_THEMES_SOURCE="$HOME/.config/alacritty/themes"
-readonly ALACRITTY_THEMES_TARGET="/mnt/c/Users/bondg/appdata/roaming/alacritty/themes"
+readonly ALACRITTY_THEMES_TARGET="/mnt/c/Users/{{ $windows_user }}/appdata/roaming/alacritty/themes"
 
 # Set default shell
 set_default_shell() {
@@ -27,6 +28,8 @@ set_default_shell() {
     if ! grep -q "^${shell_path}$" /etc/shells 2>/dev/null; then
         echo "$shell_path" | sudo tee -a /etc/shells >/dev/null
         log_success "Added $shell_name to /etc/shells"
+    else
+        log_success "$shell_name already in /etc/shells"
     fi
     
     # Only set as default shell on Android
@@ -48,15 +51,22 @@ set_default_shell() {
                 return 1
             fi
         else
-            log_info "$shell_name already set as default"
+            log_success "$shell_name already set as default shell"
         fi
     else
-        log_info "$shell_name is available (shell change skipped - only done on Android)"
+        log_success "$shell_name is available (shell change skipped - only done on Android)"
     fi
+    
+    return 0
 }
 
 setup_zsh() {
     log_step "Setting up Zsh as default shell"
+    
+    if ! command_exists zsh; then
+        log_warning "Zsh not installed, skipping"
+        return 0
+    fi
     
     if set_default_shell "zsh"; then
         log_success "Zsh setup completed"
@@ -70,11 +80,16 @@ setup_zsh() {
 setup_fish() {
     log_step "Setting up Fish as default shell"
     
+    if ! command_exists fish; then
+        log_warning "Fish not installed, skipping"
+        return 0
+    fi
+    
     if set_default_shell "fish"; then
-        log_success "fish setup completed"
+        log_success "Fish setup completed"
         return 0
     else
-        log_error "fish setup failed"
+        log_error "Fish setup failed"
         return 1
     fi
 }
@@ -82,11 +97,21 @@ setup_fish() {
 cleanup_lazyvim() {
     log_step "Cleaning up LazyVim"
     
+    # Check if nvim config exists
+    if [[ ! -d "$HOME/.config/nvim" ]]; then
+        log_success "LazyVim not installed, nothing to clean"
+        return 0
+    fi
+    
     if [[ -d "$HOME/.config/nvim/.git" ]]; then
-        rm -rf "$HOME/.config/nvim/.git"
-        log_success "LazyVim .git directory removed"
+        if rm -rf "$HOME/.config/nvim/.git"; then
+            log_success "LazyVim .git directory removed"
+        else
+            log_error "Failed to remove LazyVim .git directory"
+            return 1
+        fi
     else
-        log_info "LazyVim already clean (no .git directory)"
+        log_success "LazyVim already clean (no .git directory)"
     fi
     return 0
 }
@@ -99,6 +124,21 @@ rebuild_fonts() {
         return 0
     fi
     
+    # Check if fonts directory exists and has fonts
+    local fonts_exist=false
+    for font_dir in "$HOME/.local/share/fonts" "$HOME/.fonts" "/usr/share/fonts" "/usr/local/share/fonts"; do
+        if [[ -d "$font_dir" ]] && [[ -n "$(find "$font_dir" -type f 2>/dev/null)" ]]; then
+            fonts_exist=true
+            break
+        fi
+    done
+    
+    if [[ "$fonts_exist" == false ]]; then
+        log_success "No custom fonts found, cache rebuild not needed"
+        return 0
+    fi
+    
+    log_info "Rebuilding font cache..."
     if fc-cache -f -v >/dev/null 2>&1; then
         log_success "Font cache rebuilt"
         return 0
@@ -116,6 +156,13 @@ generate_locales() {
         return 0
     fi
     
+    # Check if locale is already generated
+    if locale -a 2>/dev/null | grep -qi "^en_US.utf8$"; then
+        log_success "en_US.UTF-8 locale already generated"
+        return 0
+    fi
+    
+    log_info "Generating locales..."
     sudo sed -i 's:#en_US.UTF-8 UTF-8:en_US.UTF-8 UTF-8:g' /etc/locale.gen 2>/dev/null || true
     
     if sudo locale-gen >/dev/null 2>&1; then
@@ -130,11 +177,30 @@ generate_locales() {
 install_tmux_plugins() {
     log_step "Installing Tmux plugins"
     
+    # Check if tmux is installed
+    if ! command_exists tmux; then
+        log_warning "Tmux not installed, skipping plugin installation"
+        return 0
+    fi
+    
+    # Check if TPM is installed
     if [[ ! -x "$TMUX_PLUGIN_PATH" ]]; then
         log_warning "Tmux plugin manager not found at $TMUX_PLUGIN_PATH"
         return 0
     fi
     
+    # Check if plugins are already installed
+    local plugin_dir="$HOME/.config/tmux/plugins"
+    if [[ -d "$plugin_dir" ]]; then
+        local plugin_count
+        plugin_count=$(find "$plugin_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
+        if [[ $plugin_count -gt 1 ]]; then
+            log_success "Tmux plugins already installed ($plugin_count plugins found)"
+            return 0
+        fi
+    fi
+    
+    log_info "Installing Tmux plugins..."
     if "$TMUX_PLUGIN_PATH" >/dev/null 2>&1; then
         log_success "Tmux plugins installed"
         return 0
@@ -148,34 +214,67 @@ copy_alacritty_config() {
     log_step "Copying Alacritty configuration"
     
     if ! is_wsl; then
-        log_info "Not running on WSL, skipping Alacritty copy"
+        log_success "Not running on WSL, Alacritty copy not needed"
         return 0
     fi
     
     local success=true
+    local any_copied=false
     
     # Copy alacritty.toml
     if [[ -f "$ALACRITTY_SOURCE" ]]; then
-        if safe_copy "$ALACRITTY_SOURCE" "$ALACRITTY_TARGET"; then
-            log_success "Alacritty config copied"
+        # Check if file already exists and is identical
+        if [[ -f "$ALACRITTY_TARGET" ]] && cmp -s "$ALACRITTY_SOURCE" "$ALACRITTY_TARGET"; then
+            log_success "Alacritty config already up to date"
         else
-            log_warning "Failed to copy Alacritty config"
-            success=false
+            if safe_copy "$ALACRITTY_SOURCE" "$ALACRITTY_TARGET"; then
+                log_success "Alacritty config copied"
+                any_copied=true
+            else
+                log_warning "Failed to copy Alacritty config"
+                success=false
+            fi
         fi
     else
         log_warning "Alacritty config not found at $ALACRITTY_SOURCE"
+        success=false
     fi
     
     # Copy themes directory
     if [[ -d "$ALACRITTY_THEMES_SOURCE" ]]; then
-        if safe_copy "$ALACRITTY_THEMES_SOURCE" "$ALACRITTY_THEMES_TARGET"; then
-            log_success "Alacritty themes copied"
+        # Check if themes directory exists and has content
+        if [[ -d "$ALACRITTY_THEMES_TARGET" ]]; then
+            local source_count target_count
+            source_count=$(find "$ALACRITTY_THEMES_SOURCE" -type f 2>/dev/null | wc -l)
+            target_count=$(find "$ALACRITTY_THEMES_TARGET" -type f 2>/dev/null | wc -l)
+            
+            if [[ $source_count -eq $target_count ]] && [[ $source_count -gt 0 ]]; then
+                log_success "Alacritty themes already up to date ($target_count themes)"
+            else
+                if safe_copy "$ALACRITTY_THEMES_SOURCE" "$ALACRITTY_THEMES_TARGET"; then
+                    log_success "Alacritty themes copied"
+                    any_copied=true
+                else
+                    log_warning "Failed to copy Alacritty themes"
+                    success=false
+                fi
+            fi
         else
-            log_warning "Failed to copy Alacritty themes"
-            success=false
+            if safe_copy "$ALACRITTY_THEMES_SOURCE" "$ALACRITTY_THEMES_TARGET"; then
+                log_success "Alacritty themes copied"
+                any_copied=true
+            else
+                log_warning "Failed to copy Alacritty themes"
+                success=false
+            fi
         fi
     else
         log_warning "Alacritty themes not found at $ALACRITTY_THEMES_SOURCE"
+        success=false
+    fi
+    
+    if [[ "$any_copied" == false ]] && [[ "$success" == true ]]; then
+        log_success "Alacritty configuration already synchronized"
     fi
     
     [[ "$success" == true ]]
