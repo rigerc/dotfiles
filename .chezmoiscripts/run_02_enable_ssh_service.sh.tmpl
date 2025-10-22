@@ -1,8 +1,12 @@
 #!{{ lookPath "bash" }}
 set -uo pipefail
 
-# Source common functions
-source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/00_common.sh"
+# Source shared utilities
+if [[ -z "${CHEZMOI_WORKING_TREE}" ]]; then
+    echo "Error, \$CHEZMOI_WORKING_TREE must be set. Please only run this script via chezmoi"
+    exit 1
+fi
+source "${CHEZMOI_WORKING_TREE}/utils/common.sh"
 
 # Configuration
 readonly SSH_PORT="4444"

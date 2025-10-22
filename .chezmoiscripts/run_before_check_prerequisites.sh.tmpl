@@ -1,0 +1,11 @@
+#!{{ lookPath "bash" }}
+set -uo pipefail
+
+# Check if git is installed
+if ! command -v git >/dev/null 2>&1; then
+    echo -e "${RED}❌ [ERROR]${NC} Prerequisites error: git is not installed or not in PATH" >&2
+    exit 1
+fi
+
+# Prerequisites fulfilled
+echo -e "${GREEN}✅ [SUCCESS]${NC} Prerequisites fulfilled!" >&2
