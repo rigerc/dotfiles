@@ -1,20 +1,44 @@
 #!{{ lookPath "bash" }}
 set -uo pipefail
 
-# -----------------------------------------------------------------------------
-# Color Definitions
-# -----------------------------------------------------------------------------
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[1;33m'
-readonly BLUE='\033[0;34m'
-readonly NC='\033[0m' # No Color
+# Source shared utilities
+if [[ -z "${CHEZMOI_WORKING_TREE}" ]]; then
+    echo "Error, \$CHEZMOI_WORKING_TREE must be set. Please only run this script via chezmoi"
+    exit 1
+fi
+source "${CHEZMOI_WORKING_TREE}/utils/common.sh"
 
 # Check if git is installed
 if ! command -v git >/dev/null 2>&1; then
-    echo -e "${RED}❌ [ERROR]${NC} Prerequisites error: git is not installed or not in PATH" >&2
+    log_warning "git is not installed or not in PATH"
     exit 1
 fi
 
+# Check if gum is installed
+if ! command -v gum >/dev/null 2>&1; then
+    log_warning "gum is not installed. Attempting to install..."
+
+    if is_arch; then
+        log_info "Installing gum via pacman (Arch Linux)..."
+        if install_pacman_package "gum"; then
+            log_success "gum installed successfully"
+        else
+            log_warning "Failed to install gum via pacman, continuing anyway..."
+        fi
+    elif is_android; then
+        log_info "Installing gum via pkg (Termux/Android)..."
+        if install_termux_package "gum"; then
+            log_success "gum installed successfully"
+        else
+            log_warning "Failed to install gum via pkg, continuing anyway..."
+        fi
+    else
+        log_warning "Cannot determine system type or no supported package manager found for gum installation"
+        log_info "Please install gum manually: https://github.com/charmbracelet/gum"
+    fi
+else
+    log_success "gum is already installed"
+fi
+
 # Prerequisites fulfilled
-echo -e "${GREEN}✅ [SUCCESS]${NC} Prerequisites fulfilled!" >&2
+log_success "Prerequisites fulfilled!"

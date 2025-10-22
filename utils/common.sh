@@ -1,4 +1,5 @@
-#!{{ lookPath "bash" }}
+#!/data/data/com.termux/files/usr/bin/bash
+#!/bin/bash
 # =============================================================================
 # .chezmoiscripts/.common.sh
 # Shared utility functions for all chezmoi scripts
@@ -341,6 +342,107 @@ install_npm() {
     log_info "Node.js version: $(node --version)"
 }
 
-# =============================================================================
-# END OF .common.sh
-# =============================================================================
+# Install package on Arch Linux using pacman
+install_pacman_package() {
+    local package="$1"
+    
+    if ! command_exists pacman; then
+        log_error "Not an Arch-based system"
+        return 1
+    fi
+    
+    if pacman -Qi "$package" &>/dev/null; then
+        log_success "$package is already installed"
+        return 0
+    fi
+    
+    log_info "Installing $package..."
+    if sudo pacman -S --noconfirm --needed "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package: $?"
+        return 1
+    fi
+}
+
+# Install package on Termux
+install_termux_package() {
+    local package="$1"
+    
+    if ! command_exists pkg; then
+        log_error "Not a Termux system"
+        return 1
+    fi
+    
+    if pkg list-installed 2>/dev/null | grep -q "^$package/"; then
+        log_success "$package is already installed"
+        return 0
+    fi
+    
+    log_info "Installing $package..."
+    if pkg install -y "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package: $?"
+        return 1
+    fi
+}
+
+# Install package using Homebrew
+install_homebrew_package() {
+    local package="$1"
+    
+    if brew list "$package" &>/dev/null; then
+        log_success "$package is already installed"
+        return 0
+    fi
+    
+    log_info "Installing $package..."
+    if brew install "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package: $?"
+        return 1
+    fi
+}
+
+# Install package using Homebrew (Cask)
+install_homebrew_cask_package() {
+    local package="$1"
+    
+    if brew list "$package" &>/dev/null; then
+        log_success "$package is already installed"
+        return 0
+    fi
+    
+    log_info "Installing $package..."
+    if brew install "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package: $?"
+        return 1
+    fi
+}
+
+# Install package using npm
+install_npm_package() {
+    local package="$1"
+    
+    if npm list -g "$package" &>/dev/null; then
+        log_success "$package is already installed"
+        return 0
+    fi
+    
+    log_info "Installing $package..."
+    if npm install -g "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package: $?"
+        return 1
+    fi
+}
