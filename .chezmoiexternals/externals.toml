@@ -1,7 +1,6 @@
 {{- $arch := .chezmoi.arch -}}
 {{- $os := .chezmoi.os -}}
 
-{{- /* Map Chezmoi architecture names to Oh My Posh naming */ -}}
 {{- if eq $arch "amd64" -}}
 {{-   $arch = "amd64" -}}
 {{- else if eq $arch "arm64" -}}
@@ -10,9 +9,8 @@
 {{-   $arch = "arm" -}}
 {{- end -}}
 
-{{- /* Map OS names */ -}}
 {{- if or (eq $os "darwin") (eq $os "linux") (eq $os "freebsd") -}}
-{{-   /* No change needed - use as-is */ -}}
+
 {{- else if eq $os "android" -}}
 {{-   $os = "linux" -}}
 {{- end -}}
