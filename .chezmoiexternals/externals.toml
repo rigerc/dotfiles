@@ -1,0 +1,65 @@
+{{- $arch := .chezmoi.arch -}}
+{{- $os := .chezmoi.os -}}
+
+{{- /* Map Chezmoi architecture names to Oh My Posh naming */ -}}
+{{- if eq $arch "amd64" -}}
+{{-   $arch = "amd64" -}}
+{{- else if eq $arch "arm64" -}}
+{{-   $arch = "arm64" -}}
+{{- else if hasPrefix "arm" $arch -}}
+{{-   $arch = "arm" -}}
+{{- end -}}
+
+{{- /* Map OS names */ -}}
+{{- if eq $os "darwin" -}}
+{{-   $os = "darwin" -}}
+{{- else if eq $os "linux" -}}
+{{-   $os = "linux" -}}
+{{- else if eq $os "freebsd" -}}
+{{-   $os = "freebsd" -}}
+{{- else if eq $os "android" -}}
+{{-   $os = "linux" -}}
+{{- end -}}
+
+{{- $version := .ohmyposh.version | default "latest" -}}
+{{- $target := printf "%s-%s" $os $arch -}}
+
+# Oh My Posh executable
+[".local/bin/oh-my-posh"]
+    type = "file"
+    url = "https://cdn.ohmyposh.dev/releases/{{ $version }}/posh-{{ $target }}"
+    executable = true
+    refreshPeriod = "168h"  # Check for updates weekly
+
+# Oh My Posh themes
+[".local/share/oh-my-posh/themes"]
+    type = "archive"
+    url = "https://cdn.ohmyposh.dev/releases/latest/themes.zip"
+    exact = true
+    stripComponents = 0
+    refreshPeriod = "168h"  # Check for updates weekly
+
+# Tmux TPM Plugin Manager
+[".config/tmux/plugins/tpm"]
+    type = "git-repo"
+    url = "https://github.com/tmux-plugins/tpm"
+
+# Alacritty themes
+[".config/alacritty/themes"]
+    type = "git-repo"
+    url = "https://github.com/alacritty/alacritty-theme.git"
+
+# Git aliases
+[".config/git/alias"]
+    type = "file"
+    url = "https://raw.githubusercontent.com/GitAlias/gitalias/main/gitalias.txt"
+
+# LazyVim
+[".config/nvim"]
+    type = "git-repo"
+    url = "https://github.com/LazyVim/starter"
+
+# Zinit Zsh Plugin Manager
+[".local/share/zinit"]
+    type = "git-repo"
+    url = "https://github.com/zdharma-continuum/zinit.git"

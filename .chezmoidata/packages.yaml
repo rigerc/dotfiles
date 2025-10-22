@@ -1,71 +1,76 @@
-packages  :
-  taps:
-    - homebrew/bundle
-    - homebrew/services
+packages:
+  linux:
+    arch:
+      yay:
 
-  # Arch Linux packages (pacman)
-  arch_packages:
-    - openssh
-    - net-tools
-    - git
-    - curl
-    - grep
-    - gawk
-    - jq
-    - deno
-    - base-devel
-    - procps-ng 
-    - file
-    - fontconfig
-
-  npm:
-    - musistudio/claude-code-router
-  brews:
-    # Development
-    - node
-    - python
-    - ruby
-    - golang
-    - rust
-
-    # Build tools
-    #- cmake
-    #- make
-
-    # Version control & tools
-    - gh  # GitHub CLI
-    - lazygit
-
-    # Text editors
-    - nano
-    - neovim
-    - micro
-
-    # Utilities
-    - jq  # JSON processor
-    - yq  # YAML processor
-    - ripgrep
-    - fd
-    - fzf
-    - bat
-    - bat-extras
-    - cheat
-    - uv
-    - htop
-    - tlrc
-    - eza
-    - zoxide
-    - fastfetch
-
-    # AI
-    - opencode
-    - mods
-
-    # Shell
-    - zsh
-    - tmux
-    - fish
-    - starship
-
-  casks:
-    - claude-code
+      pacman:
+        - openssh
+        - net-tools
+        - git
+        - curl
+        - grep
+        - gawk
+        - jq
+        - deno
+        - base-devel
+        - procps-ng 
+        - file
+        - fontconfig
+      brew:
+        # Development
+        - node
+        - python
+        - ruby
+        - golang
+        - rust
+        # Build tools
+        #- cmake
+        #- make
+        # Version control & tools
+        - gh  # GitHub CLI
+        - lazygit
+        # Text editors
+        - nano
+        - neovim
+        - micro
+        # Utilities
+        - jq
+        - yq
+        - ripgrep
+        - fd
+        - fzf
+        - bat
+        - bat-extras
+        - cheat
+        - uv
+        - htop
+        - tlrc
+        - eza
+        - zoxide
+        - fastfetch
+        - ggc
+        # AI
+        - opencode
+        - mods
+        # Shell
+        - zsh
+        - tmux
+        - fish
+        - starship
+      casks:
+        - claude-code
+  android:
+    termux:
+      pkg:
+        - termux-tools
+        - gh
+        - curl
+        - wget
+        - git
+        - python
+        - openssh
+        - sudo
+        - fastfetch
+        - zoxide
+        - fish
+        - samba

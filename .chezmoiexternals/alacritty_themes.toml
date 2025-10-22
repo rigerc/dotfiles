@@ -1,3 +1,0 @@
-[".config/alacritty/themes"]
-    type = "git-repo"
-    url = "https://github.com/alacritty/alacritty-theme.git"

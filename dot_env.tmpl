@@ -1,16 +1,9 @@
+{{- if ne .chezmoi.os "android" }}
 export EDITOR="micro"
 export VISUAL="nvim"
-export BROWSER="open"
+export BROWSER="wlsview"
 
 export TERM="xterm-256color"
-
-export LANG="en_US.UTF-8"
-export LC_CTYPE="en_US.UTF-8"
-export LC_ALL="en_US.UTF-8"
-
-export PATH="$HOME/bin:$PATH"
-export PATH="$HOME/.local/bin:$PATH"
-export PATH="$GOPATH:$PATH"
 
 # Go workspace
 export GOPATH="$HOME/.go"
@@ -36,3 +29,12 @@ export OPENROUTER_API_KEY="{{ .OPENROUTER_API_KEY }}"
 export ZAI_API_KEY="{{ .ZAI_API_KEY }}"
 export GITHUB_TOKEN="{{ .GITHUB_TOKEN }}"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
+
+{{ end }}
+export LANG="en_US.UTF-8"
+export LC_CTYPE="en_US.UTF-8"
+export LC_ALL="en_US.UTF-8"
+
+export PATH="$HOME/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="$GOPATH/bin:$PATH"

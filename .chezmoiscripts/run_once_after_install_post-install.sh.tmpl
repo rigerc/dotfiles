@@ -29,13 +29,30 @@ set_default_shell() {
         log_success "Added $shell_name to /etc/shells"
     fi
     
-    # Set as default if not already
-    #if [[ "$SHELL" != "$shell_path" ]]; then
-    #    sudo chsh -s "$shell_path" bondg
-    #    log_success "Set $shell_name as default shell"
-    #else
-    #    log_info "$shell_name already set as default"
-    #fi
+    # Only set as default shell on Android
+    if is_android; then
+        if [[ "$SHELL" != "$shell_path" ]]; then
+            log_info "Changing default shell to $shell_name..."
+            if chsh -s "$shell_path"; then
+                # Verify the change worked
+                local new_shell
+                new_shell=$(getent passwd "$USER" | cut -d: -f7)
+                if [[ "$new_shell" == "$shell_path" ]]; then
+                    log_success "Successfully set $shell_name as default shell"
+                else
+                    log_error "chsh command succeeded but shell was not changed (expected: $shell_path, got: $new_shell)"
+                    return 1
+                fi
+            else
+                log_error "Failed to change default shell to $shell_name"
+                return 1
+            fi
+        else
+            log_info "$shell_name already set as default"
+        fi
+    else
+        log_info "$shell_name is available (shell change skipped - only done on Android)"
+    fi
 }
 
 setup_zsh() {
@@ -177,17 +194,41 @@ main() {
     # Track overall success
     local all_success=true
     
-    # Run all operations
-    local operations=(
-        "setup_zsh"
-        "setup_fish"
-        "cleanup_lazyvim"
-        "rebuild_fonts"
-        "generate_locales"
-        "install_tmux_plugins"
-        "copy_alacritty_config"
-    )
+    # Define operations based on platform
+    local operations=()
     
+    if is_android; then
+        log_info "Detected Android platform"
+        operations=(
+            "setup_fish"
+        )
+    elif is_arch; then
+        log_info "Detected Arch Linux platform"
+        operations=(
+            "setup_zsh"
+            "setup_fish"
+            "cleanup_lazyvim"
+            "rebuild_fonts"
+            "generate_locales"
+            "install_tmux_plugins"
+            "copy_alacritty_config"
+        )
+    else
+        log_warning "Unknown platform, running default operations"
+        operations=(
+            "setup_zsh"
+            "setup_fish"
+            "cleanup_lazyvim"
+            "rebuild_fonts"
+            "generate_locales"
+            "install_tmux_plugins"
+            "copy_alacritty_config"
+        )
+    fi
+    
+    echo ""
+    
+    # Run platform-specific operations
     for operation in "${operations[@]}"; do
         if ! $operation; then
             all_success=false

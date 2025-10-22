@@ -119,7 +119,7 @@ SSHD_EOF
     log_success "SSH configuration created"
 }
 
-main() {
+configure_sshd() {
     log_header "Configuring SSH Service"
     
     # Check for systemd
@@ -198,4 +198,44 @@ main() {
     sudo systemctl status sshd --no-pager --lines=3
 }
 
+# Copy SSH public key to remote WSL instance via Samba
+generate_ssh_key() {
+    local ssh_key="${HOME}/.ssh/id_ed25519.pub"
+    log_header "Generating SSH key"
+    
+    # Generate SSH key if it doesn't exist
+    if [[ ! -f "$ssh_key" ]]; then
+        log_info "SSH public key not found, generating new key..."
+        
+        # Create .ssh directory if needed
+        mkdir -p "${HOME}/.ssh"
+        chmod 700 "${HOME}/.ssh"
+        
+        # Generate ed25519 key without passphrase
+        if ssh-keygen -t ed25519 -f "$ssh_private_key" -N "" -C "${USER}@$(hostname)"; then
+            log_success "SSH key generated: $ssh_key"
+        else
+            log_error "Failed to generate SSH key"
+            return 1
+        fi
+    else
+        log_info "Found SSH public key: $ssh_key"
+    fi
+    
+    # Read the public key content
+    local pub_key_content
+    pub_key_content=$(cat "$ssh_key")
+    
+    log_info "Public key:"
+    echo -e $pub_key_content
+}
+
+main() {
+    if is_arch; then
+        configure_sshd
+        elif is_android; then
+            generate_ssh_key
+        fi
+    fi
+}
 main "$@"

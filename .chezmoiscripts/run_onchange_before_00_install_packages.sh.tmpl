@@ -1,0 +1,268 @@
+#!/bin/bash
+set -euo pipefail
+
+# Source common functions
+source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/.common.sh"
+
+# Install package on Arch Linux using pacman
+install_pacman_package() {
+    local package="$1"
+    
+    if ! command_exists pacman; then
+        log_error "Not an Arch-based system"
+        return 1
+    fi
+    
+    if pacman -Qi "$package" &>/dev/null; then
+        log_info "$package is already installed"
+        return 0
+    fi
+    
+    log_info "Installing $package..."
+    sudo pacman -S --noconfirm --needed "$package" >/dev/null
+    log_success "Installed $package"
+}
+
+# Install package on Termux
+install_termux_package() {
+    local package="$1"
+    
+    if ! command_exists pkg; then
+        log_error "Not a Termux system"
+        return 1
+    fi
+    
+    if pkg list-installed 2>/dev/null | grep -q "^$package/"; then
+        log_info "$package is already installed"
+        return 0
+    fi
+    
+    log_info "Installing $package..."
+    pkg install -y "$package" >/dev/null
+    log_success "Installed $package"
+}
+
+# Install package using Homebrew
+install_homebrew_package() {
+    local package="$1"
+    
+    if brew list "$package" &>/dev/null; then
+        log_info "$package is already installed"
+        return 0
+    fi
+    
+    log_info "Installing $package..."
+    brew install "$package" >/dev/null
+    log_success "Installed $package"
+}
+
+# Install package using Homebrew (Cask)
+install_homebrew_cask_package() {
+    local package="$1"
+    
+    if brew list "$package" &>/dev/null; then
+        log_info "$package is already installed"
+        return 0
+    fi
+    
+    log_info "Installing $package..."
+    brew install "$package" >/dev/null
+    log_success "Installed $package"
+}
+
+# Install package using npm
+install_npm_package() {
+    local package="$1"
+    
+    if npm list -g "$package" &>/dev/null; then
+        log_info "$package is already installed"
+        return 0
+    fi
+    
+    log_info "Installing $package..."
+    npm install -g "\@$package" >/dev/null
+    log_success "Installed $package"
+}
+
+# Initialize Arch Linux packages
+init_arch_packages() {
+    if ! is_arch; then
+        log_info "Not an Arch Linux system, skipping Arch packages"
+        return 0
+    fi
+    
+    # Pacman packages
+    if ! command_exists pacman; then
+        log_error "Pacman not available"
+        return 1
+    fi
+    
+    {{- if .packages.linux.arch.pacman }}
+    log_info "Installing Pacman packages..."
+    local failed_packages=()
+    
+    {{- range .packages.linux.arch.pacman }}
+    if ! install_pacman_package "{{ . }}"; then
+        failed_packages+=("{{ . }}")
+    fi
+    {{- end }}
+    
+    if [[ ${#failed_packages[@]} -gt 0 ]]; then
+        log_warning "Failed to install some Pacman packages:"
+        for pkg in "${failed_packages[@]}"; do
+            log_warning "  - $pkg"
+        done
+    fi
+    {{- end }}
+    
+    # Homebrew packages
+    if ! command_exists brew; then
+        log_info "Installing Homebrew..."
+        install_homebrew
+    fi
+    
+    if command_exists brew; then
+        {{- if .packages.linux.arch.brew }}
+        log_info "Installing Homebrew packages..."
+        local failed_packages=()
+        
+        {{- range .packages.linux.arch.brew }}
+        if ! install_homebrew_package "{{ . }}"; then
+            failed_packages+=("{{ . }}")
+        fi
+        {{- end }}
+        
+        if [[ ${#failed_packages[@]} -gt 0 ]]; then
+            log_warning "Failed to install some Homebrew packages:"
+            for pkg in "${failed_packages[@]}"; do
+                log_warning "  - $pkg"
+            done
+        fi
+        {{- end }}
+        
+        {{- if .packages.linux.arch.casks }}
+        log_info "Installing Homebrew casks..."
+        local failed_packages=()
+        
+        {{- range .packages.linux.arch.casks }}
+        if ! install_homebrew_cask_package "{{ . }}"; then
+            failed_packages+=("{{ . }}")
+        fi
+        {{- end }}
+        
+        if [[ ${#failed_packages[@]} -gt 0 ]]; then
+            log_warning "Failed to install some casks:"
+            for pkg in "${failed_packages[@]}"; do
+                log_warning "  - $pkg"
+            done
+        fi
+        {{- end }}
+    fi
+    
+    # NPM packages
+    if ! command_exists npm; then
+        log_info "Installing npm..."
+        install_npm
+    fi
+    
+    if command_exists npm; then
+        {{- if .packages.linux.arch.npm }}
+        log_info "Installing npm packages..."
+        local failed_packages=()
+        
+        {{- range .packages.linux.arch.npm }}
+        if ! install_npm_package "{{ . }}"; then
+            failed_packages+=("{{ . }}")
+        fi
+        {{- end }}
+        
+        if [[ ${#failed_packages[@]} -gt 0 ]]; then
+            log_warning "Failed to install some npm packages:"
+            for pkg in "${failed_packages[@]}"; do
+                log_warning "  - $pkg"
+            done
+        fi
+        {{- end }}
+    fi
+}
+
+# Initialize Android/Termux packages
+init_android_packages() {
+    if ! is_android; then
+        log_info "Not an Android system, skipping Termux packages"
+        return 0
+    fi
+    
+    if ! command_exists pkg; then
+        log_error "pkg not available"
+        return 1
+    fi
+    
+    export DEBIAN_FRONTEND=noninteractive
+    termux-setup-storage
+    termux-chage-repo
+    {{- if .packages.android.termux }}
+
+    log_info "Updating pkg repo & upgrading..."
+    pkg update -y >/dev/null
+    pkg upgrade -y >/dev/null
+
+    log_info "Installing Termux packages..."
+    local failed_packages=()
+    
+    {{- range .packages.android.termux.pkg }}
+    if ! install_termux_package "{{ . }}"; then
+        failed_packages+=("{{ . }}")
+    fi
+
+    log_info "Cleaning pkg..."
+    pkg clean >/dev/null
+    pkg autoclean >/dev/null
+    {{- end }}
+    
+    if [[ ${#failed_packages[@]} -gt 0 ]]; then
+        log_warning "Failed to install some Termux packages:"
+        for pkg in "${failed_packages[@]}"; do
+            log_warning "  - $pkg"
+        done
+    fi
+    {{- else }}
+    log_info "No Termux packages defined in configuration"
+    {{- end }}
+}
+
+main() {
+    log_header "Installing Packages"
+    
+    # Initialize packages based on platform
+    if is_arch; then
+        init_arch_packages
+    elif is_android; then
+        init_android_packages
+    else
+        log_warning "Unknown platform, skipping package installation"
+        return 0
+    fi
+    
+    # Handle WSL-specific installation first (WSL can also be Arch-based)
+    if is_wsl; then
+        log_info "Detected WSL environment"
+        
+        # Check if wslu is already installed
+        if command_exists wslu; then
+            log_info "WSLU is already installed"
+        else
+            log_info "Installing WSLU..."
+            if curl -fsSL https://raw.githubusercontent.com/wslutilities/wslu/master/extras/scripts/wslu-install | bash; then
+                log_success "WSLU installed successfully"
+            else
+                log_error "Failed to install WSLU"
+                log_warning "Continuing with despite WSLU failure"
+            fi
+        fi
+    fi
+
+    log_success "Package installation completed"
+}
+
+main "$@"
