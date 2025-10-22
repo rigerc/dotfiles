@@ -173,7 +173,7 @@ set functioncolor brightcyan
 set -uo pipefail
 
 # Source common functions
-source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/common.sh"
+source "$HOME/.config/chezmoi/common.sh"
 
 # Configuration
 
@@ -6364,7 +6364,7 @@ Export-ModuleMember -Function Test-SSHDRunning, Get-SSHDPort, Get-WSLIPAddress,
 set -uo pipefail
 
 # Source common functions
-source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/common.sh"
+source "$HOME/.config/chezmoi/common.sh"
 
 # Install package on Arch Linux using pacman
 install_pacman_package() {
@@ -7812,7 +7812,7 @@ zoxide init fish | source
 set -uo pipefail
 
 # Source common functions
-source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/common.sh"
+source "$HOME/.config/chezmoi/common.sh"
 
 # Configuration
 readonly SSH_PORT="4444"

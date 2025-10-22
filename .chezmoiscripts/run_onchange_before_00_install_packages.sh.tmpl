@@ -2,7 +2,7 @@
 set -uo pipefail
 
 # Source common functions
-source "{{ .chezmoi.sourceDir }}/.chezmoiscripts/common.sh"
+source "$HOME/.config/chezmoi/common.sh"
 
 # Install package on Arch Linux using pacman
 install_pacman_package() {
