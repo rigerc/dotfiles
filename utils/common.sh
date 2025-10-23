@@ -735,5 +735,4 @@ bw_login() {
             unset BW_CLIENTSECRET
             return 1
         fi
-    fi
 }
