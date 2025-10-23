@@ -421,12 +421,12 @@ install_pacman_package() {
         return 1
     fi
 
-    if pacman -Qi "$package" &>/dev/null; then
+    # Faster check: use -Q (query) directly without extra output
+    if pacman -Q "$package" >/dev/null 2>&1; then
         log_success "$package is already installed"
         return 0
     fi
 
-    #log_info "Installing $package..."
     if sudo pacman -S --noconfirm --needed "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
@@ -445,12 +445,12 @@ install_termux_package() {
         return 1
     fi
 
-    if pkg list-installed 2>/dev/null | grep -q "^$package/"; then
+    # Faster check: use dpkg directly (Termux uses dpkg underneath)
+    if dpkg -s "$package" >/dev/null 2>&1; then
         log_success "$package is already installed"
         return 0
     fi
 
-    #log_info "Installing $package..."
     if pkg install -y "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
@@ -464,12 +464,12 @@ install_termux_package() {
 install_homebrew_package() {
     local package="$1"
 
-    if brew list "$package" &>/dev/null; then
+    # Faster check: use brew list with package name directly
+    if brew list --formula "$package" >/dev/null 2>&1; then
         log_success "$package is already installed"
         return 0
     fi
 
-    #log_info "Installing $package..."
     if brew install "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
@@ -483,13 +483,13 @@ install_homebrew_package() {
 install_homebrew_cask_package() {
     local package="$1"
 
-    if brew list "$package" &>/dev/null; then
+    # Faster check: use brew list with cask flag
+    if brew list --cask "$package" >/dev/null 2>&1; then
         log_success "$package is already installed"
         return 0
     fi
 
-    #log_info "Installing $package..."
-    if brew install "$package" >/dev/null 2>&1; then
+    if brew install --cask "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
     else
@@ -502,12 +502,12 @@ install_homebrew_cask_package() {
 install_npm_package() {
     local package="$1"
 
-    if npm list -g "$package" &>/dev/null; then
+    # Faster check: use npm list with specific package and depth 0
+    if npm list -g --depth=0 "$package" >/dev/null 2>&1; then
         log_success "$package is already installed"
         return 0
     fi
 
-    #log_info "Installing $package..."
     if npm install -g "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
@@ -546,7 +546,8 @@ is_macos() {
 install_system_package() {
     local package="$1"
 
-    if command_exists "$package"; then
+    # Fast command check first
+    if command -v "$package" >/dev/null 2>&1; then
         log_success "$package is already installed"
         return 0
     fi
@@ -561,6 +562,12 @@ install_system_package() {
     elif is_macos && command_exists brew; then
         install_homebrew_package "$package"
     elif is_debian; then
+        # Fast check for Debian systems using dpkg
+        if dpkg -s "$package" >/dev/null 2>&1; then
+            log_success "$package is already installed"
+            return 0
+        fi
+        
         if needs_sudo; then
             sudo apt-get update >/dev/null 2>&1
             sudo apt-get install -y "$package" >/dev/null 2>&1
@@ -569,12 +576,24 @@ install_system_package() {
             apt-get install -y "$package" >/dev/null 2>&1
         fi
     elif command_exists dnf; then
+        # Fast check for dnf systems
+        if rpm -q "$package" >/dev/null 2>&1; then
+            log_success "$package is already installed"
+            return 0
+        fi
+        
         if needs_sudo; then
             sudo dnf install -y "$package" >/dev/null 2>&1
         else
             dnf install -y "$package" >/dev/null 2>&1
         fi
     elif command_exists yum; then
+        # Fast check for yum systems
+        if rpm -q "$package" >/dev/null 2>&1; then
+            log_success "$package is already installed"
+            return 0
+        fi
+        
         if needs_sudo; then
             sudo yum install -y "$package" >/dev/null 2>&1
         else
@@ -588,7 +607,7 @@ install_system_package() {
     fi
 
     # Check if installation was successful
-    if command_exists "$package"; then
+    if command -v "$package" >/dev/null 2>&1; then
         log_success "$package installed successfully"
         return 0
     else
