@@ -686,3 +686,54 @@ install_system_package() {
         return 1
     fi
 }
+
+bw_login() {
+    log_info "Logging in to BitWarden"
+        # Check if already logged in
+        if bw unlock --check &>/dev/null; then
+            log_success "Already logged in to Bitwarden"
+            return 0
+        fi
+        
+        # Set client ID
+        export BW_CLIENTID="user.e4878fd7-8be5-4510-b457-ac6a00a44fff"
+        
+        # Prompt for client secret using gum if available, otherwise read
+        if gum_available; then
+            BW_CLIENTSECRET=$(gum input --password --placeholder "Enter Bitwarden client secret")
+            if [[ -z "$BW_CLIENTSECRET" ]]; then
+                log_error "Client secret is required"
+                return 1
+            fi
+        else
+            echo -n "Enter Bitwarden client secret: "
+            read -s BW_CLIENTSECRET
+            echo
+            if [[ -z "$BW_CLIENTSECRET" ]]; then
+                log_error "Client secret is required"
+                return 1
+            fi
+        fi
+        export BW_CLIENTSECRET
+        
+        # Login with API key
+        log_info "Logging in to Bitwarden..."
+        if bw login --apikey >/dev/null 2>&1; then
+            log_success "Login successful!"
+            
+            # Sync after successful login
+            log_info "Syncing vault..."
+            if bw sync >/dev/null 2>&1; then
+                log_success "Sync completed successfully"
+            else
+                log_warning "Sync failed"
+                unset BW_CLIENTSECRET
+                return 1
+            fi
+        else
+            log_error "Login failed"
+            unset BW_CLIENTSECRET
+            return 1
+        fi
+    fi
+}
