@@ -38,7 +38,6 @@ if ! command -v gum >/dev/null 2>&1; then
     if ! install_package "gum"; then
         log_warning "gum installation failed, but continuing..."
     fi
-else
 fi
 
 # Check if git is installed
@@ -46,7 +45,6 @@ if ! command -v git >/dev/null 2>&1; then
     if ! install_package "git"; then
         log_warning "git installation failed, but continuing..."
     fi
-else
 fi
 
 # Check if bitwarden-cli is installed
@@ -54,7 +52,6 @@ if ! command -v bw >/dev/null 2>&1; then
     if ! install_package "bitwarden-cli"; then
         log_warning "bitwarden-cli installation failed, but continuing..."
     fi
-else
 fi
 
 # Prerequisites fulfilled
