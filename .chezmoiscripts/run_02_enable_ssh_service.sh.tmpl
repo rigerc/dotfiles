@@ -184,9 +184,7 @@ configure_sshd() {
     if check_ssh_port "$SSH_PORT"; then
         log_success "SSH is already running on port $SSH_PORT"
         log_header "SSH Service Configuration Completed"
-        echo ""
-        sudo systemctl status sshd --no-pager --lines=3
-        return 1
+        return 0
     fi
 
     # Backup existing configuration
@@ -255,8 +253,6 @@ configure_sshd() {
     fi
     
     log_header "SSH Service Configuration Completed"
-    echo ""
-    sudo systemctl status sshd --no-pager --lines=3
 }
 
 # Copy SSH public key to remote WSL instance via Samba
