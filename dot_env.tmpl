@@ -26,14 +26,13 @@ export BAT_THEME="GitHub"
 
 # TOKENS
 {{- if (hasKey . "tokens") }}
-{{- range $k, $v := .tokens -}} export {{ $k }}={{ $v }} {{- end }}
+{{- range $k, $v := .tokens -}} export {{ $k }}={{ $v }} {{ end }}
 {{- end }}
-
-export OPENROUTER_API_KEY="{{ .OPENROUTER_API_KEY }}"
-export ZAI_API_KEY="{{ .ZAI_API_KEY }}"
-export GITHUB_TOKEN="{{ .GITHUB_TOKEN }}"
-export GEMINI_API_KEY="{{ .GEMINI_API_KEY }}"
-export MILVUS_TOKEN="{{ .MILVUS_TOKEN }}"
+#export OPENROUTER_API_KEY="{{ .OPENROUTER_API_KEY }}"
+#export ZAI_API_KEY="{{ .ZAI_API_KEY }}"
+#export GITHUB_TOKEN="{{ .GITHUB_TOKEN }}"
+#export GEMINI_API_KEY="{{ .GEMINI_API_KEY }}"
+#export MILVUS_TOKEN="{{ .MILVUS_TOKEN }}"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
 
 {{- end }}
