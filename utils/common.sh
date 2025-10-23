@@ -14,47 +14,103 @@ readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
 readonly YELLOW='\033[1;33m'
 readonly BLUE='\033[0;34m'
+readonly BOLD='\033[1m'
 readonly NC='\033[0m' # No Color
 
 _log() {
     local level="$1" color="$2" emoji="$3" label="$4"; shift 4
     local msg="$*"
 
+    # compute some layout helpers (no new functions)
+    local cols
+    cols="$(tput cols 2>/dev/null || echo 80)"
+    # prepare a sanitized message (trim leading/trailing newlines)
+    msg="${msg//$'\n'/ }"
+    # compute content width
+    local content="${emoji} ${label}: ${msg}"
+    local content_len=${#content}
+    # ensure a minimum box width and leave some margin
+    local max_width=$((cols - 4))
+    local box_width=$(( content_len + 4 ))
+    if [ "$box_width" -gt "$max_width" ]; then
+        box_width="$max_width"
+    fi
+    [ "$box_width" -lt 20 ] && box_width=20
+
     if gum_available; then
+        # Prefer consistent styling via gum when available.
         case "$level" in
-            step)   gum style --border double  --foreground "$color" "$emoji $msg" >&2 ;;
-            header) gum style --border rounded --foreground "$color" "$emoji $msg" >&2 ;;
-            *)      gum style --foreground "$color" "$emoji [$label]" "$msg" >&2 ;;
-        esac
-    else
-        case "$level" in
-            info)    echo -e "${BLUE}${emoji} [${label}]${NC} $msg" >&2 ;;
-            success) echo -e "${GREEN}${emoji} [${label}]${NC} $msg" >&2 ;;
-            warning) echo -e "${YELLOW}${emoji} [${label}]${NC} $msg" >&2 ;;
-            error)   echo -e "${RED}${emoji} [${label}]${NC} $msg" >&2 ;;
             step)
-                echo -e "${YELLOW}┌───────────────────────────────────────────────┐${NC}" >&2
-                echo -e "${YELLOW}│ ${emoji}  $msg${NC}" >&2
-                echo -e "${YELLOW}└───────────────────────────────────────────────┘${NC}" >&2
+                # compact, highlighted block for steps
+                gum style \
+                    --border double \
+                    --border-foreground "$color" \
+                    --foreground "$color" \
+                    --align left \
+                    --padding "0 1" \
+                    "${emoji} ${msg}" >&2
                 ;;
             header)
-                echo -e "${GREEN}╔═══════════════════════════════════════════════╗${NC}" >&2
-                echo -e "${GREEN}║ ${emoji}  $msg${NC}" >&2
-                echo -e "${GREEN}╚═══════════════════════════════════════════════╝${NC}" >&2
+                # header centered and more prominent
+                gum style \
+                    --border rounded \
+                    --border-foreground "$color" \
+                    --foreground "$color" \
+                    --align left \
+                    --padding "0 2" \
+                    "${emoji} ${msg}" >&2
+                ;;
+            *)
+                # single-line prefixed messages for other levels
+                gum style \
+                    --foreground "$color" \
+                    --align left \
+                    --padding "0 1" \
+                    "${emoji} [${label}] ${msg}" >&2
+                ;;
+        esac
+    else
+        # Fallback to plain-ANSI with improved, adaptive boxes
+        case "$level" in
+            info)
+                echo -e "${BLUE}${emoji} [${label}]${NC} ${msg}" >&2
+                ;;
+            success)
+                echo -e "${GREEN}${emoji} [${label}]${NC} ${msg}" >&2
+                ;;
+            warning)
+                echo -e "${YELLOW}${emoji} [${label}]${NC} ${msg}" >&2
+                ;;
+            error)
+                echo -e "${RED}${emoji} [${label}]${NC} ${msg}" >&2
+                ;;
+            step)
+                # top border
+                printf "%s\n" "$(printf '┌%*s┐' "$((box_width-2))" '' | tr ' ' '─')" >&2
+                # content line (left-aligned, padded)
+                printf "│ %b%*s%b │\n" "${YELLOW}${emoji} " "$((box_width - 4 - ${#emoji} ))" "${msg}" "${NC}" >&2
+                # bottom border
+                printf "%s\n" "$(printf '└%*s┘' "$((box_width-2))" '' | tr ' ' '─')" >&2
+                ;;
+            header)
+                # prominent green header box centered-ish
+                printf "%s\n" "$(printf '╔%*s╗' "$((box_width-2))" '' | tr ' ' '═')" >&2
+                printf "║ %b%*s%b ║\n" "${GREEN}${emoji} " "$((box_width - 4 - ${#emoji} ))" "${msg}" "${NC}" >&2
+                printf "%s\n" "$(printf '╚%*s╝' "$((box_width-2))" '' | tr ' ' '═')" >&2
                 ;;
         esac
     fi
 }
 
 # -----------------------------------------------------------------------------
-# Public Logging API
+# Public Logging API (unchanged signatures)
 # -----------------------------------------------------------------------------
-log_info()    { _log info    12 "ℹ️  " "INFO"    "$@"; }
-log_success() { _log success 10 "✅  " "SUCCESS" "$@"; }
-log_warning() { _log warning 11 "⚠️  " "WARNING" "$@"; }
-log_error()   { _log error   9  "❌  " "ERROR"   "$@"; }
-log_step()    { _log step    11 "🧩  " "STEP"    "$@"; }
-log_header()  { _log header  10 "🚀  " "HEADER"  "$@"; }
+log_info()    { _log info    12 "ℹ️"  "INFO"    "$@"; }
+log_success() { _log success 10 "✅"  "SUCCESS" "$@"; }
+log_warning() { _log warning 11 "⚠️"  "WARNING" "$@"; }
+log_error()   { _log error   9  "❌"  "ERROR"   "$@"; }
+log_step()    { _log step    11 "🧩"  "STEP"    "$@"; }
+log_header()  { _log header  10 "🚀"  "HEADER"  "$@"; }
 
 # -----------------------------------------------------------------------------
 # Error Handling
