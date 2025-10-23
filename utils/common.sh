@@ -516,3 +516,83 @@ install_npm_package() {
         return 1
     fi
 }
+
+# Check if running with elevated privileges
+is_root() {
+    [[ "$EUID" -eq 0 ]] || [[ -n "$SUDO_USER" ]]
+}
+
+# Check if sudo is available and we need it
+needs_sudo() {
+    ! is_root && command_exists sudo
+}
+
+# Check if running on Debian/Ubuntu-based system
+is_debian() {
+    command_exists apt-get
+}
+
+# Check if running on RHEL/CentOS/Fedora-based system
+is_rhel() {
+    command_exists yum || command_exists dnf
+}
+
+# Check if running on macOS
+is_macos() {
+    [[ "$(uname)" == "Darwin" ]]
+}
+
+# Install package using system package manager
+install_system_package() {
+    local package="$1"
+
+    if command_exists "$package"; then
+        log_success "$package is already installed"
+        return 0
+    fi
+
+    log_info "Installing $package using system package manager..."
+
+    # Try different package managers in order of preference
+    if is_arch; then
+        install_pacman_package "$package"
+    elif is_android; then
+        install_termux_package "$package"
+    elif is_macos && command_exists brew; then
+        install_homebrew_package "$package"
+    elif is_debian; then
+        if needs_sudo; then
+            sudo apt-get update >/dev/null 2>&1
+            sudo apt-get install -y "$package" >/dev/null 2>&1
+        else
+            apt-get update >/dev/null 2>&1
+            apt-get install -y "$package" >/dev/null 2>&1
+        fi
+    elif command_exists dnf; then
+        if needs_sudo; then
+            sudo dnf install -y "$package" >/dev/null 2>&1
+        else
+            dnf install -y "$package" >/dev/null 2>&1
+        fi
+    elif command_exists yum; then
+        if needs_sudo; then
+            sudo yum install -y "$package" >/dev/null 2>&1
+        else
+            yum install -y "$package" >/dev/null 2>&1
+        fi
+    elif command_exists brew; then
+        brew install "$package" >/dev/null 2>&1
+    else
+        log_error "No supported package manager found"
+        return 1
+    fi
+
+    # Check if installation was successful
+    if command_exists "$package"; then
+        log_success "$package installed successfully"
+        return 0
+    else
+        log_error "Failed to install $package"
+        return 1
+    fi
+}
