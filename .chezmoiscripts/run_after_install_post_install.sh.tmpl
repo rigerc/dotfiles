@@ -29,25 +29,25 @@ set_default_shell() {
     shell_path=$(command -v "$shell_name")
     
     # Add to /etc/shells if needed
-    if ! grep -q "^${shell_path}$" /etc/shells 2>/dev/null; then
-        echo "$shell_path" | sudo tee -a /etc/shells >/dev/null
-        log_success "Added $shell_name to /etc/shells"
-    else
-        log_success "$shell_name already in /etc/shells"
-    fi
+    #if ! grep -q "^${shell_path}$" /etc/shells 2>/dev/null; then
+    #    echo "$shell_path" | sudo tee -a /etc/shells >/dev/null
+    #    log_success "Added $shell_name to /etc/shells"
+    #else
+    #    log_success "$shell_name already in /etc/shells"
+    #fi
     
     # Only set as default shell on Android
     if is_android; then
         if [[ "$SHELL" != "$shell_path" ]]; then
             log_info "Changing default shell to $shell_name..."
-            if chsh -s "$shell_path"; then
+            if chsh -s "$shell_name"; then
                 # Verify the change worked
                 local new_shell
-                new_shell=$(getent passwd "$USER" | cut -d: -f7)
-                if [[ "$new_shell" == "$shell_path" ]]; then
+                new_shell=$SHELL
+                if [[ "$new_shell" == "$shell_name" ]]; then
                     log_success "Successfully set $shell_name as default shell"
                 else
-                    log_error "chsh command succeeded but shell was not changed (expected: $shell_path, got: $new_shell)"
+                    log_error "chsh command succeeded but shell was not changed (expected: $shell_name, got: $new_shell)"
                     return 1
                 fi
             else

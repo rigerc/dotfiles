@@ -72,5 +72,7 @@ packages:
         - sudo
         - fastfetch
         - zoxide
+        - fzf
+        - bat
         - fish
         - samba

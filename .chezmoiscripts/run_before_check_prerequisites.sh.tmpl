@@ -8,23 +8,23 @@ if [[ -z "${CHEZMOI_WORKING_TREE}" ]]; then
 fi
 source "${CHEZMOI_WORKING_TREE}/utils/common.sh"
 
+log_header "Checking prerequisites"
+
 # Check if gum is installed
 if ! command -v gum >/dev/null 2>&1; then
     log_warning "gum is not installed. Attempting to install..."
 
     if is_arch; then
-        log_info "Installing gum via pacman (Arch Linux)..."
         if install_pacman_package "gum"; then
-            log_success "gum installed successfully"
+            #log_success "gum installed successfully"
         else
-            log_warning "Failed to install gum via pacman, continuing anyway..."
+            #log_warning "Failed to install gum via pacman, continuing anyway..."
         fi
     elif is_android; then
-        log_info "Installing gum via pkg (Termux/Android)..."
         if install_termux_package "gum"; then
-            log_success "gum installed successfully"
+            #log_success "gum installed successfully"
         else
-            log_warning "Failed to install gum via pkg, continuing anyway..."
+            #log_warning "Failed to install gum via pkg, continuing anyway..."
         fi
     else
         log_warning "Cannot determine system type or no supported package manager found for gum installation"
@@ -39,21 +39,18 @@ if ! command -v git >/dev/null 2>&1; then
     log_warning "git is not installed. Attempting to install..."
 
     if is_arch; then
-        log_info "Installing git via pacman (Arch Linux)..."
         if install_pacman_package "git"; then
-            log_success "git installed successfully"
+            #log_success "git installed successfully"
         else
-            log_warning "Failed to install git via pacman, continuing anyway..."
+            #log_warning "Failed to install git via pacman, continuing anyway..."
         fi
     elif is_android; then
-        log_info "Installing git via pkg (Termux/Android)..."
         if install_termux_package "git"; then
-            log_success "git installed successfully"
+            #log_success "git installed successfully"
         else
-            log_warning "Failed to install git via pkg, continuing anyway..."
+            #log_warning "Failed to install git via pkg, continuing anyway..."
         fi
     else
-        log_info "Installing git via system package manager..."
         if command_exists apt-get; then
             sudo apt-get update >/dev/null 2>&1
             if sudo apt-get install -y git >/dev/null 2>&1; then
