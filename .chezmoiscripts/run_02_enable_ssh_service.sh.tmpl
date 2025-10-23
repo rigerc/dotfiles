@@ -240,7 +240,7 @@ generate_ssh_key() {
         chmod 700 "${HOME}/.ssh"
         
         # Generate ed25519 key without passphrase
-        if ssh-keygen -t ed25519 -f "$ssh_key" -N "" -C "$(whoami)@$(hostname)"; then
+        if ssh-keygen -t ed25519 -f "$ssh_key" -N "" -C "$(whoami)@$(hostname)" >dev/null; then
             log_success "SSH key generated: $ssh_key"
         else
             log_error "Failed to generate SSH key"

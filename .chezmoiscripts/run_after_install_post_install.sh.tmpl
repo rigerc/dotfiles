@@ -40,20 +40,7 @@ set_default_shell() {
     if is_android; then
         if [[ "$SHELL" != "$shell_path" ]]; then
             log_info "Changing default shell to $shell_name..."
-            if chsh -s "$shell_name"; then
-                # Verify the change worked
-                local new_shell
-                new_shell=$SHELL
-                if [[ "$new_shell" == "$shell_name" ]]; then
-                    log_success "Successfully set $shell_name as default shell"
-                else
-                    log_error "chsh command succeeded but shell was not changed (expected: $shell_name, got: $new_shell)"
-                    return 1
-                fi
-            else
-                log_error "Failed to change default shell to $shell_name"
-                return 1
-            fi
+            chsh -s "$shell_name"
         else
             log_success "$shell_name already set as default shell"
         fi

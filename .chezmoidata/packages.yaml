@@ -74,5 +74,6 @@ packages:
         - zoxide
         - fzf
         - bat
+        - eza
         - fish
         - samba

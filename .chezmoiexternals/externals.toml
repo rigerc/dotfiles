@@ -36,11 +36,13 @@
 # Tmux TPM Plugin Manager
 [".config/tmux/plugins/tpm"]
     type = "git-repo"
+    clone.args = "-q"
     url = "https://github.com/tmux-plugins/tpm"
 
 # Alacritty themes
 [".config/alacritty/themes"]
     type = "git-repo"
+    clone.args = "-q"
     url = "https://github.com/alacritty/alacritty-theme.git"
 
 # Git aliases
@@ -51,9 +53,11 @@
 # LazyVim
 [".config/nvim"]
     type = "git-repo"
+    clone.args = "-q"
     url = "https://github.com/LazyVim/starter"
 
 # Zinit Zsh Plugin Manager
 [".local/share/zinit"]
     type = "git-repo"
+    clone.args = "-q"
     url = "https://github.com/zdharma-continuum/zinit.git"

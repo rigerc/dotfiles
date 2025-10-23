@@ -10,15 +10,6 @@ source "${CHEZMOI_WORKING_TREE}/utils/common.sh"
 
 log_header "Checking prerequisites"
 
-# Check if gum is installed
-if ! command -v gum >/dev/null 2>&1; then
-    if ! install_package "gum"; then
-        log_warning "gum installation failed, but continuing..."
-    fi
-else
-    log_success "gum is already installed"
-fi
-
 # Install package using available package manager
 install_package() {
     local package="$1"
@@ -41,6 +32,15 @@ install_package() {
 
     return 1
 }
+
+# Check if gum is installed
+if ! command -v gum >/dev/null 2>&1; then
+    if ! install_package "gum"; then
+        log_warning "gum installation failed, but continuing..."
+    fi
+else
+    log_success "gum is already installed"
+fi
 
 # Check if git is installed
 if ! command -v git >/dev/null 2>&1; then
