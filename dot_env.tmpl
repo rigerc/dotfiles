@@ -25,9 +25,7 @@ export BAT_CONFIG_PATH="$HOME/.config/bat/config"
 export BAT_THEME="GitHub"
 
 # TOKENS
-{{- if (hasKey . "tokens") }}
-{{- range $k, $v := .tokens -}} export {{ $k }}={{ $v }} {{ end }}
-{{- end }}
+{{ template "tokens.env" . }}
 #export OPENROUTER_API_KEY="{{ .OPENROUTER_API_KEY }}"
 #export ZAI_API_KEY="{{ .ZAI_API_KEY }}"
 #export GITHUB_TOKEN="{{ .GITHUB_TOKEN }}"
