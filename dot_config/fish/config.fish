@@ -1,6 +1,6 @@
 if status is-interactive
     #set fish_tmux_autostart true
-    fastfetch
+    atuin init fish | source
 end
 
 # env

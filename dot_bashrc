@@ -15,6 +15,6 @@ PS1='[\u@\h \W]\$ '
 # Auto-start tmux on login
 if command -v tmux >/dev/null 2>&1; then
   if [[ -z "$TMUX" ]] && [[ $- == *i* ]]; then
-    tmux attach -t main || tmux new -s main
+    exec tmux
   fi
 fi

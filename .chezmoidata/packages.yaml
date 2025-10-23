@@ -3,6 +3,7 @@ packages:
     arch:
       npm:
         - "@musistudio/claude-code-router"
+      go:
       pacman:
         - openssh
         - net-tools
@@ -49,6 +50,7 @@ packages:
         - zoxide
         - fastfetch
         - ggc
+        - ranger
         # AI
         - opencode
         - mods
@@ -57,6 +59,7 @@ packages:
         - tmux
         - fish
         - starship
+        - atuin
       casks:
         - claude-code
   android:
@@ -77,3 +80,4 @@ packages:
         - eza
         - fish
         - samba
+        - atuin

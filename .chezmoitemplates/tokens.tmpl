@@ -1,0 +1,23 @@
+{{- $folderIdOutput := output "bw" "list" "folders" | fromJson -}}
+{{- $folderId := "" -}}
+[tokens]
+{{- range $folderIdOutput -}}
+  {{- if eq .name "Tokens" -}}
+    {{- $folderId = .id -}}
+  {{- end -}}
+{{- end -}}
+{{- if $folderId -}}
+  {{- $tokensOutput := output "bw" "list" "items" "--folderid" $folderId | fromJson -}}
+  {{- range $tokensOutput -}}
+    {{- $tokenName := .name -}}
+    {{- $fieldValue := "" -}}
+    {{- if .fields -}}
+      {{- range .fields -}}
+        {{- if eq .name "Token" -}}
+          {{- $fieldValue = .value -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end }}
+    {{ $tokenName }} = {{ $fieldValue | quote }}
+  {{- end -}}
+{{- end -}}
