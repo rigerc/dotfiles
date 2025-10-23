@@ -14,7 +14,7 @@
     github_user = {{ $github_user | quote }}
     github_email = {{ $github_email | quote }}
 
-{{ template "tokens" . }}
+{{ template "tokens.tmpl" . }}
 
 [bitwarden]
     unlock = "auto"
