@@ -26,11 +26,6 @@ export BAT_THEME="GitHub"
 
 # TOKENS
 {{ template "tokens.env" . }}
-#export OPENROUTER_API_KEY="{{ .OPENROUTER_API_KEY }}"
-#export ZAI_API_KEY="{{ .ZAI_API_KEY }}"
-#export GITHUB_TOKEN="{{ .GITHUB_TOKEN }}"
-#export GEMINI_API_KEY="{{ .GEMINI_API_KEY }}"
-#export MILVUS_TOKEN="{{ .MILVUS_TOKEN }}"
 export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
 
 {{- end }}

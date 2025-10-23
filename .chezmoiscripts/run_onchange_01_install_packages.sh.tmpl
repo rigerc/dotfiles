@@ -1,0 +1,366 @@
+#!{{ lookPath "bash" }}
+set -uo pipefail
+
+# Source shared utilities
+if [[ -z "${CHEZMOI_WORKING_TREE}" ]]; then
+    echo "Error, \$CHEZMOI_WORKING_TREE must be set. Please only run this script via chezmoi"
+    exit 1
+fi
+source "${CHEZMOI_WORKING_TREE}/utils/common.sh"
+
+# Initialize Arch Linux packages
+init_arch_packages() {
+    if ! is_arch; then
+        log_info "Not an Arch Linux system, skipping Arch packages"
+        return 0
+    fi
+    
+    local overall_success=true
+    
+    # Pacman packages
+    if ! command_exists pacman; then
+        log_error "Pacman not available"
+        return 1
+    fi
+    
+    {{- if .packages.linux.arch.pacman }}
+    log_info "Checking Pacman packages..."
+    
+    # Collect all packages into an array for batch checking
+    local all_packages=(
+        {{- range .packages.linux.arch.pacman }}
+        {{ . | quote }}
+        {{- end }}
+    )
+    
+    # Batch check which packages are missing - MUCH FASTER
+    local missing_packages=()
+    while IFS= read -r pkg; do
+        [[ -n "$pkg" ]] && missing_packages+=("$pkg")
+    done < <(get_missing_pacman_packages all_packages)
+    
+    # Report already installed packages
+    local installed_count=$((${#all_packages[@]} - ${#missing_packages[@]}))
+    if [[ $installed_count -gt 0 ]]; then
+        log_success "$installed_count Pacman package(s) already installed"
+    fi
+    
+    # Install only missing packages
+    if [[ ${#missing_packages[@]} -gt 0 ]]; then
+        log_info "Installing ${#missing_packages[@]} Pacman package(s)..."
+        local failed_packages=()
+        
+        for pkg in "${missing_packages[@]}"; do
+            if ! install_pacman_package "$pkg"; then
+                failed_packages+=("$pkg")
+            fi
+        done
+        
+        if [[ ${#failed_packages[@]} -gt 0 ]]; then
+            log_warning "Failed to install some Pacman packages:"
+            for pkg in "${failed_packages[@]}"; do
+                log_warning "  - $pkg"
+            done
+            overall_success=false
+        fi
+    fi
+    {{- end }}
+    
+    # Homebrew installation
+    if ! command_exists brew; then
+        log_info "Installing Homebrew..."
+        if ! install_homebrew; then
+            log_error "Homebrew installation failed"
+            log_warning "Skipping Homebrew packages"
+            overall_success=false
+            # Don't return - continue with other package managers
+        fi
+    fi
+    
+    # Homebrew packages
+    if command_exists brew; then
+        {{- if .packages.linux.arch.brew }}
+        log_info "Checking Homebrew packages..."
+        
+        # Collect all packages for batch checking
+        local brew_packages=(
+            {{- range .packages.linux.arch.brew }}
+            {{ . | quote }}
+            {{- end }}
+        )
+        
+        # Batch check missing packages
+        local missing_brew=()
+        while IFS= read -r pkg; do
+            [[ -n "$pkg" ]] && missing_brew+=("$pkg")
+        done < <(get_missing_homebrew_packages brew_packages)
+        
+        local installed_count=$((${#brew_packages[@]} - ${#missing_brew[@]}))
+        if [[ $installed_count -gt 0 ]]; then
+            log_success "$installed_count Homebrew package(s) already installed"
+        fi
+        
+        if [[ ${#missing_brew[@]} -gt 0 ]]; then
+            log_info "Installing ${#missing_brew[@]} Homebrew package(s)..."
+            local failed_packages=()
+            
+            for pkg in "${missing_brew[@]}"; do
+                if ! install_homebrew_package "$pkg"; then
+                    failed_packages+=("$pkg")
+                fi
+            done
+            
+            if [[ ${#failed_packages[@]} -gt 0 ]]; then
+                log_warning "Failed to install some Homebrew packages:"
+                for pkg in "${failed_packages[@]}"; do
+                    log_warning "  - $pkg"
+                done
+                overall_success=false
+            fi
+        fi
+        {{- end }}
+        
+        {{- if .packages.linux.arch.casks }}
+        log_info "Checking Homebrew casks..."
+        
+        local cask_packages=(
+            {{- range .packages.linux.arch.casks }}
+            {{ . | quote }}
+            {{- end }}
+        )
+        
+        local missing_casks=()
+        while IFS= read -r pkg; do
+            [[ -n "$pkg" ]] && missing_casks+=("$pkg")
+        done < <(get_missing_homebrew_casks cask_packages)
+        
+        local installed_count=$((${#cask_packages[@]} - ${#missing_casks[@]}))
+        if [[ $installed_count -gt 0 ]]; then
+            log_success "$installed_count cask(s) already installed"
+        fi
+        
+        if [[ ${#missing_casks[@]} -gt 0 ]]; then
+            log_info "Installing ${#missing_casks[@]} cask(s)..."
+            local failed_packages=()
+            
+            for pkg in "${missing_casks[@]}"; do
+                if ! install_homebrew_cask_package "$pkg"; then
+                    failed_packages+=("$pkg")
+                fi
+            done
+            
+            if [[ ${#failed_packages[@]} -gt 0 ]]; then
+                log_warning "Failed to install some casks:"
+                for pkg in "${failed_packages[@]}"; do
+                    log_warning "  - $pkg"
+                done
+                overall_success=false
+            fi
+        fi
+        {{- end }}
+    fi
+    
+    # NPM installation
+    if ! command_exists npm; then
+        log_info "Installing npm..."
+        if ! install_npm; then
+            log_error "npm installation failed"
+            log_warning "Skipping npm packages"
+            overall_success=false
+            # Don't return - continue
+        fi
+    fi
+    
+    # NPM packages
+    if command_exists npm; then
+        {{- if .packages.linux.arch.npm }}
+        log_info "Checking npm packages..."
+        
+        local npm_packages=(
+            {{- range .packages.linux.arch.npm }}
+            {{ . | quote }}
+            {{- end }}
+        )
+        
+        local missing_npm=()
+        while IFS= read -r pkg; do
+            [[ -n "$pkg" ]] && missing_npm+=("$pkg")
+        done < <(get_missing_npm_packages npm_packages)
+        
+        local installed_count=$((${#npm_packages[@]} - ${#missing_npm[@]}))
+        if [[ $installed_count -gt 0 ]]; then
+            log_success "$installed_count npm package(s) already installed"
+        fi
+        
+        if [[ ${#missing_npm[@]} -gt 0 ]]; then
+            log_info "Installing ${#missing_npm[@]} npm package(s)..."
+            local failed_packages=()
+            
+            for pkg in "${missing_npm[@]}"; do
+                if ! install_npm_package "$pkg"; then
+                    failed_packages+=("$pkg")
+                fi
+            done
+            
+            if [[ ${#failed_packages[@]} -gt 0 ]]; then
+                log_warning "Failed to install some npm packages:"
+                for pkg in "${failed_packages[@]}"; do
+                    log_warning "  - $pkg"
+                done
+                overall_success=false
+            fi
+        fi
+        {{- end }}
+    fi
+    
+    if [[ "$overall_success" == true ]]; then
+        return 0
+    else
+        log_warning "Some package installations failed"
+        return 1
+    fi
+}
+
+# Initialize Android/Termux packages
+init_android_packages() {
+    if ! is_android; then
+        log_info "Not an Android system, skipping Termux packages"
+        return 0
+    fi
+    
+    if ! command_exists pkg; then
+        log_error "pkg not available"
+        return 1
+    fi
+    
+    export DEBIAN_FRONTEND=noninteractive
+    
+    # Setup storage and repository
+    log_info "Setting up Termux environment..."
+
+    # Check if storage is already set up
+    if [[ ! -d "$HOME/storage" ]]; then
+        log_info "Setting up Termux storage (may require user interaction)..."
+        if termux-setup-storage; then
+            log_success "Termux storage configured successfully"
+        else
+            log_warning "Storage setup failed or was cancelled"
+        fi
+    else
+        log_success "Termux storage already configured"
+    fi
+    
+    {{- if .packages.android.termux }}
+    log_info "Upgrading packages..."
+    
+    if ! yes | pkg upgrade -y >/dev/null; then
+        log_warning "pkg upgrade had issues (continuing anyway)"
+    fi
+
+    log_info "Checking Termux packages..."
+    
+    # Collect all packages for batch checking
+    local termux_packages=(
+        {{- range .packages.android.termux.pkg }}
+        {{ . | quote }}
+        {{- end }}
+    )
+    
+    # Batch check which packages are missing - MUCH FASTER
+    local missing_packages=()
+    while IFS= read -r pkg; do
+        [[ -n "$pkg" ]] && missing_packages+=("$pkg")
+    done < <(get_missing_termux_packages termux_packages)
+    
+    # Report already installed packages
+    local installed_count=$((${#termux_packages[@]} - ${#missing_packages[@]}))
+    if [[ $installed_count -gt 0 ]]; then
+        log_success "$installed_count Termux package(s) already installed"
+    fi
+    
+    # Install only missing packages
+    if [[ ${#missing_packages[@]} -gt 0 ]]; then
+        log_info "Installing ${#missing_packages[@]} Termux package(s)..."
+        local failed_packages=()
+        
+        for pkg in "${missing_packages[@]}"; do
+            if ! install_termux_package "$pkg"; then
+                failed_packages+=("$pkg")
+            fi
+        done
+        
+        if [[ ${#failed_packages[@]} -gt 0 ]]; then
+            log_warning "Failed to install some Termux packages:"
+            for pkg in "${failed_packages[@]}"; do
+                log_warning "  - $pkg"
+            done
+            
+            log_info "Cleaning pkg..."
+            pkg clean >/dev/null 2>&1 || log_warning "pkg clean had issues"
+            pkg autoclean >/dev/null 2>&1 || log_warning "pkg autoclean had issues"
+            
+            return 1
+        fi
+    fi
+
+    log_info "Cleaning pkg..."
+    pkg clean >/dev/null 2>&1 || log_warning "pkg clean had issues"
+    pkg autoclean >/dev/null 2>&1 || log_warning "pkg autoclean had issues"
+    {{- else }}
+    log_info "No Termux packages defined in configuration"
+    {{- end }}
+    
+    return 0
+}
+
+main() {
+    log_header "Installing Packages"
+    
+    local install_success=true
+    
+    # Initialize packages based on platform
+    if is_arch; then
+        if ! init_arch_packages; then
+            log_warning "Arch package installation had some failures"
+            install_success=false
+        fi
+    elif is_android; then
+        if ! init_android_packages; then
+            log_warning "Android package installation had some failures"
+            install_success=false
+        fi
+    else
+        log_warning "Unknown platform, skipping package installation"
+        return 0
+    fi
+    
+    # Handle WSL-specific installation (WSL can also be Arch-based)
+    if is_wsl; then
+        log_info "Detected WSL environment"
+        
+        # Check if wslu is already installed
+        if command_exists wslfetch; then
+            log_success "WSLU is already installed"
+        else
+            log_info "Installing WSLU..."
+            if curl -fsSL https://raw.githubusercontent.com/wslutilities/wslu/master/extras/scripts/wslu-install 2>/dev/null | bash; then
+                log_success "WSLU installed successfully"
+            else
+                log_error "Failed to install WSLU"
+                log_warning "Continuing despite WSLU failure"
+                install_success=false
+            fi
+        fi
+    fi
+
+    if [[ "$install_success" == true ]]; then
+        log_success "Package installation completed successfully"
+        return 0
+    else
+        log_warning "Package installation completed with some failures"
+        log_info "Review the warnings above for details"
+        return 0
+    fi
+}
+
+main "$@"

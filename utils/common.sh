@@ -1,8 +1,9 @@
 #!/data/data/com.termux/files/usr/bin/bash
 #!/bin/bash
 # =============================================================================
-# .chezmoiscripts/.common.sh
+# utils/common.sh
 # Shared utility functions for all chezmoi scripts
+# Optimized for faster package installation
 # =============================================================================
 
 set -uo pipefail
@@ -412,6 +413,29 @@ install_npm() {
     log_info "Node.js version: $(node --version)"
 }
 
+# -----------------------------------------------------------------------------
+# Optimized Package Installation Functions
+# -----------------------------------------------------------------------------
+
+# Batch check installed pacman packages
+# Returns a list of packages that are NOT installed
+get_missing_pacman_packages() {
+    local -n packages=$1
+    local missing=()
+    
+    # Single pacman query for all packages - MUCH faster
+    local all_installed
+    all_installed=$(pacman -Qq 2>/dev/null)
+    
+    for pkg in "${packages[@]}"; do
+        if ! grep -qx "$pkg" <<<"$all_installed"; then
+            missing+=("$pkg")
+        fi
+    done
+    
+    printf '%s\n' "${missing[@]}"
+}
+
 # Install package on Arch Linux using pacman
 install_pacman_package() {
     local package="$1"
@@ -421,19 +445,32 @@ install_pacman_package() {
         return 1
     fi
 
-    # Faster check: use -Q (query) directly without extra output
-    if pacman -Q "$package" >/dev/null 2>&1; then
-        log_success "$package is already installed"
-        return 0
-    fi
-
+    # This function now expects the caller to have already checked if installed
     if sudo pacman -S --noconfirm --needed "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
     else
-        log_error "Failed to install $package: $?"
+        log_error "Failed to install $package"
         return 1
     fi
+}
+
+# Batch check installed Termux packages
+get_missing_termux_packages() {
+    local -n packages=$1
+    local missing=()
+    
+    # Single dpkg query for all packages - MUCH faster
+    local all_installed
+    all_installed=$(dpkg -l 2>/dev/null | awk '/^ii/ {print $2}' | cut -d: -f1)
+    
+    for pkg in "${packages[@]}"; do
+        if ! grep -qx "$pkg" <<<"$all_installed"; then
+            missing+=("$pkg")
+        fi
+    done
+    
+    printf '%s\n' "${missing[@]}"
 }
 
 # Install package on Termux
@@ -445,74 +482,108 @@ install_termux_package() {
         return 1
     fi
 
-    # Faster check: use dpkg directly (Termux uses dpkg underneath)
-    if dpkg -s "$package" >/dev/null 2>&1; then
-        log_success "$package is already installed"
-        return 0
-    fi
-
+    # This function now expects the caller to have already checked if installed
     if pkg install -y "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
     else
-        log_error "Failed to install $package: $?"
+        log_error "Failed to install $package"
         return 1
     fi
+}
+
+# Batch check installed Homebrew packages
+get_missing_homebrew_packages() {
+    local -n packages=$1
+    local missing=()
+    
+    # Single brew list command - MUCH faster
+    local all_installed
+    all_installed=$(brew list --formula -1 2>/dev/null)
+    
+    for pkg in "${packages[@]}"; do
+        if ! grep -qx "$pkg" <<<"$all_installed"; then
+            missing+=("$pkg")
+        fi
+    done
+    
+    printf '%s\n' "${missing[@]}"
 }
 
 # Install package using Homebrew
 install_homebrew_package() {
     local package="$1"
 
-    # Faster check: use brew list with package name directly
-    if brew list --formula "$package" >/dev/null 2>&1; then
-        log_success "$package is already installed"
-        return 0
-    fi
-
+    # This function now expects the caller to have already checked if installed
     if brew install "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
     else
-        log_error "Failed to install $package: $?"
+        log_error "Failed to install $package"
         return 1
     fi
+}
+
+# Batch check installed Homebrew casks
+get_missing_homebrew_casks() {
+    local -n packages=$1
+    local missing=()
+    
+    # Single brew list command for casks
+    local all_installed
+    all_installed=$(brew list --cask -1 2>/dev/null)
+    
+    for pkg in "${packages[@]}"; do
+        if ! grep -qx "$pkg" <<<"$all_installed"; then
+            missing+=("$pkg")
+        fi
+    done
+    
+    printf '%s\n' "${missing[@]}"
 }
 
 # Install package using Homebrew (Cask)
 install_homebrew_cask_package() {
     local package="$1"
 
-    # Faster check: use brew list with cask flag
-    if brew list --cask "$package" >/dev/null 2>&1; then
-        log_success "$package is already installed"
-        return 0
-    fi
-
+    # This function now expects the caller to have already checked if installed
     if brew install --cask "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
     else
-        log_error "Failed to install $package: $?"
+        log_error "Failed to install $package"
         return 1
     fi
+}
+
+# Batch check installed npm packages
+get_missing_npm_packages() {
+    local -n packages=$1
+    local missing=()
+    
+    # Single npm list command - MUCH faster
+    local all_installed
+    all_installed=$(npm list -g --depth=0 --parseable 2>/dev/null | xargs -n1 basename)
+    
+    for pkg in "${packages[@]}"; do
+        if ! grep -qx "$pkg" <<<"$all_installed"; then
+            missing+=("$pkg")
+        fi
+    done
+    
+    printf '%s\n' "${missing[@]}"
 }
 
 # Install package using npm
 install_npm_package() {
     local package="$1"
 
-    # Faster check: use npm list with specific package and depth 0
-    if npm list -g --depth=0 "$package" >/dev/null 2>&1; then
-        log_success "$package is already installed"
-        return 0
-    fi
-
+    # This function now expects the caller to have already checked if installed
     if npm install -g "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
     else
-        log_error "Failed to install $package: $?"
+        log_error "Failed to install $package"
         return 1
     fi
 }

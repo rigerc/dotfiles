@@ -152,7 +152,7 @@ configure_sshd() {
         log_header "SSH Service Configuration Completed"
         echo ""
         sudo systemctl status sshd --no-pager --lines=3
-        return 0
+        return 1
     fi
 
     # Backup existing configuration
