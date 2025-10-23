@@ -49,12 +49,12 @@ _log() {
 # -----------------------------------------------------------------------------
 # Public Logging API
 # -----------------------------------------------------------------------------
-log_info()    { _log info    12 "ℹ️" "INFO"    "$@"; }
-log_success() { _log success 10 "✅" "SUCCESS" "$@"; }
-log_warning() { _log warning 11 "⚠️" "WARNING" "$@"; }
-log_error()   { _log error   9  "❌" "ERROR"   "$@"; }
-log_step()    { _log step    11 "🧩" "STEP"    "$@"; }
-log_header()  { _log header  10 "🚀" "HEADER"  "$@"; }
+log_info()    { _log info    12 "ℹ️  " "INFO"    "$@"; }
+log_success() { _log success 10 "✅  " "SUCCESS" "$@"; }
+log_warning() { _log warning 11 "⚠️  " "WARNING" "$@"; }
+log_error()   { _log error   9  "❌  " "ERROR"   "$@"; }
+log_step()    { _log step    11 "🧩  " "STEP"    "$@"; }
+log_header()  { _log header  10 "🚀  " "HEADER"  "$@"; }
 
 # -----------------------------------------------------------------------------
 # Error Handling
@@ -370,7 +370,7 @@ install_pacman_package() {
         return 0
     fi
 
-    log_info "Installing $package..."
+    #log_info "Installing $package..."
     if sudo pacman -S --noconfirm --needed "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
@@ -394,7 +394,7 @@ install_termux_package() {
         return 0
     fi
 
-    log_info "Installing $package..."
+    #log_info "Installing $package..."
     if pkg install -y "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
@@ -413,7 +413,7 @@ install_homebrew_package() {
         return 0
     fi
 
-    log_info "Installing $package..."
+    #log_info "Installing $package..."
     if brew install "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
@@ -432,7 +432,7 @@ install_homebrew_cask_package() {
         return 0
     fi
 
-    log_info "Installing $package..."
+    #log_info "Installing $package..."
     if brew install "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
@@ -451,7 +451,7 @@ install_npm_package() {
         return 0
     fi
 
-    log_info "Installing $package..."
+    #log_info "Installing $package..."
     if npm install -g "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0

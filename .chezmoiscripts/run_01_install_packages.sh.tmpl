@@ -167,7 +167,7 @@ init_android_packages() {
     {{- if .packages.android.termux }}
     log_info "Ugrading packages..."
     
-    if ! pkg upgrade -y; then
+    if ! yes | pkg upgrade -y >/dev/null; then
         log_warning "pkg upgrade had issues (continuing anyway)"
     fi
 
