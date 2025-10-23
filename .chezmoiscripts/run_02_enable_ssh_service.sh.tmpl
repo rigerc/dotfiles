@@ -53,25 +53,59 @@ check_ssh_port() {
     local max_attempts=10
     local attempt=0
     
+    # Validate port number
+    if [[ ! "$port" =~ ^[0-9]+$ ]] || [[ "$port" -lt 1 ]] || [[ "$port" -gt 65535 ]]; then
+        log_error "Invalid port number: $port"
+        return 1
+    fi
+    
     # Check if we have the required tools
     if ! command_exists ss && ! command_exists netstat; then
         log_warning "Neither ss nor netstat available, cannot verify port"
         return 0  # Assume success
     fi
     
+    log_info "Checking if SSH is listening on port $port..."
+    
     while [[ $attempt -lt $max_attempts ]]; do
+        local found=0
+        
         if command_exists ss; then
-            if ss -tlnp 2>/dev/null | grep -q ":${port}.*LISTEN"; then
-                return 0
+            # More precise pattern matching
+            if ss -tlnp 2>&1 | grep -E "LISTEN.*:${port}\s+" >/dev/null; then
+                found=1
+            else
+                # Debug: show what we found (optional, remove in production)
+                log_info "Attempt $((attempt + 1))/$max_attempts - Not found yet"
+                # Uncomment to see actual ss output:
+                # ss -tlnp 2>&1 | grep ":${port}" || true
             fi
         elif command_exists netstat; then
-            if netstat -tlnp 2>/dev/null | grep -q ":${port}.*LISTEN"; then
-                return 0
+            # More precise pattern matching
+            if netstat -tlnp 2>&1 | grep -E "LISTEN.*:${port}\s+" >/dev/null; then
+                found=1
+            else
+                log_info "Attempt $((attempt + 1))/$max_attempts - Not found yet"
             fi
         fi
+        
+        if [[ $found -eq 1 ]]; then
+            log_info "SSH is listening on port $port"
+            return 0
+        fi
+        
         sleep 1
         ((attempt++))
     done
+    
+    log_error "SSH failed to listen on port $port after $max_attempts attempts"
+    
+    # Final diagnostic check
+    if command_exists ss; then
+        log_error "Current listening ports:"
+        ss -tlnp 2>&1 | grep LISTEN || log_error "No listening ports found"
+    fi
+    
     return 1
 }
 
