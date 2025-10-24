@@ -695,6 +695,18 @@ install_system_package() {
     fi
 }
 
+save_bw_session() {
+    if [[ -z "$BW_SESSION" ]]; then
+        log_error "BW_SESSION is not set"
+        return 1
+    fi
+    
+    echo "export BW_SESSION='$BW_SESSION'" > "$HOME/.bw_session"
+    chmod 600 "$HOME/.bw_session"
+    log_success "Session saved to ~/.bw_session"
+    return 0
+}
+
 bw_login() {
     log_info "Logging in to BitWarden"
 
@@ -728,11 +740,11 @@ bw_login() {
                 return 1
             fi
             export BW_SESSION
-            echo "export BW_SESSION='$BW_SESSION'" > "$HOME/.bw_session"
+            save_bw_session
             log_success "Vault unlocked successfully"
         else
             log_success "Vault already unlocked"
-            echo "export BW_SESSION='$BW_SESSION'" > "$HOME/.bw_session"
+            save_bw_session
         fi
         return 0
     fi
@@ -768,14 +780,6 @@ bw_login() {
         return 1
     fi
 
-    # Sync after successful login
-    log_info "Syncing vault..."
-    if bw sync >/dev/null 2>&1; then
-        log_success "Sync completed successfully"
-    else
-        log_warning "Sync failed, continuing anyway..."
-    fi
-
     # Unlock the vault
     log_info "Unlocking vault..."
     if gum_available; then
@@ -798,9 +802,19 @@ bw_login() {
         unset BW_CLIENTSECRET
         return 1
     fi
+
     export BW_SESSION
-    echo "export BW_SESSION='$BW_SESSION'" > "$HOME/.bw_session"
+    save_bw_session
     log_success "Vault unlocked successfully"
     unset BW_CLIENTSECRET
+
+    # Sync after successful login
+    log_info "Syncing vault..."
+    if bw sync >/dev/null 2>&1; then
+        log_success "Sync completed successfully"
+    else
+        log_warning "Sync failed, continuing anyway..."
+    fi
+
     return 0
 }
