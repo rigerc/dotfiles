@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/bash
 #!/bin/bash
 
-source ".local/share/chezmoi/utils/common.sh"
+#source ".local/share/chezmoi/utils/common.sh"
 
 echo "Current directory contents:" 
 ls -la .
