@@ -692,38 +692,40 @@ delete_bw_session() {
 }
 
 # -----------------------------------------------------------------------------
-# Bitwarden Login Function
+# Bitwarden Helper Functions
 # -----------------------------------------------------------------------------
-bw_login() {
-    # Set Bitwarden client ID
-    export BW_CLIENTID="{{ .bitwarden_clientid | quote }}"
-
-    log_debug "Starting Bitwarden login process..."
-    log_debug "Using client ID: ${BW_CLIENTID:0:8}..." # Show only first 8 chars for security
-
-    # Check if already logged in
+bw_check_login_status() {
     log_debug "Checking current login status..."
+
     local login_check_output
     if login_check_output=$(bw login --check --raw 2>&1); then
         log_debug "Login check successful: ${login_check_output}"
-        log_debug "Already logged into Bitwarden"
+        return 0
     else
         log_debug "Login check failed: ${login_check_output}"
-        log_info "Not logged into Bitwarden, attempting login..."
+        return 1
+    fi
+}
 
-        # Login using API key
-        log_debug "Attempting API key login..."
-        local login_output
-        if ! login_output=$(bw login --apikey --raw); then
-            log_error "Bitwarden login failed: ${login_output}"
-            return 1
-        fi
+bw_perform_login() {
+    log_info "Not logged into Bitwarden, attempting login..."
 
-        log_debug "Login command output: ${login_output}"
-        log_success "Bitwarden login successful"
+    # Login using API key
+    log_debug "Attempting API key login..."
+    local login_output
+    if ! login_output=$(bw login --apikey --raw); then
+        log_error "Bitwarden login failed: ${login_output}"
+        return 1
     fi
 
-    # Verify login status before proceeding
+    log_debug "Login command output: ${login_output}"
+    log_success "Bitwarden login successful"
+    return 0
+}
+
+bw_verify_session() {
+    local session="$1"
+
     log_debug "Verifying login status after login attempt..."
     if ! bw login --check --raw >/dev/null 2>&1; then
         log_error "Login verification failed - not properly authenticated"
@@ -731,7 +733,31 @@ bw_login() {
     fi
     log_debug "Login verification successful"
 
-    # Unlock and export session
+    log_debug "Verifying session validity..."
+    local session_test
+    if session_test=$(bw status --raw 2>&1); then
+        # Parse JSON to check status field
+        local status
+        status=$(echo "$session_test" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+        log_debug "Session test successful: ${session_test}"
+        log_debug "Parsed status: ${status}"
+
+        if [ "$status" = "unlocked" ]; then
+            log_success "Bitwarden vault unlocked and session verified"
+            return 0
+        else
+            log_error "Session verification failed - status is: ${status} (expected: unlocked)"
+            log_error "Exported BW_SESSION may be invalid"
+            return 1
+        fi
+    else
+        log_error "Session verification failed: ${session_test}"
+        log_error "Exported BW_SESSION may be invalid"
+        return 1
+    fi
+}
+
+bw_unlock_vault() {
     log_debug "Unlocking Bitwarden vault..."
     local session
     session=$(bw unlock --raw)
@@ -761,49 +787,96 @@ bw_login() {
     export BW_SESSION="$session"
     log_debug "BW_SESSION exported successfully (length: ${#session} chars, starts with: ${session:0:8}...)"
 
-    # Verify the session works
-    log_debug "Verifying session validity..."
-    local session_test
-    if session_test=$(bw status --raw 2>&1); then
-        # Parse JSON to check status field
-        local status
-        status=$(echo "$session_test" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
-        log_debug "Session test successful: ${session_test}"
-        log_debug "Parsed status: ${status}"
+    # Return the session for further processing
+    echo "$session"
+    return 0
+}
 
-        if [ "$status" = "unlocked" ]; then
-            log_success "Bitwarden vault unlocked and session verified"
-
-            # Save the verified session to file
-            if save_bw_session "$session"; then
-                log_debug "Session saved successfully"
-            else
-                log_warning "Failed to save session to file, but continuing with in-memory session"
-            fi
-        else
-            log_error "Session verification failed - status is: ${status} (expected: unlocked)"
-            log_error "Exported BW_SESSION may be invalid"
-            return 1
-        fi
-    else
-        log_error "Session verification failed: ${session_test}"
-        log_error "Exported BW_SESSION may be invalid"
-        return 1
-    fi
-
-    # Sync vault
+bw_sync_vault() {
     log_debug "Syncing Bitwarden vault..."
     local sync_output
     if ! sync_output=$(bw sync 2>&1); then
         log_warning "Bitwarden sync failed (continuing anyway): ${sync_output}"
+        return 1
     else
         log_debug "Sync output: ${sync_output}"
         log_success "Bitwarden vault synced"
+        return 0
     fi
+}
+
+# -----------------------------------------------------------------------------
+# Bitwarden Login Function
+# -----------------------------------------------------------------------------
+bw_login() {
+    # Set Bitwarden client ID
+    export BW_CLIENTID="{{ .bitwarden_clientid | quote }}"
+
+    log_debug "Starting Bitwarden login process..."
+    log_debug "Using client ID: ${BW_CLIENTID:0:8}..." # Show only first 8 chars for security
+
+    # Try to source existing session file first
+    local session_file="$HOME/.bw_session"
+    if [[ -f "$session_file" ]]; then
+        log_debug "Found existing session file: $session_file"
+        log_debug "Sourcing session file..."
+
+        if source "$session_file"; then
+            log_debug "Session file sourced successfully"
+            log_debug "BW_SESSION length: ${#BW_SESSION:-0} chars"
+
+            # Verify if the sourced session is valid and vault is unlocked
+            if [[ -n "$BW_SESSION" ]] && bw_verify_session "$BW_SESSION"; then
+                log_success "Using existing valid session from file"
+                # Sync vault and return
+                bw_sync_vault
+                return 0
+            else
+                log_debug "Existing session is invalid or expired, proceeding with fresh login"
+                # Clear invalid session
+                unset BW_SESSION
+            fi
+        else
+            log_warning "Failed to source session file: $session_file"
+        fi
+    else
+        log_debug "No existing session file found: $session_file"
+    fi
+
+    # Check if already logged in
+    if bw_check_login_status; then
+        log_debug "Already logged into Bitwarden"
+    else
+        # Perform login
+        if ! bw_perform_login; then
+            return 1
+        fi
+    fi
+
+    # Unlock vault and get session
+    local session
+    if ! session=$(bw_unlock_vault); then
+        return 1
+    fi
+
+    # Verify the session
+    if ! bw_verify_session "$session"; then
+        return 1
+    fi
+
+    # Save the verified session to file
+    if save_bw_session "$session"; then
+        log_debug "Session saved successfully"
+    else
+        log_warning "Failed to save session to file, but continuing with in-memory session"
+    fi
+
+    # Sync vault
+    bw_sync_vault
 
     # Final verification
     log_debug "Performing final verification..."
-    if bw login --check --raw >/dev/null 2>&1 && [ -n "$BW_SESSION" ]; then
+    if bw_check_login_status && [[ -n "$BW_SESSION" ]]; then
         log_success "Bitwarden login process completed successfully"
         log_debug "Final status: logged in, session active (${#BW_SESSION} chars)"
         return 0
