@@ -14,6 +14,8 @@
     github_user = {{ $github_user | quote }}
     github_email = {{ $github_email | quote }}
     bitwarden_clientid = "user.e4878fd7-8be5-4510-b457-ac6a00a44fff"
+[scriptEnv]
+    BW_SESSION = {{ env "BW_SESSION" | quote }}
 {{- end }}
 
 #[hooks.read-source-state.pre]
