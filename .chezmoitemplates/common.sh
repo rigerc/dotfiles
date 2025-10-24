@@ -882,6 +882,12 @@ bw_login() {
         return 0
     else
         log_error "Final verification failed"
-        return 1
+        # In debug mode, return 0 instead of 1 on failure
+        if [ "$DEBUG" = "true" ]; then
+            log_debug "Debug mode: returning 0 instead of 1 on final verification failure"
+            return 0
+        else
+            return 1
+        fi
     fi
 }
