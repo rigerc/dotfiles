@@ -61,7 +61,7 @@ if command_exists bw; then
         # Store BW_SESSION in chezmoi config for template access
         if [[ -n "${BW_SESSION:-}" ]]; then
             log_info "Storing BW_SESSION for chezmoi templates..."
-            chezmoi state set --bucket=config BW_SESSION "$BW_SESSION" 2>/dev/null
+            chezmoi state set --bucket=config BW_SESSION "$BW_SESSION"
         fi
     fi
 fi
