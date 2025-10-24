@@ -735,7 +735,7 @@ bw_verify_session() {
 
     log_debug "Verifying session validity..."
     local session_test
-    if session_test=$(bw status --raw 2>&1); then
+    if session_test=$(BW_SESSION="$session" bw status --raw 2>&1); then
         # Parse JSON to check status field
         local status
         status=$(echo "$session_test" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
@@ -785,7 +785,7 @@ bw_unlock_vault() {
     fi
 
     export BW_SESSION="$session"
-    log_debug "BW_SESSION exported successfully (length: ${#session} chars, starts with: ${session:0:8}...)"
+    log_debug "BW_SESSION exported successfully (length: ${#BW_SESSION} chars, starts with: ${BW_SESSION:0:8}...)"
 
     # Return the session for further processing
     echo "$session"
