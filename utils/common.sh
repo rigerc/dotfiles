@@ -709,11 +709,12 @@ bw_login() {
                 return 1
             fi
             
-            export BW_SESSION=$(bw unlock --raw "$MASTER_PASSWORD")
+            BW_SESSION=$(bw unlock --raw "$MASTER_PASSWORD")
             if [[ -z "$BW_SESSION" ]]; then
                 log_error "Failed to unlock vault"
                 return 1
             fi
+            export BW_SESSION
             log_success "Vault unlocked successfully"
         else
             log_success "Vault already unlocked"
@@ -776,12 +777,13 @@ bw_login() {
         return 1
     fi
     
-    export BW_SESSION=$(bw unlock --raw "$MASTER_PASSWORD")
+    BW_SESSION=$(bw unlock --raw "$MASTER_PASSWORD")
     if [[ -z "$BW_SESSION" ]]; then
         log_error "Failed to unlock vault"
         unset BW_CLIENTSECRET
         return 1
     fi
+    export BW_SESSION
     
     log_success "Vault unlocked successfully"
     unset BW_CLIENTSECRET
