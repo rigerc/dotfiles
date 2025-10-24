@@ -16,7 +16,7 @@
 {{- end }}
 
 [hooks.read-source-state.pre]
-    command = ".local/share/chezmoi/.bw_login.sh"
+    command = "{{ .chezmoi.workingTree }}/.local/share/chezmoi/.bw_login.sh"
 
 [bitwarden]
 unlock = "auto"
