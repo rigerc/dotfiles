@@ -714,8 +714,9 @@ bw_login() {
                 return 1
             fi
         fi
-        export BW_CLIENTSECRET
-        echo BW_CLIENTSECRET
+        export $BW_CLIENTSECRET
+        echo $BW_CLIENTID
+        echo $BW_CLIENTSECRET
         
         # Login with API key
         log_info "Logging in to Bitwarden..."
