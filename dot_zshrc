@@ -352,5 +352,25 @@ if [[ -d ~/.p ]]; then
     popd
 fi
 
+gh-add-key() {
+    local ssh_dir="$HOME/.ssh"
+    local keys
+    
+    # Find all .pub files in ~/.ssh
+    keys=("${(@f)$(find "$ssh_dir" -name "*.pub" -type f 2>/dev/null)}")
+    
+    if [ ${#keys[@]} -eq 0 ]; then
+        echo "Error: No SSH public keys found in $ssh_dir"
+        return 1
+    fi
+    
+    for key in "${keys[@]}"; do
+        local key_name="${key:t:r}"
+        local title="$(hostname)-${key_name}-$(date +%Y%m%d)"
+        echo "Adding key: $key"
+        gh ssh-key add "$key" --title "$title"
+    done
+}
+
 # Auto-start tmux if not already in tmux
 [[ -z $TMUX ]] && exec tmux

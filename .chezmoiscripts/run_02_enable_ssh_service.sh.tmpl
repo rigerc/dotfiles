@@ -305,6 +305,52 @@ configure_sshd() {
     log_debug "configure_sshd completed successfully"
 }
 
+# Add SSH public key to GitHub using gh CLI
+add_key_to_github() {
+    local ssh_pub_key="$1"
+    local github_user="{{ .github_user }}"
+    log_header "Adding SSH key to GitHub"
+    log_debug "Entering add_key_to_github function"
+    log_debug "GitHub user: $github_user"
+    log_debug "Public key file: $ssh_pub_key"
+
+    # Check if gh CLI is available
+    if ! command_exists gh; then
+        log_error "GitHub CLI (gh) not found"
+        log_debug "Please install gh CLI to add SSH key to GitHub"
+        return 1
+    fi
+
+    # Check if user is authenticated with gh
+    if ! gh auth status >/dev/null 2>&1; then
+        log_error "Not authenticated with GitHub CLI"
+        log_debug "Run 'gh auth login' to authenticate"
+        return 1
+    fi
+
+    # Read the public key content
+    local pub_key_content
+    pub_key_content=$(cat "$ssh_pub_key")
+    log_debug "Public key content read successfully"
+
+    # Create a title for the key
+    local key_title="$(whoami)@$(hostname)-$(date +%Y%m%d)"
+    log_debug "Key title: $key_title"
+
+    # Add the key to GitHub
+    log_info "Adding SSH key to GitHub for user: $github_user..."
+    log_debug "Running: gh ssh-key add $ssh_pub_key --title $key_title"
+
+    if gh ssh-key add "$ssh_pub_key" --title "$key_title"; then
+        log_success "SSH key added to GitHub successfully"
+        log_debug "GitHub key addition completed"
+    else
+        log_error "Failed to add SSH key to GitHub"
+        log_debug "gh ssh-key add command failed"
+        return 1
+    fi
+}
+
 # Copy SSH public key to remote WSL instance via Samba
 generate_ssh_key() {
     local ssh_key="${HOME}/.ssh/id_ed25519"  # Private key (no .pub)
@@ -344,8 +390,10 @@ generate_ssh_key() {
     pub_key_content=$(cat "$ssh_pub_key")
     log_debug "Public key length: ${#pub_key_content} characters"
 
-    log_info "Public key:"
-    echo "$pub_key_content"
+    log_success "Public key generated"
+
+    # Add the key to GitHub
+    add_key_to_github "$ssh_pub_key"
 }
 
 main() {
