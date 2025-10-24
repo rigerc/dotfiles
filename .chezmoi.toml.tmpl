@@ -14,8 +14,7 @@
     github_user = {{ $github_user | quote }}
     github_email = {{ $github_email | quote }}
 
-[bitwarden]
-    unlock = "auto"
+bitwarden.unlock = "auto"
 {{- end }}
 
 #[hooks.read-source-state.pre]
