@@ -712,7 +712,7 @@ is_bw_unlocked() {
     return $?
 }
 
-# Fixed save_bw_session function
+# Helper function to save session
 save_bw_session() {
     if [[ -z "$BW_SESSION" ]]; then
         log_error "BW_SESSION is not set"
@@ -725,53 +725,67 @@ save_bw_session() {
     return 0
 }
 
-# Fixed bw_login function
-bw_login() {
-    log_info "Logging in to BitWarden"
-
-    # Load existing session if present
+# Helper function to load session
+load_bw_session() {
     if [[ -f "$HOME/.bw_session" ]]; then
         BW_SESSION=$(<"$HOME/.bw_session")
         export BW_SESSION
+        return 0
+    fi
+    return 1
+}
+
+# Helper function to unlock the vault
+bw_unlock() {
+    if ! is_bw_logged_in; then
+        log_error "Not logged in to Bitwarden. Please login first."
+        return 1
+    fi
+    
+    if is_bw_unlocked; then
+        log_success "Vault already unlocked"
+        return 0
+    fi
+    
+    log_info "Unlocking vault..."
+    
+    # Prompt for master password
+    if gum_available; then
+        MASTER_PASSWORD=$(gum input --password --placeholder "Enter master password")
+    else
+        echo -n "Enter master password: "
+        read -s MASTER_PASSWORD
+        echo
     fi
 
-    # Check if already logged in and unlocked
+    if [[ -z "$MASTER_PASSWORD" ]]; then
+        log_error "Master password is required"
+        return 1
+    fi
+
+    BW_SESSION=$(bw unlock --raw "$MASTER_PASSWORD")
+    local unlock_result=$?
+    
+    if [[ $unlock_result -ne 0 || -z "$BW_SESSION" ]]; then
+        log_error "Failed to unlock vault"
+        return 1
+    fi
+    
+    export BW_SESSION
+    save_bw_session
+    log_success "Vault unlocked successfully"
+    return 0
+}
+
+# Helper function to perform Bitwarden login
+bw_do_login() {
     if is_bw_logged_in; then
         log_success "Already logged in to Bitwarden"
-        
-        if is_bw_unlocked; then
-            log_success "Vault already unlocked"
-            return 0
-        else
-            # Vault is locked, need to unlock
-            log_info "Vault is locked, unlocking..."
-            if gum_available; then
-                MASTER_PASSWORD=$(gum input --password --placeholder "Enter master password")
-            else
-                echo -n "Enter master password: "
-                read -s MASTER_PASSWORD
-                echo
-            fi
-
-            if [[ -z "$MASTER_PASSWORD" ]]; then
-                log_error "Master password is required"
-                return 1
-            fi
-
-            BW_SESSION=$(bw unlock --raw "$MASTER_PASSWORD")
-            if [[ -z "$BW_SESSION" ]]; then
-                log_error "Failed to unlock vault"
-                return 1
-            fi
-            
-            export BW_SESSION
-            save_bw_session
-            log_success "Vault unlocked successfully"
-            return 0
-        fi
+        return 0
     fi
-
-    # Not logged in, need to do full login
+    
+    log_info "Logging in to Bitwarden..."
+    
     # Set client ID
     export BW_CLIENTID="user.e4878fd7-8be5-4510-b457-ac6a00a44fff"
 
@@ -792,46 +806,49 @@ bw_login() {
     export BW_CLIENTSECRET
 
     # Login with API key
-    log_info "Logging in to Bitwarden..."
-    log_info "BW_CLIENTSECRET is $BW_CLIENTSECRET"
-    
-    if bw login --apikey >/dev/null 2>&1; then
+    if bw login --apikey --raw>/dev/null; then
         log_success "Login successful!"
+        unset BW_CLIENTSECRET
+        return 0
     else
         log_error "Login failed"
         unset BW_CLIENTSECRET
         return 1
     fi
+}
 
-    # Unlock the vault
-    log_info "Unlocking vault..."
-    if gum_available; then
-        MASTER_PASSWORD=$(gum input --password --placeholder "Enter master password")
+# Main function to ensure Bitwarden is logged in and unlocked
+bw_login() {
+    log_info "Checking Bitwarden status..."
+
+    # Load existing session if present
+    load_bw_session
+
+    # Check if already logged in and unlocked
+    if is_bw_logged_in && is_bw_unlocked; then
+        log_success "Already logged in and unlocked"
+        return 0
+    fi
+
+    # If logged in but locked, just unlock
+    if is_bw_logged_in; then
+        log_info "Logged in but vault is locked"
+        if ! bw_unlock; then
+            return 1
+        fi
     else
-        echo -n "Enter master password: "
-        read -s MASTER_PASSWORD
-        echo
+        # Need to login first
+        if ! bw_do_login; then
+            return 1
+        fi
+        
+        # Then unlock
+        if ! bw_unlock; then
+            return 1
+        fi
     fi
 
-    if [[ -z "$MASTER_PASSWORD" ]]; then
-        log_error "Master password is required"
-        unset BW_CLIENTSECRET
-        return 1
-    fi
-
-    BW_SESSION=$(bw unlock --raw "$MASTER_PASSWORD")
-    if [[ -z "$BW_SESSION" ]]; then
-        log_error "Failed to unlock vault"
-        unset BW_CLIENTSECRET
-        return 1
-    fi
-
-    export BW_SESSION
-    save_bw_session
-    unset BW_CLIENTSECRET
-    log_success "Vault unlocked successfully"
-
-    # Sync after successful login
+    # Sync after successful login/unlock
     log_info "Syncing vault..."
     if bw sync >/dev/null 2>&1; then
         log_success "Sync completed successfully"
