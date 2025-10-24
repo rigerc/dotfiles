@@ -8,6 +8,19 @@
 
 set -uo pipefail
 
+# Cache gum availability at script initialization
+_GUM_AVAILABLE=""
+if command_exists gum; then
+    _GUM_AVAILABLE="true"
+else
+    _GUM_AVAILABLE="false"
+fi
+
+# Check if gum is available (cached)
+gum_available() {
+    [ "$_GUM_AVAILABLE" = "true" ]
+}
+
 # -----------------------------------------------------------------------------
 # Color Definitions
 # -----------------------------------------------------------------------------
@@ -131,11 +144,6 @@ trap 'error_handler ${LINENO}' ERR
 # Check if command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
-}
-
-# Check if gum is available
-gum_available() {
-    command_exists gum
 }
 
 # Create directory if it doesn't exist
@@ -784,7 +792,7 @@ bw_login() {
         return 1
     fi
     export BW_SESSION
-    echo $BW_SESSION
+    echo BW_SESSION
     log_success "Vault unlocked successfully"
     unset BW_CLIENTSECRET
     return 0
