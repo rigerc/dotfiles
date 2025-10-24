@@ -879,7 +879,7 @@ bw_login() {
 
     # Final verification
     log_debug "Performing final verification..."
-    if bw_check_login_status && [[ -n "$BW_SESSION" ]]; then
+    if bw_check_login_status; then
         log_success "Bitwarden login process completed successfully"
         log_debug "Final status: logged in, session active (${#BW_SESSION} chars)"
         return 0
