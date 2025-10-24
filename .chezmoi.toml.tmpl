@@ -14,9 +14,9 @@
     github_user = {{ $github_user | quote }}
     github_email = {{ $github_email | quote }}
 
-{{- if (stat "~/.bw_session") -}}
+[scriptEnv]
 BW_SESSION = "{{ (include "~/.bw_session" | trim) }}"
-{{- end }}
+
 {{- end }}
 #[hooks.read-source-state.pre]
 #    command = "sh ~/.local/share/chezmoi/.install-essentials.sh"
