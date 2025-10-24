@@ -10,35 +10,46 @@ readonly TMP_DIR="$HOME/.tmp"
 
 # Check if systemd is available
 has_systemd() {
+    log_debug "Checking for systemd availability"
     command_exists systemctl && [[ -d /run/systemd/system ]]
 }
 
 # Backup file with timestamp
 backup_file() {
     local file="$1"
+    log_debug "Backing up file: $file"
     local filename=$(basename "$file")
     local backup="$TMP_DIR/${filename}.backup.$(date +%Y%m%d_%H%M%S)"
-    
+
+    log_debug "Backup destination: $backup"
+
     # Create $TMP_DIR if it doesn't exist
     if [[ ! -d "$TMP_DIR" ]]; then
+        log_debug "Creating temporary directory: $TMP_DIR"
         mkdir -p "$TMP_DIR"
         log_info "Created temporary directory: $TMP_DIR"
     fi
-    
+
     if [[ -f "$file" ]]; then
         cp "$file" "$backup"
         log_info "Backup created: $backup"
+        log_debug "File backed up successfully"
         echo "$backup"
+    else
+        log_debug "Source file does not exist, skipping backup"
     fi
 }
 
 # Validate SSH configuration
 validate_sshd_config() {
+    log_debug "Validating SSH configuration"
     if ! command_exists sshd; then
         log_error "sshd not found"
+        log_debug "sshd command not available"
         return 1
     fi
-    
+
+    log_debug "Running: sshd -t"
     sudo sshd -t 2>&1
 }
 
@@ -47,28 +58,36 @@ check_ssh_port() {
     local port="$1"
     local max_attempts=10
     local attempt=0
-    
+
+    log_debug "Checking if SSH is listening on port: $port"
+    log_debug "Max attempts: $max_attempts"
+
     # Validate port number
     if [[ ! "$port" =~ ^[0-9]+$ ]] || [[ "$port" -lt 1 ]] || [[ "$port" -gt 65535 ]]; then
         log_error "Invalid port number: $port"
+        log_debug "Port validation failed"
         return 1
     fi
-    
+
     # Check if we have the required tools
     if ! command_exists ss && ! command_exists netstat; then
         log_warning "Neither ss nor netstat available, cannot verify port"
+        log_debug "No port checking tools available"
         return 0  # Assume success
     fi
-    
+
     log_info "Checking if SSH is listening on port $port..."
     
     while [[ $attempt -lt $max_attempts ]]; do
+        log_debug "Port check attempt $((attempt + 1))/$max_attempts"
         local found=0
-        
+
         if command_exists ss; then
+            log_debug "Using ss command to check port"
             # More precise pattern matching
             if ss -tlnp 2>&1 | grep -E "LISTEN.*:${port}\s+" >/dev/null; then
                 found=1
+                log_debug "Port found via ss command"
             else
                 # Debug: show what we found (optional, remove in production)
                 log_info "Attempt $((attempt + 1))/$max_attempts - Not found yet"
@@ -76,28 +95,33 @@ check_ssh_port() {
                 # ss -tlnp 2>&1 | grep ":${port}" || true
             fi
         elif command_exists netstat; then
+            log_debug "Using netstat command to check port"
             # More precise pattern matching
             if netstat -tlnp 2>&1 | grep -E "LISTEN.*:${port}\s+" >/dev/null; then
                 found=1
+                log_debug "Port found via netstat command"
             else
                 log_info "Attempt $((attempt + 1))/$max_attempts - Not found yet"
             fi
         fi
-        
+
         if [[ $found -eq 1 ]]; then
             log_info "SSH is listening on port $port"
+            log_debug "Port check successful"
             return 0
         fi
-        
+
         sleep 1
         ((attempt++))
     done
-    
+
     log_error "SSH failed to listen on port $port after $max_attempts attempts"
+    log_debug "Port check failed after all attempts"
     
     # Final diagnostic check
     if command_exists ss; then
         log_error "Current listening ports:"
+        log_debug "Dumping all listening ports for diagnostics"
         ss -tlnp 2>&1 | grep LISTEN || log_error "No listening ports found"
     fi
     
@@ -106,6 +130,8 @@ check_ssh_port() {
 
 create_sshd_config() {
     log_info "Creating SSH configuration..."
+    log_debug "Writing SSH config to: $SSHD_CONFIG"
+    log_debug "SSH port configured: $SSH_PORT"
     
     sudo tee "$SSHD_CONFIG" > /dev/null << 'SSHD_EOF'
 # SSH Daemon Configuration
@@ -163,91 +189,120 @@ SSHD_EOF
     
     sudo chmod 644 "$SSHD_CONFIG"
     log_success "SSH configuration created"
+    log_debug "Config file permissions set to 644"
 }
 
 configure_sshd() {
     log_header "Configuring SSH Service"
+    log_debug "Entering configure_sshd function"
+    log_debug "Target SSH port: $SSH_PORT"
 
     # Check for systemd
     if ! has_systemd; then
         log_error "systemd not available - cannot manage SSH service"
+        log_debug "systemd check failed"
         return 1
     fi
+    log_debug "systemd is available"
 
     # Check if SSH is already running on configured port
     log_info "Checking if SSH is already running on port $SSH_PORT..."
     if check_ssh_port "$SSH_PORT"; then
         log_success "SSH is already running on port $SSH_PORT"
+        log_debug "SSH service already configured and running"
         log_header "SSH Service Configuration Completed"
         return 0
     fi
+    log_debug "SSH not running on target port, proceeding with configuration"
 
     # Backup existing configuration
     if [[ -f "$SSHD_CONFIG" ]]; then
+        log_debug "Existing config found, creating backup"
         backup_file "$SSHD_CONFIG"
+    else
+        log_debug "No existing SSH config found"
     fi
-    
+
     # Create SSH configuration
+    log_debug "Creating new SSH configuration"
     create_sshd_config
-    
+
     # Generate host keys
     log_info "Generating SSH host keys..."
+    log_debug "Running: ssh-keygen -A"
     if sudo ssh-keygen -A 2>/dev/null; then
         log_success "SSH host keys generated"
+        log_debug "Host key generation successful"
     else
         log_warning "SSH host key generation had issues (may already exist)"
+        log_debug "ssh-keygen -A returned non-zero exit code"
     fi
-    
+
     # Validate configuration
     log_info "Validating SSH configuration..."
+    log_debug "Running sshd configuration test"
     if ! validate_sshd_config; then
         log_error "SSH configuration is invalid"
+        log_debug "Configuration validation failed, showing errors"
         sudo sshd -t
         return 1
     fi
     log_success "SSH configuration is valid"
-    
+    log_debug "Configuration passed validation"
+
     # Enable SSH service
     log_info "Enabling SSH service to start on boot..."
+    log_debug "Running: systemctl enable sshd"
     if sudo systemctl enable sshd 2>/dev/null; then
         log_success "SSH service enabled"
+        log_debug "Service enabled successfully"
     else
         log_warning "Could not enable SSH service"
+        log_debug "systemctl enable failed"
     fi
-    
+
     # Start SSH service
     log_info "Starting SSH service..."
+    log_debug "Running: systemctl restart sshd"
     if sudo systemctl restart sshd; then
         log_success "SSH service started"
+        log_debug "Service started successfully"
     else
         log_error "Failed to start SSH service"
+        log_debug "systemctl restart failed, showing status"
         sudo systemctl status sshd --no-pager
         return 1
     fi
-    
+
     # Verify service is running
+    log_debug "Verifying service is active"
     if ! sudo systemctl is-active --quiet sshd; then
         log_error "SSH service is not running"
+        log_debug "Service is not active, showing status"
         sudo systemctl status sshd --no-pager
         return 1
     fi
     log_success "SSH service is running"
-    
+    log_debug "Service is active and running"
+
     # Check port
     log_info "Verifying SSH is listening on port $SSH_PORT..."
     if check_ssh_port "$SSH_PORT"; then
         log_success "SSH is listening on port $SSH_PORT"
+        log_debug "Port check passed"
     else
         log_warning "Cannot verify SSH is listening on port $SSH_PORT"
         log_info "Checking all SSH ports..."
+        log_debug "Listing all ports sshd is listening on"
         if command_exists ss; then
             sudo ss -tlnp | grep sshd || true
         elif command_exists netstat; then
             sudo netstat -tlnp | grep sshd || true
         fi
     fi
-    
+
     log_header "SSH Service Configuration Completed"
+    log_debug "configure_sshd completed successfully"
 }
 
 # Copy SSH public key to remote WSL instance via Samba
@@ -255,39 +310,55 @@ generate_ssh_key() {
     local ssh_key="${HOME}/.ssh/id_ed25519"  # Private key (no .pub)
     local ssh_pub_key="${ssh_key}.pub"
     log_header "Generating SSH key"
-    
+    log_debug "Entering generate_ssh_key function"
+    log_debug "Key path: $ssh_key"
+
     # Generate SSH key if it doesn't exist
     if [[ ! -f "$ssh_pub_key" ]]; then
         log_info "SSH public key not found, generating new key..."
-        
+        log_debug "Public key does not exist: $ssh_pub_key"
+
         # Create .ssh directory if needed
+        log_debug "Ensuring .ssh directory exists"
         mkdir -p "${HOME}/.ssh"
         chmod 700 "${HOME}/.ssh"
-        
+        log_debug ".ssh directory permissions set to 700"
+
         # Generate ed25519 key without passphrase
+        log_debug "Running: ssh-keygen -t ed25519 -f $ssh_key -N \"\" -C \"$(whoami)@$(hostname)\""
         if ssh-keygen -t ed25519 -f "$ssh_key" -N "" -C "$(whoami)@$(hostname)" >dev/null; then
             log_success "SSH key generated: $ssh_key"
+            log_debug "Key generation successful"
         else
             log_error "Failed to generate SSH key"
+            log_debug "ssh-keygen returned failure"
             return 1
         fi
     else
         log_success "Found SSH public key: $ssh_pub_key"
+        log_debug "Public key already exists"
     fi
-    
+
     # Read the public key content
     local pub_key_content
     pub_key_content=$(cat "$ssh_pub_key")
-    
+    log_debug "Public key length: ${#pub_key_content} characters"
+
     log_info "Public key:"
     echo "$pub_key_content"
 }
 
 main() {
+    log_debug "Entering main function for SSH setup"
+    log_debug "Detecting platform..."
     if is_arch; then
+        log_debug "Platform: Arch Linux"
         configure_sshd
     elif is_android; then
+        log_debug "Platform: Android"
         generate_ssh_key
+    else
+        log_debug "Platform: Unknown ($(uname -s))"
     fi
 }
 main "$@"

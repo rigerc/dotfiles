@@ -4,31 +4,51 @@ set -uo pipefail
 {{ template "common.sh" . }}
 
 log_header "Checking prerequisites"
+log_debug "Starting prerequisite checks"
 
 # Check if gum is installed
+log_debug "Checking for gum installation"
 if ! command -v gum >/dev/null 2>&1; then
+    log_debug "gum not found, attempting installation"
     if ! install_system_package "gum"; then
         log_warning "gum installation failed, but continuing..."
+        log_debug "gum installation returned failure"
     fi
+else
+    log_debug "gum is already installed: $(command -v gum)"
 fi
 
 # Check if git is installed
+log_debug "Checking for git installation"
 if ! command -v git >/dev/null 2>&1; then
+    log_debug "git not found, attempting installation"
     if ! install_system_package "git"; then
         log_warning "git installation failed, but continuing..."
+        log_debug "git installation returned failure"
     fi
+else
+    log_debug "git is already installed: $(command -v git)"
 fi
 
 # Check if bitwarden-cli is installed
+log_debug "Checking for bitwarden-cli installation"
 if ! command -v bw >/dev/null 2>&1; then
+    log_debug "bw not found, attempting installation"
     if ! install_system_package "bitwarden-cli"; then
         log_warning "bitwarden-cli installation failed, but continuing..."
+        log_debug "bitwarden-cli installation returned failure"
     fi
+else
+    log_debug "bitwarden-cli is already installed: $(command -v bw)"
 fi
 
 # Prerequisites fulfilled
 log_success "Prerequisites fulfilled!"
 
+log_debug "Checking if bw command exists for login"
 if command_exists bw; then
+    log_debug "Calling bw_login function"
     bw_login
+else
+    log_debug "bw command not available, skipping login"
 fi

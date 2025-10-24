@@ -12,7 +12,9 @@
       "Bash(brew search:*)",
       "Bash(brew info:*)",
       "mcp__context7__get-library-docs",
-      "WebFetch(domain:docs.brew.sh)"
+      "WebFetch(domain:docs.brew.sh)",
+      "Bash(git apply:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

@@ -14,14 +14,19 @@ readonly ALACRITTY_THEMES_TARGET="/mnt/c/Users/bondg/appdata/roaming/alacritty/t
 # Set default shell
 set_default_shell() {
     local shell_name="$1"
-    
+    log_debug "set_default_shell called with shell_name=$shell_name"
+
     if ! command_exists "$shell_name"; then
         log_error "$shell_name not found"
+        log_debug "Shell binary not found in PATH"
+        log_debug "Current PATH: $PATH"
         return 1
     fi
     
     local shell_path
     shell_path=$(command -v "$shell_name")
+
+    log_debug "Found shell at: $shell_path"
     
     # Add to /etc/shells if needed
     #if ! grep -q "^${shell_path}$" /etc/shells 2>/dev/null; then
@@ -33,8 +38,11 @@ set_default_shell() {
     
     # Only set as default shell on Android
     if is_android; then
+        log_debug "Running on Android, checking current shell"
+        log_debug "Current SHELL: $SHELL"
         if [[ "$SHELL" != "$shell_path" ]]; then
             log_info "Changing default shell to $shell_name..."
+            log_debug "Executing: chsh -s $shell_name"
             chsh -s "$shell_name"
         else
             log_success "$shell_name already set as default shell"
@@ -48,9 +56,11 @@ set_default_shell() {
 
 setup_zsh() {
     log_step "Setting up Zsh as default shell"
-    
+    log_debug "Entering setup_zsh function"
+
     if ! command_exists zsh; then
         log_warning "Zsh not installed, skipping"
+        log_debug "Zsh command not found"
         return 0
     fi
     
@@ -65,9 +75,11 @@ setup_zsh() {
 
 setup_fish() {
     log_step "Setting up Fish as default shell"
-    
+    log_debug "Entering setup_fish function"
+
     if ! command_exists fish; then
         log_warning "Fish not installed, skipping"
+        log_debug "Fish command not found"
         return 0
     fi
     
@@ -82,18 +94,23 @@ setup_fish() {
 
 cleanup_lazyvim() {
     log_step "Cleaning up LazyVim"
-    
+    log_debug "Entering cleanup_lazyvim function"
+    log_debug "Checking directory: $HOME/.config/nvim"
+
     # Check if nvim config exists
     if [[ ! -d "$HOME/.config/nvim" ]]; then
         log_success "LazyVim not installed, nothing to clean"
+        log_debug "Nvim config directory does not exist"
         return 0
     fi
-    
+
     if [[ -d "$HOME/.config/nvim/.git" ]]; then
         if rm -rf "$HOME/.config/nvim/.git"; then
             log_success "LazyVim .git directory removed"
+            log_debug "Successfully removed .git directory"
         else
             log_error "Failed to remove LazyVim .git directory"
+            log_debug "rm command failed with exit code: $?"
             return 1
         fi
     else
@@ -104,122 +121,152 @@ cleanup_lazyvim() {
 
 rebuild_fonts() {
     log_step "Rebuilding font cache"
-    
+    log_debug "Entering rebuild_fonts function"
+
     if ! command_exists fc-cache; then
         log_warning "fc-cache not found, skipping"
+        log_debug "fc-cache command not available"
         return 0
     fi
-    
+
     # Check if fonts directory exists and has fonts
     local fonts_exist=false
     for font_dir in "$HOME/.local/share/fonts" "$HOME/.fonts" "/usr/share/fonts" "/usr/local/share/fonts"; do
+        log_debug "Checking font directory: $font_dir"
         if [[ -d "$font_dir" ]] && [[ -n "$(find "$font_dir" -type f 2>/dev/null)" ]]; then
             fonts_exist=true
+            log_debug "Found fonts in: $font_dir"
             break
         fi
     done
-    
+
     if [[ "$fonts_exist" == false ]]; then
         log_success "No custom fonts found, cache rebuild not needed"
+        log_debug "No font directories found with fonts"
         return 0
     fi
-    
+
     log_info "Rebuilding font cache..."
     if fc-cache -f -v >/dev/null 2>&1; then
         log_success "Font cache rebuilt"
+        log_debug "fc-cache completed successfully"
         return 0
     else
         log_warning "Font cache rebuild had issues"
+        log_debug "fc-cache exited with code: $?"
         return 1
     fi
 }
 
 generate_locales() {
     log_step "Generating system locales"
-    
+    log_debug "Entering generate_locales function"
+
     if ! command_exists locale-gen; then
         log_warning "locale-gen not found, skipping"
+        log_debug "locale-gen command not available"
         return 0
     fi
-    
+
     # Check if locale is already generated
+    log_debug "Checking existing locales"
     if locale -a 2>/dev/null | grep -qi "^en_US.utf8$"; then
         log_success "en_US.UTF-8 locale already generated"
+        log_debug "Found en_US.UTF-8 in locale -a output"
         return 0
     fi
-    
+
     log_info "Generating locales..."
+    log_debug "Uncommenting en_US.UTF-8 in /etc/locale.gen"
     sudo sed -i 's:#en_US.UTF-8 UTF-8:en_US.UTF-8 UTF-8:g' /etc/locale.gen 2>/dev/null || true
-    
+
     if sudo locale-gen >/dev/null 2>&1; then
         log_success "Locales generated"
+        log_debug "locale-gen completed successfully"
         return 0
     else
         log_warning "Locale generation had issues"
+        log_debug "locale-gen exited with code: $?"
         return 1
     fi
 }
 
 install_tmux_plugins() {
     log_step "Installing Tmux plugins"
-    
+    log_debug "Entering install_tmux_plugins function"
+    log_debug "Plugin manager path: $TMUX_PLUGIN_PATH"
+
     # Check if tmux is installed
     if ! command_exists tmux; then
         log_warning "Tmux not installed, skipping plugin installation"
+        log_debug "tmux command not found"
         return 0
     fi
-    
+
     # Check if TPM is installed
     if [[ ! -x "$TMUX_PLUGIN_PATH" ]]; then
         log_warning "Tmux plugin manager not found at $TMUX_PLUGIN_PATH"
+        log_debug "TPM binary not executable or doesn't exist"
         return 0
     fi
-    
+
     # Check if plugins are already installed
     local plugin_dir="$HOME/.config/tmux/plugins"
     if [[ -d "$plugin_dir" ]]; then
         local plugin_count
         plugin_count=$(find "$plugin_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
+        log_debug "Found $plugin_count plugin directories"
         if [[ $plugin_count -gt 1 ]]; then
             log_success "Tmux plugins already installed ($plugin_count plugins found)"
+            log_debug "Plugins appear already installed, skipping"
             return 0
         fi
     fi
-    
+
     log_info "Installing Tmux plugins..."
     if "$TMUX_PLUGIN_PATH" >/dev/null 2>&1; then
         log_success "Tmux plugins installed"
+        log_debug "TPM install script completed successfully"
         return 0
     else
         log_warning "Tmux plugin installation had issues"
+        log_debug "TPM install script exited with code: $?"
         return 1
     fi
 }
 
 check_secrets() {
     log_step "Checking secrets configuration"
+    log_debug "Entering check_secrets function"
+    log_debug "Looking for .env file at: $HOME/.env"
 
     # Source the .env file if it exists
     if [[ -f "$HOME/.env" ]]; then
+        log_debug ".env file exists, attempting to source"
         # Use subshell to avoid polluting current environment
         if (source "$HOME/.env" 2>/dev/null && [[ "$ENV_SECRETS_IMPORTED" == "true" ]]); then
             log_success "Secrets properly imported (ENV_SECRETS_IMPORTED=true)"
+            log_debug "ENV_SECRETS_IMPORTED variable is set correctly"
             return 0
         else
             log_warning "ENV_SECRETS_IMPORTED is not set to 'true'"
+            log_debug "ENV_SECRETS_IMPORTED value: ${ENV_SECRETS_IMPORTED:-<not set>}"
             return 1
         fi
     else
         log_warning "Secrets file not found at $HOME/.env"
+        log_debug ".env file does not exist"
         return 1
     fi
 }
 
 copy_alacritty_config() {
     log_step "Copying Alacritty configuration"
+    log_debug "Entering copy_alacritty_config function"
 
     if ! is_wsl; then
         log_success "Not running on WSL, Alacritty copy not needed"
+        log_debug "Platform is not WSL"
         return 0
     fi
     
@@ -227,14 +274,19 @@ copy_alacritty_config() {
     local any_copied=false
     
     # Copy alacritty.toml
+    log_debug "Checking source: $ALACRITTY_SOURCE"
+    log_debug "Target: $ALACRITTY_TARGET"
     if [[ -f "$ALACRITTY_SOURCE" ]]; then
         # Check if file already exists and is identical
         if [[ -f "$ALACRITTY_TARGET" ]] && cmp -s "$ALACRITTY_SOURCE" "$ALACRITTY_TARGET"; then
             log_success "Alacritty config already up to date"
+            log_debug "Files are identical, no copy needed"
         else
+            log_debug "Files differ or target doesn't exist, copying"
             if safe_copy "$ALACRITTY_SOURCE" "$ALACRITTY_TARGET"; then
                 log_success "Alacritty config copied"
                 any_copied=true
+                log_debug "Copy completed successfully"
             else
                 log_warning "Failed to copy Alacritty config"
                 success=false
@@ -242,32 +294,42 @@ copy_alacritty_config() {
         fi
     else
         log_warning "Alacritty config not found at $ALACRITTY_SOURCE"
+        log_debug "Source file does not exist"
         success=false
     fi
     
     # Copy themes directory
+    log_debug "Checking themes source: $ALACRITTY_THEMES_SOURCE"
+    log_debug "Themes target: $ALACRITTY_THEMES_TARGET"
     if [[ -d "$ALACRITTY_THEMES_SOURCE" ]]; then
         # Check if themes directory exists and has content
         if [[ -d "$ALACRITTY_THEMES_TARGET" ]]; then
             local source_count target_count
             source_count=$(find "$ALACRITTY_THEMES_SOURCE" -type f 2>/dev/null | wc -l)
             target_count=$(find "$ALACRITTY_THEMES_TARGET" -type f 2>/dev/null | wc -l)
-            
+            log_debug "Source theme count: $source_count"
+            log_debug "Target theme count: $target_count"
+
             if [[ $source_count -eq $target_count ]] && [[ $source_count -gt 0 ]]; then
                 log_success "Alacritty themes already up to date ($target_count themes)"
+                log_debug "Theme counts match, skipping copy"
             else
+                log_debug "Theme counts differ, copying"
                 if safe_copy "$ALACRITTY_THEMES_SOURCE" "$ALACRITTY_THEMES_TARGET"; then
                     log_success "Alacritty themes copied"
                     any_copied=true
+                    log_debug "Themes copied successfully"
                 else
                     log_warning "Failed to copy Alacritty themes"
                     success=false
                 fi
             fi
         else
+            log_debug "Target themes directory doesn't exist, copying"
             if safe_copy "$ALACRITTY_THEMES_SOURCE" "$ALACRITTY_THEMES_TARGET"; then
                 log_success "Alacritty themes copied"
                 any_copied=true
+                log_debug "Themes copied successfully"
             else
                 log_warning "Failed to copy Alacritty themes"
                 success=false
@@ -275,6 +337,7 @@ copy_alacritty_config() {
         fi
     else
         log_warning "Alacritty themes not found at $ALACRITTY_THEMES_SOURCE"
+        log_debug "Themes source directory does not exist"
         success=false
     fi
     
@@ -287,12 +350,14 @@ copy_alacritty_config() {
 
 main() {
     log_header "Running Post-Installation Operations"
-    
+    log_debug "Starting main post-installation function"
+
     # Load environment
     source "$HOME/.bashrc" 2>/dev/null || true
     load_homebrew || true
-    
+
     log_info "Running as user: $(whoami)"
+    log_debug "UID: $UID, EUID: $EUID"
     echo ""
     
     # Track overall success
@@ -303,12 +368,14 @@ main() {
     
     if is_android; then
         log_info "Detected Android platform"
+        log_debug "Platform detection: Android"
         operations=(
             "setup_fish"
             "check_secrets"
         )
     elif is_arch; then
         log_info "Detected Arch Linux platform"
+        log_debug "Platform detection: Arch Linux"
         operations=(
             "setup_zsh"
             "setup_fish"
@@ -321,6 +388,7 @@ main() {
         )
     else
         log_warning "Unknown platform, running default operations"
+        log_debug "Platform detection: Unknown ($(uname -s))"
         operations=(
             "setup_zsh"
             "setup_fish"
@@ -331,13 +399,16 @@ main() {
             "copy_alacritty_config"
         )
     fi
-    
+
     echo ""
-    
+
+    log_debug "Running ${#operations[@]} operations: ${operations[*]}"
     # Run platform-specific operations
     for operation in "${operations[@]}"; do
+        log_debug "Starting operation: $operation"
         if ! $operation; then
             all_success=false
+            log_debug "Operation $operation returned failure"
         fi
         echo ""
     done

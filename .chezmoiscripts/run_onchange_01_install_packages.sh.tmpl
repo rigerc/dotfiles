@@ -5,10 +5,14 @@ set -uo pipefail
 
 # Initialize Arch Linux packages
 init_arch_packages() {
+    log_debug "Entering init_arch_packages function"
     if ! is_arch; then
         log_info "Not an Arch Linux system, skipping Arch packages"
+        log_debug "Platform is not Arch Linux"
         return 0
     fi
+
+    log_debug "Detected Arch Linux, proceeding with package installation"
     
     local overall_success=true
     
@@ -20,19 +24,23 @@ init_arch_packages() {
     
     {{- if .packages.linux.arch.pacman }}
     log_info "Checking Pacman packages..."
-    
+    log_debug "Processing {{len .packages.linux.arch.pacman}} pacman packages from config"
+
     # Collect all packages into an array for batch checking
     local all_packages=(
         {{- range .packages.linux.arch.pacman }}
         {{ . | quote }}
         {{- end }}
     )
-    
+
     # Batch check which packages are missing - MUCH FASTER
+    log_debug "Starting batch check for missing pacman packages"
     local missing_packages=()
     while IFS= read -r pkg; do
         [[ -n "$pkg" ]] && missing_packages+=("$pkg")
     done < <(get_missing_pacman_packages all_packages)
+
+    log_debug "Found ${#missing_packages[@]} missing packages out of ${#all_packages[@]} total"
     
     # Report already installed packages
     local installed_count=$((${#all_packages[@]} - ${#missing_packages[@]}))
@@ -43,11 +51,14 @@ init_arch_packages() {
     # Install only missing packages
     if [[ ${#missing_packages[@]} -gt 0 ]]; then
         log_info "Installing ${#missing_packages[@]} Pacman package(s)..."
+        log_debug "Missing packages: ${missing_packages[*]}"
         local failed_packages=()
-        
+
         for pkg in "${missing_packages[@]}"; do
+            log_debug "Installing package: $pkg"
             if ! install_pacman_package "$pkg"; then
                 failed_packages+=("$pkg")
+                log_debug "Package installation failed: $pkg"
             fi
         done
         
@@ -62,33 +73,44 @@ init_arch_packages() {
     {{- end }}
     
     # Homebrew installation
+    log_debug "Checking for Homebrew installation"
     if ! command_exists brew; then
+        log_debug "Homebrew not found, installing"
         log_info "Installing Homebrew..."
         if ! install_homebrew; then
             log_error "Homebrew installation failed"
             log_warning "Skipping Homebrew packages"
+            log_debug "Homebrew installation returned failure"
             overall_success=false
             # Don't return - continue with other package managers
+        else
+            log_debug "Homebrew installation successful"
         fi
+    else
+        log_debug "Homebrew already installed: $(command -v brew)"
     fi
     
     # Homebrew packages
     if command_exists brew; then
         {{- if .packages.linux.arch.brew }}
         log_info "Checking Homebrew packages..."
-        
+        log_debug "Processing {{len .packages.linux.arch.brew}} brew packages from config"
+
         # Collect all packages for batch checking
         local brew_packages=(
             {{- range .packages.linux.arch.brew }}
             {{ . | quote }}
             {{- end }}
         )
-        
+
         # Batch check missing packages
+        log_debug "Starting batch check for missing brew packages"
         local missing_brew=()
         while IFS= read -r pkg; do
             [[ -n "$pkg" ]] && missing_brew+=("$pkg")
         done < <(get_missing_homebrew_packages brew_packages)
+
+        log_debug "Found ${#missing_brew[@]} missing brew packages out of ${#brew_packages[@]} total"
         
         local installed_count=$((${#brew_packages[@]} - ${#missing_brew[@]}))
         if [[ $installed_count -gt 0 ]]; then
@@ -97,11 +119,14 @@ init_arch_packages() {
         
         if [[ ${#missing_brew[@]} -gt 0 ]]; then
             log_info "Installing ${#missing_brew[@]} Homebrew package(s)..."
+            log_debug "Missing brew packages: ${missing_brew[*]}"
             local failed_packages=()
-            
+
             for pkg in "${missing_brew[@]}"; do
+                log_debug "Installing brew package: $pkg"
                 if ! install_homebrew_package "$pkg"; then
                     failed_packages+=("$pkg")
+                    log_debug "Brew package installation failed: $pkg"
                 fi
             done
             
@@ -117,17 +142,21 @@ init_arch_packages() {
         
         {{- if .packages.linux.arch.casks }}
         log_info "Checking Homebrew casks..."
-        
+        log_debug "Processing {{len .packages.linux.arch.casks}} cask packages from config"
+
         local cask_packages=(
             {{- range .packages.linux.arch.casks }}
             {{ . | quote }}
             {{- end }}
         )
-        
+
+        log_debug "Starting batch check for missing casks"
         local missing_casks=()
         while IFS= read -r pkg; do
             [[ -n "$pkg" ]] && missing_casks+=("$pkg")
         done < <(get_missing_homebrew_casks cask_packages)
+
+        log_debug "Found ${#missing_casks[@]} missing casks out of ${#cask_packages[@]} total"
         
         local installed_count=$((${#cask_packages[@]} - ${#missing_casks[@]}))
         if [[ $installed_count -gt 0 ]]; then
@@ -136,11 +165,14 @@ init_arch_packages() {
         
         if [[ ${#missing_casks[@]} -gt 0 ]]; then
             log_info "Installing ${#missing_casks[@]} cask(s)..."
+            log_debug "Missing casks: ${missing_casks[*]}"
             local failed_packages=()
-            
+
             for pkg in "${missing_casks[@]}"; do
+                log_debug "Installing cask: $pkg"
                 if ! install_homebrew_cask_package "$pkg"; then
                     failed_packages+=("$pkg")
+                    log_debug "Cask installation failed: $pkg"
                 fi
             done
             
@@ -156,31 +188,42 @@ init_arch_packages() {
     fi
     
     # NPM installation
+    log_debug "Checking for npm installation"
     if ! command_exists npm; then
+        log_debug "npm not found, installing"
         log_info "Installing npm..."
         if ! install_npm; then
             log_error "npm installation failed"
             log_warning "Skipping npm packages"
+            log_debug "npm installation returned failure"
             overall_success=false
             # Don't return - continue
+        else
+            log_debug "npm installation successful"
         fi
+    else
+        log_debug "npm already installed: $(command -v npm)"
     fi
     
     # NPM packages
     if command_exists npm; then
         {{- if .packages.linux.arch.npm }}
         log_info "Checking npm packages..."
-        
+        log_debug "Processing {{len .packages.linux.arch.npm}} npm packages from config"
+
         local npm_packages=(
             {{- range .packages.linux.arch.npm }}
             {{ . | quote }}
             {{- end }}
         )
-        
+
+        log_debug "Starting batch check for missing npm packages"
         local missing_npm=()
         while IFS= read -r pkg; do
             [[ -n "$pkg" ]] && missing_npm+=("$pkg")
         done < <(get_missing_npm_packages npm_packages)
+
+        log_debug "Found ${#missing_npm[@]} missing npm packages out of ${#npm_packages[@]} total"
         
         local installed_count=$((${#npm_packages[@]} - ${#missing_npm[@]}))
         if [[ $installed_count -gt 0 ]]; then
@@ -189,11 +232,14 @@ init_arch_packages() {
         
         if [[ ${#missing_npm[@]} -gt 0 ]]; then
             log_info "Installing ${#missing_npm[@]} npm package(s)..."
+            log_debug "Missing npm packages: ${missing_npm[*]}"
             local failed_packages=()
-            
+
             for pkg in "${missing_npm[@]}"; do
+                log_debug "Installing npm package: $pkg"
                 if ! install_npm_package "$pkg"; then
                     failed_packages+=("$pkg")
+                    log_debug "npm package installation failed: $pkg"
                 fi
             done
             
@@ -209,22 +255,29 @@ init_arch_packages() {
     fi
     
     if [[ "$overall_success" == true ]]; then
+        log_debug "All Arch package installations completed successfully"
         return 0
     else
         log_warning "Some package installations failed"
+        log_debug "Arch package installation completed with failures"
         return 1
     fi
 }
 
 # Initialize Android/Termux packages
 init_android_packages() {
+    log_debug "Entering init_android_packages function"
     if ! is_android; then
         log_info "Not an Android system, skipping Termux packages"
+        log_debug "Platform is not Android"
         return 0
     fi
-    
+
+    log_debug "Detected Android platform, proceeding with package installation"
+
     if ! command_exists pkg; then
         log_error "pkg not available"
+        log_debug "pkg command not found"
         return 1
     fi
     
@@ -232,40 +285,51 @@ init_android_packages() {
     
     # Setup storage and repository
     log_info "Setting up Termux environment..."
+    log_debug "Checking for Termux storage setup"
 
     # Check if storage is already set up
     if [[ ! -d "$HOME/storage" ]]; then
+        log_debug "Storage directory not found, running termux-setup-storage"
         log_info "Setting up Termux storage (may require user interaction)..."
         if termux-setup-storage; then
             log_success "Termux storage configured successfully"
+            log_debug "termux-setup-storage completed successfully"
         else
             log_warning "Storage setup failed or was cancelled"
+            log_debug "termux-setup-storage returned failure"
         fi
     else
         log_success "Termux storage already configured"
+        log_debug "Storage directory already exists at $HOME/storage"
     fi
     
     {{- if .packages.android.termux }}
     log_info "Upgrading packages..."
-    
+    log_debug "Running pkg upgrade"
+
     if ! yes | pkg upgrade -y >/dev/null; then
         log_warning "pkg upgrade had issues (continuing anyway)"
+        log_debug "pkg upgrade returned non-zero exit code"
     fi
 
     log_info "Checking Termux packages..."
-    
+    log_debug "Processing {{len .packages.android.termux.pkg}} termux packages from config"
+
     # Collect all packages for batch checking
     local termux_packages=(
         {{- range .packages.android.termux.pkg }}
         {{ . | quote }}
         {{- end }}
     )
-    
+
     # Batch check which packages are missing - MUCH FASTER
+    log_debug "Starting batch check for missing termux packages"
     local missing_packages=()
     while IFS= read -r pkg; do
         [[ -n "$pkg" ]] && missing_packages+=("$pkg")
     done < <(get_missing_termux_packages termux_packages)
+
+    log_debug "Found ${#missing_packages[@]} missing packages out of ${#termux_packages[@]} total"
     
     # Report already installed packages
     local installed_count=$((${#termux_packages[@]} - ${#missing_packages[@]}))
@@ -276,28 +340,33 @@ init_android_packages() {
     # Install only missing packages
     if [[ ${#missing_packages[@]} -gt 0 ]]; then
         log_info "Installing ${#missing_packages[@]} Termux package(s)..."
+        log_debug "Missing termux packages: ${missing_packages[*]}"
         local failed_packages=()
-        
+
         for pkg in "${missing_packages[@]}"; do
+            log_debug "Installing termux package: $pkg"
             if ! install_termux_package "$pkg"; then
                 failed_packages+=("$pkg")
+                log_debug "Termux package installation failed: $pkg"
             fi
         done
-        
+
         if [[ ${#failed_packages[@]} -gt 0 ]]; then
             log_warning "Failed to install some Termux packages:"
             for pkg in "${failed_packages[@]}"; do
                 log_warning "  - $pkg"
             done
-            
+
+            log_debug "Cleaning pkg cache after failures"
             log_info "Cleaning pkg..."
             pkg clean >/dev/null 2>&1 || log_warning "pkg clean had issues"
             pkg autoclean >/dev/null 2>&1 || log_warning "pkg autoclean had issues"
-            
+
             return 1
         fi
     fi
 
+    log_debug "Performing final pkg cleanup"
     log_info "Cleaning pkg..."
     pkg clean >/dev/null 2>&1 || log_warning "pkg clean had issues"
     pkg autoclean >/dev/null 2>&1 || log_warning "pkg autoclean had issues"
@@ -310,39 +379,50 @@ init_android_packages() {
 
 main() {
     log_header "Installing Packages"
-    
+    log_debug "Starting main package installation function"
+
     local install_success=true
-    
+
     # Initialize packages based on platform
     if is_arch; then
+        log_debug "Detected Arch platform, calling init_arch_packages"
         if ! init_arch_packages; then
             log_warning "Arch package installation had some failures"
+            log_debug "init_arch_packages returned failure"
             install_success=false
         fi
     elif is_android; then
+        log_debug "Detected Android platform, calling init_android_packages"
         if ! init_android_packages; then
             log_warning "Android package installation had some failures"
+            log_debug "init_android_packages returned failure"
             install_success=false
         fi
     else
         log_warning "Unknown platform, skipping package installation"
+        log_debug "Platform not recognized: $(uname -s)"
         return 0
     fi
     
     # Handle WSL-specific installation (WSL can also be Arch-based)
     if is_wsl; then
         log_info "Detected WSL environment"
-        
+        log_debug "Running WSL-specific package installation"
+
         # Check if wslu is already installed
         if command_exists wslfetch; then
             log_success "WSLU is already installed"
+            log_debug "wslfetch command found: $(command -v wslfetch)"
         else
+            log_debug "WSLU not found, installing"
             log_info "Installing WSLU..."
             if curl -fsSL https://raw.githubusercontent.com/wslutilities/wslu/master/extras/scripts/wslu-install 2>/dev/null | bash; then
                 log_success "WSLU installed successfully"
+                log_debug "WSLU installation script completed successfully"
             else
                 log_error "Failed to install WSLU"
                 log_warning "Continuing despite WSLU failure"
+                log_debug "WSLU installation script returned failure"
                 install_success=false
             fi
         fi
@@ -350,10 +430,12 @@ main() {
 
     if [[ "$install_success" == true ]]; then
         log_success "Package installation completed successfully"
+        log_debug "All package installations succeeded"
         return 0
     else
         log_warning "Package installation completed with some failures"
         log_info "Review the warnings above for details"
+        log_debug "Some package installations failed but continuing"
         return 0
     fi
 }
