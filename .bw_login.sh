@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#source ".local/share/chezmoi/utils/common.sh"
+source "utils/common.sh"
 
 set -uo pipefail
 
