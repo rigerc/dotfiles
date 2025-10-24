@@ -6,50 +6,27 @@ if [[ -z "${CHEZMOI_WORKING_TREE}" ]]; then
     echo "Error, \$CHEZMOI_WORKING_TREE must be set. Please only run this script via chezmoi"
     exit 1
 fi
-source ".local/share/chezmoi/.chezmoiscripts/common.sh"
+source "${CHEZMOI_WORKING_TREE}/.chezmoiscripts/common.sh"
 
 log_header "Checking prerequisites"
 
-# Install package using available package manager
-install_package() {
-    local package="$1"
-
-    # Use the system package manager helper from common.sh
-    if install_system_package "$package"; then
-        return 0
-    fi
-
-    # If system package manager fails, try fallback methods
-    log_warning "System package manager failed for $package, trying fallback methods..."
-
-    # If we get here, all installation methods failed
-    log_warning "Cannot determine system type or no supported package manager found for $package installation"
-    log_info "Please install $package manually"
-    case "$package" in
-        git) log_info "Git download page: https://git-scm.com/downloads" ;;
-        gum) log_info "Gum installation page: https://github.com/charmbracelet/gum" ;;
-    esac
-
-    return 1
-}
-
 # Check if gum is installed
 if ! command -v gum >/dev/null 2>&1; then
-    if ! install_package "gum"; then
+    if ! install_system_package "gum"; then
         log_warning "gum installation failed, but continuing..."
     fi
 fi
 
 # Check if git is installed
 if ! command -v git >/dev/null 2>&1; then
-    if ! install_package "git"; then
+    if ! install_system_package "git"; then
         log_warning "git installation failed, but continuing..."
     fi
 fi
 
 # Check if bitwarden-cli is installed
 if ! command -v bw >/dev/null 2>&1; then
-    if ! install_package "bitwarden-cli"; then
+    if ! install_system_package "bitwarden-cli"; then
         log_warning "bitwarden-cli installation failed, but continuing..."
     fi
 fi

@@ -7,24 +7,6 @@
 
 set -uo pipefail
 
-# Check if command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
-
-# Cache gum availability at script initialization
-_GUM_AVAILABLE=""
-if command_exists gum; then
-    _GUM_AVAILABLE="true"
-else
-    _GUM_AVAILABLE="false"
-fi
-
-# Check if gum is available (cached)
-gum_available() {
-    [ "$_GUM_AVAILABLE" = "true" ]
-}
-
 # -----------------------------------------------------------------------------
 # Color Definitions
 # -----------------------------------------------------------------------------
@@ -32,103 +14,48 @@ readonly RED='\033[0;31m'
 readonly GREEN='\033[0;32m'
 readonly YELLOW='\033[1;33m'
 readonly BLUE='\033[0;34m'
+readonly CYAN='\033[0;36m'
 readonly BOLD='\033[1m'
 readonly NC='\033[0m' # No Color
 
-_log() {
-    local level="$1" color="$2" emoji="$3" label="$4"; shift 4
-    local msg="$*"
+# -----------------------------------------------------------------------------
+# Debug flag (set to "true" to enable debug logging)
+# -----------------------------------------------------------------------------
+DEBUG="${DEBUG:-false}"
+#DEBUG="true"  # Uncomment to enable debug logging
 
-    # compute some layout helpers (no new functions)
-    local cols
-    cols="$(tput cols 2>/dev/null || echo 80)"
-    # prepare a sanitized message (trim leading/trailing newlines)
-    msg="${msg//$'\n'/ }"
-    # compute content width
-    local content="${emoji} ${label}: ${msg}"
-    local content_len=${#content}
-    # ensure a minimum box width and leave some margin
-    local max_width=$((cols - 4))
-    local box_width=$(( content_len + 4 ))
-    if [ "$box_width" -gt "$max_width" ]; then
-        box_width="$max_width"
-    fi
-    [ "$box_width" -lt 20 ] && box_width=20
+# -----------------------------------------------------------------------------
+# Logging Functions
+# -----------------------------------------------------------------------------
+log_info() {
+    echo -e "${BLUE}ℹ️  [INFO]${NC} $*" >&2
+}
 
-    if gum_available; then
-        # Prefer consistent styling via gum when available.
-        case "$level" in
-            step)
-                # compact, highlighted block for steps
-                gum style \
-                    --border double \
-                    --border-foreground "$color" \
-                    --foreground "$color" \
-                    --align left \
-                    --padding "0 1" \
-                    "${emoji} ${msg}" >&2
-                ;;
-            header)
-                # header centered and more prominent
-                gum style \
-                    --border rounded \
-                    --border-foreground "$color" \
-                    --foreground "$color" \
-                    --align left \
-                    --padding "0 2" \
-                    "${emoji} ${msg}" >&2
-                ;;
-            *)
-                # single-line prefixed messages for other levels
-                gum style \
-                    --foreground "$color" \
-                    --align left \
-                    --padding "0 1" \
-                    "${emoji} [${label}] ${msg}" >&2
-                ;;
-        esac
-    else
-        # Fallback to plain-ANSI with improved, adaptive boxes
-        case "$level" in
-            info)
-                echo -e "${BLUE}${emoji} [${label}]${NC} ${msg}" >&2
-                ;;
-            success)
-                echo -e "${GREEN}${emoji} [${label}]${NC} ${msg}" >&2
-                ;;
-            warning)
-                echo -e "${YELLOW}${emoji} [${label}]${NC} ${msg}" >&2
-                ;;
-            error)
-                echo -e "${RED}${emoji} [${label}]${NC} ${msg}" >&2
-                ;;
-            step)
-                # top border
-                printf "%s\n" "$(printf '┌%*s┐' "$((box_width-2))" '' | tr ' ' '─')" >&2
-                # content line (left-aligned, padded)
-                printf "│ %b%*s%b │\n" "${YELLOW}${emoji} " "$((box_width - 4 - ${#emoji} ))" "${msg}" "${NC}" >&2
-                # bottom border
-                printf "%s\n" "$(printf '└%*s┘' "$((box_width-2))" '' | tr ' ' '─')" >&2
-                ;;
-            header)
-                # prominent green header box centered-ish
-                printf "%s\n" "$(printf '╔%*s╗' "$((box_width-2))" '' | tr ' ' '═')" >&2
-                printf "║ %b%*s%b ║\n" "${GREEN}${emoji} " "$((box_width - 4 - ${#emoji} ))" "${msg}" "${NC}" >&2
-                printf "%s\n" "$(printf '╚%*s╝' "$((box_width-2))" '' | tr ' ' '═')" >&2
-                ;;
-        esac
+log_success() {
+    echo -e "${GREEN}✅ [SUCCESS]${NC} $*" >&2
+}
+
+log_warning() {
+    echo -e "${YELLOW}⚠️  [WARNING]${NC} $*" >&2
+}
+
+log_error() {
+    echo -e "${RED}❌ [ERROR]${NC} $*" >&2
+}
+
+log_debug() {
+    if [ "$DEBUG" = "true" ]; then
+        echo -e "${CYAN}🔍 [DEBUG]${NC} $*" >&2
     fi
 }
 
-# -----------------------------------------------------------------------------
-# Public Logging API (unchanged signatures)
-# -----------------------------------------------------------------------------
-log_info()    { _log info    12 "ℹ️"  "INFO"    "$@"; }
-log_success() { _log success 10 "✅"  "SUCCESS" "$@"; }
-log_warning() { _log warning 11 "⚠️"  "WARNING" "$@"; }
-log_error()   { _log error   9  "❌"  "ERROR"   "$@"; }
-log_step()    { _log step    11 "🧩"  "STEP"    "$@"; }
-log_header()  { _log header  10 "🚀"  "HEADER"  "$@"; }
+log_step() {
+    echo -e "${YELLOW}${BOLD}🧩 [STEP]${NC} $*" >&2
+}
+
+log_header() {
+    echo -e "${GREEN}${BOLD}🚀 [HEADER]${NC} $*" >&2
+}
 
 # -----------------------------------------------------------------------------
 # Error Handling
@@ -144,6 +71,11 @@ trap 'error_handler ${LINENO}' ERR
 # -----------------------------------------------------------------------------
 # Utility Functions
 # -----------------------------------------------------------------------------
+
+# Check if command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
 
 # Create directory if it doesn't exist
 ensure_directory() {
@@ -694,167 +626,53 @@ install_system_package() {
     fi
 }
 
-# Helper function to check if Bitwarden is logged in
-is_bw_logged_in() {
-    bw login --check 2>&1 | grep -q "You are logged in!"
-    return $?
-}
-
-# Helper function to check if Bitwarden vault is unlocked
-is_bw_unlocked() {
-    # First check if logged in at all
-    if ! is_bw_logged_in; then
-        return 1
-    fi
-    
-    # Check if unlocked - bw unlock --check returns 0 if unlocked
-    bw unlock --check &>/dev/null
-    return $?
-}
-
-# Helper function to save session
-save_bw_session() {
-    if [[ -z "$BW_SESSION" ]]; then
-        log_error "BW_SESSION is not set"
-        return 1
-    fi
-    
-    echo "$BW_SESSION" > "$HOME/.bw_session"
-    chmod 600 "$HOME/.bw_session"
-    log_success "Session saved to ~/.bw_session"
-    return 0
-}
-
-# Helper function to load session
-load_bw_session() {
-    if [[ -f "$HOME/.bw_session" ]]; then
-        BW_SESSION=$(<"$HOME/.bw_session")
-        export BW_SESSION
-        return 0
-    fi
-    return 1
-}
-
-# Helper function to unlock the vault
-bw_unlock() {
-    if ! is_bw_logged_in; then
-        log_error "Not logged in to Bitwarden. Please login first."
-        return 1
-    fi
-    
-    if is_bw_unlocked; then
-        log_success "Vault already unlocked"
-        return 0
-    fi
-    
-    log_info "Unlocking vault..."
-    
-    # Prompt for master password
-    if gum_available; then
-        MASTER_PASSWORD=$(gum input --password --placeholder "Enter master password")
-    else
-        echo -n "Enter master password: "
-        read -s MASTER_PASSWORD
-        echo
-    fi
-
-    if [[ -z "$MASTER_PASSWORD" ]]; then
-        log_error "Master password is required"
-        return 1
-    fi
-
-    BW_SESSION=$(bw unlock --raw "$MASTER_PASSWORD")
-    local unlock_result=$?
-    
-    if [[ $unlock_result -ne 0 || -z "$BW_SESSION" ]]; then
-        log_error "Failed to unlock vault"
-        return 1
-    fi
-    
-    export BW_SESSION
-    save_bw_session
-    log_success "Vault unlocked successfully"
-    return 0
-}
-
-# Helper function to perform Bitwarden login
-bw_do_login() {
-    if is_bw_logged_in; then
-        log_success "Already logged in to Bitwarden"
-        return 0
-    fi
-    
-    log_info "Logging in to Bitwarden..."
-    
-    # Set client ID
-    export BW_CLIENTID="user.e4878fd7-8be5-4510-b457-ac6a00a44fff"
-
-    # Prompt for client secret
-    if gum_available; then
-        BW_CLIENTSECRET=$(gum input --password --placeholder "Enter Bitwarden client secret")
-    else
-        echo -n "Enter Bitwarden client secret: "
-        read -s BW_CLIENTSECRET
-        echo
-    fi
-    
-    if [[ -z "$BW_CLIENTSECRET" ]]; then
-        log_error "Client secret is required"
-        return 1
-    fi
-    
-    export BW_CLIENTSECRET
-
-    # Login with API key
-    if bw login --apikey; then
-        log_success "Login successful!"
-        unset BW_CLIENTSECRET
-        return 0
-    else
-        log_error "Login failed"
-        unset BW_CLIENTSECRET
-        return 1
-    fi
-}
-
-# Main function to ensure Bitwarden is logged in and unlocked
+# -----------------------------------------------------------------------------
+# Bitwarden Login Function
+# -----------------------------------------------------------------------------
 bw_login() {
-    log_info "Checking Bitwarden status..."
-
-    # Load existing session if present
-    load_bw_session
-
-    # Check if already logged in and unlocked
-    if is_bw_logged_in && is_bw_unlocked; then
-        log_success "Already logged in and unlocked"
-        return 0
-    fi
-
-    # If logged in but locked, just unlock
-    if is_bw_logged_in; then
-        log_info "Logged in but vault is locked"
-        if ! bw_unlock; then
-            return 1
-        fi
+    # Set Bitwarden client ID
+    export BW_CLIENTID="{{ .bitwarden_clientid | quote }}"
+    
+    log_debug "Checking Bitwarden login status..."
+    
+    # Check if already logged in
+    if bw login --check --raw >/dev/null 2>&1; then
+        log_debug "Already logged into Bitwarden"
     else
-        # Need to login first
-        if ! bw_do_login; then
+        log_info "Not logged into Bitwarden, attempting login..."
+        
+        log_debug "Using client ID: $BW_CLIENTID"
+        
+        # Login using API key
+        if ! bw login --apikey --raw 2>&1; then
+            log_error "Bitwarden login failed"
             return 1
         fi
         
-        # Then unlock
-        if ! bw_unlock; then
-            return 1
-        fi
+        log_success "Bitwarden login successful"
     fi
-
-    # Sync after successful login/unlock
-    log_info "Syncing vault..."
-    if bw sync >/dev/null 2>&1; then
-        log_success "Sync completed successfully"
+    
+    # Unlock and export session
+    log_debug "Unlocking Bitwarden vault..."
+    local session
+    session=$(bw unlock --raw 2>&1)
+    
+    if [ $? -ne 0 ]; then
+        log_error "Failed to unlock Bitwarden vault"
+        return 1
+    fi
+    
+    export BW_SESSION="$session"
+    log_debug "BW_SESSION exported successfully ($session)"
+    log_success "Bitwarden vault unlocked"
+    
+    # Sync vault
+    log_debug "Syncing Bitwarden vault..."
+    if ! bw sync 2>&1; then
+        log_warning "Bitwarden sync failed (continuing anyway)"
     else
-        log_warning "Sync failed, continuing anyway..."
+        log_success "Bitwarden vault synced"
     fi
-
+    
     return 0
 }
