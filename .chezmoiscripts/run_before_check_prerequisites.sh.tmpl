@@ -57,11 +57,5 @@ fi
 # Prerequisites fulfilled
 log_success "Prerequisites fulfilled!"
 if command_exists bw; then
-    if bw_login; then
-        # Store BW_SESSION in chezmoi config for template access
-        if [[ -n "${BW_SESSION:-}" ]]; then
-            log_info "Storing BW_SESSION for chezmoi templates..."
-            chezmoi state set --bucket=config BW_SESSION "$BW_SESSION"
-        fi
-    fi
+    bw_login
 fi
