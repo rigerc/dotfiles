@@ -662,7 +662,7 @@ save_bw_session() {
     fi
 
     # Create/overwrite the session file
-    if echo "export BW_SESSION=\"$session\"" > "$session_file"; then
+    if echo "$session" > "$session_file"; then
         log_success "Bitwarden session saved to $session_file (${#session} chars)"
         log_debug "Session file permissions: $(ls -la "$session_file" 2>/dev/null || echo 'File not found')"
         return 0
