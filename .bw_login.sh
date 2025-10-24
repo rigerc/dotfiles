@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source "utils/common.sh.tmpl"
+source "utils/common.sh"
 
 set -uo pipefail
 
