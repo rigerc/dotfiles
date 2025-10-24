@@ -1,12 +1,7 @@
 #!{{ lookPath "bash" }}
 set -uo pipefail
 
-# Source shared utilities
-if [[ -z "${CHEZMOI_WORKING_TREE}" ]]; then
-    echo "Error, \$CHEZMOI_WORKING_TREE must be set. Please only run this script via chezmoi"
-    exit 1
-fi
-source "${CHEZMOI_WORKING_TREE}/.chezmoiscripts/common.sh"
+{{ template "common.sh" . }}
 
 # Configuration
 
@@ -201,9 +196,28 @@ install_tmux_plugins() {
     fi
 }
 
+check_secrets() {
+    log_step "Checking secrets configuration"
+
+    # Source the .env file if it exists
+    if [[ -f "$HOME/.env" ]]; then
+        # Use subshell to avoid polluting current environment
+        if (source "$HOME/.env" 2>/dev/null && [[ "$ENV_SECRETS_IMPORTED" == "true" ]]); then
+            log_success "Secrets properly imported (ENV_SECRETS_IMPORTED=true)"
+            return 0
+        else
+            log_warning "ENV_SECRETS_IMPORTED is not set to 'true'"
+            return 1
+        fi
+    else
+        log_warning "Secrets file not found at $HOME/.env"
+        return 1
+    fi
+}
+
 copy_alacritty_config() {
     log_step "Copying Alacritty configuration"
-    
+
     if ! is_wsl; then
         log_success "Not running on WSL, Alacritty copy not needed"
         return 0
@@ -291,6 +305,7 @@ main() {
         log_info "Detected Android platform"
         operations=(
             "setup_fish"
+            "check_secrets"
         )
     elif is_arch; then
         log_info "Detected Arch Linux platform"
@@ -302,6 +317,7 @@ main() {
             "generate_locales"
             "install_tmux_plugins"
             "copy_alacritty_config"
+            "check_secrets"
         )
     else
         log_warning "Unknown platform, running default operations"
