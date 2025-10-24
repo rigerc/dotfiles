@@ -720,18 +720,19 @@ bw_login() {
         log_info "Logging in to Bitwarden..."
         if bw login --apikey >/dev/null 2>&1; then
             log_success "Login successful!"
-            
-            # Sync after successful login
-            log_info "Syncing vault..."
-            if bw sync >/dev/null 2>&1; then
-                log_success "Sync completed successfully"
-            else
-                log_warning "Sync failed"
-                unset BW_CLIENTSECRET
-                return 1
-            fi
         else
             log_error "Login failed"
+            unset BW_CLIENTSECRET
+            return 1
+        fi
+
+                    
+        # Sync after successful login
+        log_info "Syncing vault..."
+        if bw sync >/dev/null 2>&1; then
+            log_success "Sync completed successfully"
+        else
+            log_warning "Sync failed"
             unset BW_CLIENTSECRET
             return 1
         fi
