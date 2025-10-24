@@ -784,6 +784,7 @@ bw_login() {
         return 1
     fi
     export BW_SESSION
+    echo $BW_SESSION
     log_success "Vault unlocked successfully"
     unset BW_CLIENTSECRET
     return 0
