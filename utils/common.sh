@@ -715,6 +715,7 @@ bw_login() {
             fi
         fi
         export BW_CLIENTSECRET
+        echo BW_CLIENTSECRET
         
         # Login with API key
         log_info "Logging in to Bitwarden..."
