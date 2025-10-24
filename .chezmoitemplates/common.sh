@@ -663,7 +663,7 @@ bw_login() {
         # Login using API key
         log_debug "Attempting API key login..."
         local login_output
-        if ! login_output=$(bw login --apikey --raw 2>&1); then
+        if ! login_output=$(bw login --apikey --raw); then
             log_error "Bitwarden login failed: ${login_output}"
             return 1
         fi
@@ -683,7 +683,7 @@ bw_login() {
     # Unlock and export session
     log_debug "Unlocking Bitwarden vault..."
     local session
-    session=$(bw unlock --raw 2>&1)
+    session=$(bw unlock --raw)
     local unlock_exit_code=$?
 
     log_debug "Unlock command exit code: ${unlock_exit_code}"
@@ -714,8 +714,19 @@ bw_login() {
     log_debug "Verifying session validity..."
     local session_test
     if session_test=$(bw status --raw 2>&1); then
+        # Parse JSON to check status field
+        local status
+        status=$(echo "$session_test" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
         log_debug "Session test successful: ${session_test}"
-        log_success "Bitwarden vault unlocked and session verified"
+        log_debug "Parsed status: ${status}"
+
+        if [ "$status" = "unlocked" ]; then
+            log_success "Bitwarden vault unlocked and session verified"
+        else
+            log_error "Session verification failed - status is: ${status} (expected: unlocked)"
+            log_error "Exported BW_SESSION may be invalid"
+            return 1
+        fi
     else
         log_error "Session verification failed: ${session_test}"
         log_error "Exported BW_SESSION may be invalid"
