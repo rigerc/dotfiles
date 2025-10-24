@@ -8,6 +8,11 @@
 
 set -uo pipefail
 
+# Check if command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
 # Cache gum availability at script initialization
 _GUM_AVAILABLE=""
 if command_exists gum; then
@@ -140,11 +145,6 @@ trap 'error_handler ${LINENO}' ERR
 # -----------------------------------------------------------------------------
 # Utility Functions
 # -----------------------------------------------------------------------------
-
-# Check if command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
 
 # Create directory if it doesn't exist
 ensure_directory() {
