@@ -732,6 +732,7 @@ bw_login() {
             log_success "Vault unlocked successfully"
         else
             log_success "Vault already unlocked"
+            echo "export BW_SESSION='$BW_SESSION'" > "$HOME/.bw_session"
         fi
         return 0
     fi
