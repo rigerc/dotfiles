@@ -641,6 +641,57 @@ install_system_package() {
 }
 
 # -----------------------------------------------------------------------------
+# Bitwarden Session Management Functions
+# -----------------------------------------------------------------------------
+save_bw_session() {
+    local session="$1"
+    local session_file="$HOME/.bw_session"
+
+    log_debug "Saving Bitwarden session to $session_file..."
+
+    # Validate session parameter
+    if [ -z "$session" ]; then
+        log_error "Cannot save empty session value"
+        return 1
+    fi
+
+    # Check if session looks valid (basic format check)
+    if [[ ${#session} -lt 10 ]]; then
+        log_error "Session value appears too short (${#session} chars), not saving"
+        return 1
+    fi
+
+    # Create/overwrite the session file
+    if echo "export BW_SESSION=\"$session\"" > "$session_file"; then
+        log_success "Bitwarden session saved to $session_file (${#session} chars)"
+        log_debug "Session file permissions: $(ls -la "$session_file" 2>/dev/null || echo 'File not found')"
+        return 0
+    else
+        log_error "Failed to write session to $session_file"
+        return 1
+    fi
+}
+
+delete_bw_session() {
+    local session_file="$HOME/.bw_session"
+
+    log_debug "Deleting Bitwarden session file: $session_file"
+
+    if [[ -f "$session_file" ]]; then
+        if rm "$session_file"; then
+            log_success "Bitwarden session file deleted: $session_file"
+            return 0
+        else
+            log_error "Failed to delete session file: $session_file"
+            return 1
+        fi
+    else
+        log_debug "Session file does not exist: $session_file"
+        return 0
+    fi
+}
+
+# -----------------------------------------------------------------------------
 # Bitwarden Login Function
 # -----------------------------------------------------------------------------
 bw_login() {
@@ -722,6 +773,13 @@ bw_login() {
 
         if [ "$status" = "unlocked" ]; then
             log_success "Bitwarden vault unlocked and session verified"
+
+            # Save the verified session to file
+            if save_bw_session "$session"; then
+                log_debug "Session saved successfully"
+            else
+                log_warning "Failed to save session to file, but continuing with in-memory session"
+            fi
         else
             log_error "Session verification failed - status is: ${status} (expected: unlocked)"
             log_error "Exported BW_SESSION may be invalid"
