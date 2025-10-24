@@ -6,7 +6,7 @@ if [[ -z "${CHEZMOI_WORKING_TREE}" ]]; then
     echo "Error, \$CHEZMOI_WORKING_TREE must be set. Please only run this script via chezmoi"
     exit 1
 fi
-source "${CHEZMOI_WORKING_TREE}/utils/common.sh"
+source ".local/share/chezmoi/.chezmoiscripts/common.sh.tmpl"
 
 log_header "Checking prerequisites"
 
