@@ -2,14 +2,12 @@
 # This file demonstrates how to use the interactive prompt data
 
 # Git configuration using prompted data
-{{- if eq .chezmoi.os "linux" }}
 [user]
     name = {{ .github_user | quote }}
     email = {{ .github_email | quote }}
 
 [github]
     user = {{ .github_user | quote }}
-{{- end }}
 
 [core]
     editor = nano

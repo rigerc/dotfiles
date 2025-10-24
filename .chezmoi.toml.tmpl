@@ -5,16 +5,19 @@
 {{-   $github_user = promptStringOnce . "github_user" "GitHub username" -}}
 {{-   $github_email = promptStringOnce . "github_email" "GitHub email" -}}
 {{- end }}
-
+{{- if ne .chezmoi.os "android" }}
+{{- $github_user := "rigerc" -}}
+{{- $github_email := "bond@bsgb.nl" -}}
+{{ end }}
 [tmpDir]
     path = ".local/share/chezmoi/.tmp"
 
-{{- if ne .chezmoi.os "android" }}
+
 [data]
     github_user = {{ $github_user | quote }}
     github_email = {{ $github_email | quote }}
     bitwarden_clientid = "user.e4878fd7-8be5-4510-b457-ac6a00a44fff"
-{{ end }}
+
 
 #[hooks.read-source-state.pre]
 #    command = ".local/share/chezmoi/.bw_login.sh"
