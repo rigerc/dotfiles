@@ -815,17 +815,20 @@ bw_login() {
     log_debug "Starting Bitwarden login process..."
     log_debug "Using client ID: ${BW_CLIENTID:0:8}..." # Show only first 8 chars for security
 
-    # Try to source existing session file first
+    # Try to read existing session file first
     local session_file="$HOME/.bw_session"
     if [[ -f "$session_file" ]]; then
         log_debug "Found existing session file: $session_file"
-        log_debug "Sourcing session file..."
+        log_debug "Reading session file..."
 
-        if source "$session_file"; then
-            log_debug "Session file sourced successfully"
-            log_debug "BW_SESSION length: ${#BW_SESSION:-0} chars"
+        local session
+        if session=$(cat "$session_file" 2>/dev/null); then
+            log_debug "Session file read successfully"
 
-            # Verify if the sourced session is valid and vault is unlocked
+            # Export the session for verification
+            export BW_SESSION="$session"
+
+            # Verify if the session is valid and vault is unlocked
             if [[ -n "$BW_SESSION" ]] && bw_verify_session "$BW_SESSION"; then
                 log_success "Using existing valid session from file"
                 # Sync vault and return
@@ -837,7 +840,7 @@ bw_login() {
                 unset BW_SESSION
             fi
         else
-            log_warning "Failed to source session file: $session_file"
+            log_warning "Failed to read session file: $session_file"
         fi
     else
         log_debug "No existing session file found: $session_file"
