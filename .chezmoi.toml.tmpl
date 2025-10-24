@@ -17,5 +17,7 @@
 bitwarden.unlock = "auto"
 {{- end }}
 
+[scriptEnv]
+    BW_SESSION = {{ env "BW_SESSION" }}
 #[hooks.read-source-state.pre]
 #    command = "sh ~/.local/share/chezmoi/.install-essentials.sh"
