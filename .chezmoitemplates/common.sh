@@ -22,7 +22,7 @@ readonly NC='\033[0m' # No Color
 # Debug flag (set to "true" to enable debug logging)
 # -----------------------------------------------------------------------------
 DEBUG="${DEBUG:-false}"
-#DEBUG="true"  # Uncomment to enable debug logging
+DEBUG="true"  # Uncomment to enable debug logging
 
 # -----------------------------------------------------------------------------
 # Logging Functions
@@ -45,16 +45,31 @@ log_error() {
 
 log_debug() {
     if [ "$DEBUG" = "true" ]; then
-        echo -e "${CYAN}🔍 [DEBUG]${NC} $*" >&2
+        # Get timestamp
+        local timestamp
+        timestamp=$(date '+%H:%M:%S')
+
+        # Get calling function name if available
+        local caller=""
+        if [ "${#FUNCNAME[@]}" -gt 1 ]; then
+            caller="${FUNCNAME[1]}(): "
+        fi
+
+        # Get script name for context
+        local script_name
+        script_name=$(basename "$0")
+
+        # Format debug message with enhanced context
+        echo -e "${CYAN}🔍 [DEBUG ${timestamp}]${NC} ${script_name}: ${caller}$*" >&2
     fi
 }
 
 log_step() {
-    echo -e "${YELLOW}${BOLD}🧩 [STEP]${NC} $*" >&2
+    echo -e "${YELLOW}${BOLD}🧩 [STEP] $*${NC}" >&2
 }
 
 log_header() {
-    echo -e "${GREEN}${BOLD}🚀 [HEADER]${NC} $*" >&2
+    echo -e "${GREEN}${BOLD}🚀 [START] $*${NC}" >&2
 }
 
 # -----------------------------------------------------------------------------
@@ -188,8 +203,7 @@ install_homebrew() {
 
     # Try to find existing installation
     if load_homebrew; then
-        log_success "Found existing Homebrew installation"
-        brew --version | head -n1
+        log_success "Found existing Homebrew installation $(brew --version | head -n1)"
         return 0
     fi
 
@@ -632,47 +646,100 @@ install_system_package() {
 bw_login() {
     # Set Bitwarden client ID
     export BW_CLIENTID="{{ .bitwarden_clientid | quote }}"
-    
-    log_debug "Checking Bitwarden login status..."
-    
+
+    log_debug "Starting Bitwarden login process..."
+    log_debug "Using client ID: ${BW_CLIENTID:0:8}..." # Show only first 8 chars for security
+
     # Check if already logged in
-    if bw login --check --raw >/dev/null 2>&1; then
+    log_debug "Checking current login status..."
+    local login_check_output
+    if login_check_output=$(bw login --check --raw 2>&1); then
+        log_debug "Login check successful: ${login_check_output}"
         log_debug "Already logged into Bitwarden"
     else
+        log_debug "Login check failed: ${login_check_output}"
         log_info "Not logged into Bitwarden, attempting login..."
-        
-        log_debug "Using client ID: $BW_CLIENTID"
-        
+
         # Login using API key
-        if ! bw login --apikey --raw 2>&1; then
-            log_error "Bitwarden login failed"
+        log_debug "Attempting API key login..."
+        local login_output
+        if ! login_output=$(bw login --apikey --raw 2>&1); then
+            log_error "Bitwarden login failed: ${login_output}"
             return 1
         fi
-        
+
+        log_debug "Login command output: ${login_output}"
         log_success "Bitwarden login successful"
     fi
-    
+
+    # Verify login status before proceeding
+    log_debug "Verifying login status after login attempt..."
+    if ! bw login --check --raw >/dev/null 2>&1; then
+        log_error "Login verification failed - not properly authenticated"
+        return 1
+    fi
+    log_debug "Login verification successful"
+
     # Unlock and export session
     log_debug "Unlocking Bitwarden vault..."
     local session
     session=$(bw unlock --raw 2>&1)
-    
-    if [ $? -ne 0 ]; then
-        log_error "Failed to unlock Bitwarden vault"
+    local unlock_exit_code=$?
+
+    log_debug "Unlock command exit code: ${unlock_exit_code}"
+    log_debug "Unlock command output: ${session}"
+
+    if [ $unlock_exit_code -ne 0 ]; then
+        log_error "Failed to unlock Bitwarden vault (exit code: ${unlock_exit_code})"
+        log_error "Unlock output: ${session}"
         return 1
     fi
-    
+
+    # Validate session value
+    if [ -z "$session" ]; then
+        log_error "Session value is empty after unlock"
+        return 1
+    fi
+
+    # Check if session looks valid (basic format check)
+    if [[ ${#session} -lt 10 ]]; then
+        log_error "Session value appears too short (${#session} chars): ${session}"
+        return 1
+    fi
+
     export BW_SESSION="$session"
-    log_debug "BW_SESSION exported successfully ($session)"
-    log_success "Bitwarden vault unlocked"
-    
+    log_debug "BW_SESSION exported successfully (length: ${#session} chars, starts with: ${session:0:8}...)"
+
+    # Verify the session works
+    log_debug "Verifying session validity..."
+    local session_test
+    if session_test=$(bw status --raw 2>&1); then
+        log_debug "Session test successful: ${session_test}"
+        log_success "Bitwarden vault unlocked and session verified"
+    else
+        log_error "Session verification failed: ${session_test}"
+        log_error "Exported BW_SESSION may be invalid"
+        return 1
+    fi
+
     # Sync vault
     log_debug "Syncing Bitwarden vault..."
-    if ! bw sync 2>&1; then
-        log_warning "Bitwarden sync failed (continuing anyway)"
+    local sync_output
+    if ! sync_output=$(bw sync 2>&1); then
+        log_warning "Bitwarden sync failed (continuing anyway): ${sync_output}"
     else
+        log_debug "Sync output: ${sync_output}"
         log_success "Bitwarden vault synced"
     fi
-    
-    return 0
+
+    # Final verification
+    log_debug "Performing final verification..."
+    if bw login --check --raw >/dev/null 2>&1 && [ -n "$BW_SESSION" ]; then
+        log_success "Bitwarden login process completed successfully"
+        log_debug "Final status: logged in, session active (${#BW_SESSION} chars)"
+        return 0
+    else
+        log_error "Final verification failed"
+        return 1
+    fi
 }
