@@ -728,7 +728,7 @@ bw_login() {
                 return 1
             fi
             export BW_SESSION
-            echo "export BW_SESSION=\"$BW_SESSION\" > "$HOME/.bw_session"
+            echo "export BW_SESSION='$BW_SESSION'" > "$HOME/.bw_session"
             log_success "Vault unlocked successfully"
         else
             log_success "Vault already unlocked"
@@ -798,7 +798,7 @@ bw_login() {
         return 1
     fi
     export BW_SESSION
-    echo "export BW_SESSION=\"$BW_SESSION\"" > "$HOME/.bw_session"
+    echo "export BW_SESSION='$BW_SESSION'" > "$HOME/.bw_session"
     log_success "Vault unlocked successfully"
     unset BW_CLIENTSECRET
     return 0
