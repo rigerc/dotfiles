@@ -806,7 +806,7 @@ bw_do_login() {
     export BW_CLIENTSECRET
 
     # Login with API key
-    if bw login --apikey --raw>/dev/null; then
+    if bw login --apikey; then
         log_success "Login successful!"
         unset BW_CLIENTSECRET
         return 0
