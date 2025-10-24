@@ -57,5 +57,18 @@ fi
 # Prerequisites fulfilled
 log_success "Prerequisites fulfilled!"
 if command_exists bw; then
-    bw_login
+    if bw_login; then
+        # Store BW_SESSION in chezmoi config for template access
+        if [[ -n "${BW_SESSION:-}" ]]; then
+            log_info "Storing BW_SESSION for chezmoi templates..."
+            chezmoi state set --bucket=config BW_SESSION "$BW_SESSION" 2>/dev/null || {
+                # Fallback: export to environment file
+                local session_file="${CHEZMOI_WORKING_TREE}/.tmp/bw_session"
+                mkdir -p "$(dirname "$session_file")"
+                echo "$BW_SESSION" > "$session_file"
+                chmod 600 "$session_file"
+                log_info "BW_SESSION stored in $session_file"
+            }
+        fi
+    fi
 fi

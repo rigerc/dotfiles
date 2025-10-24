@@ -32,7 +32,7 @@ The content is organized as follows:
 <notes>
 - Some files may have been excluded based on .gitignore rules and Repomix's configuration
 - Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
-- Only files matching these patterns are included: .chezmoiscripts/run_before_check_prerequisites.sh.tmpl, utils/common.sh
+- Only files matching these patterns are included: .chezmoiscripts/run_before_check_prerequisites.sh.tmpl, .chezmoitemplates/tokens.env, utils/common.sh, .chezmoi.toml.tmpl
 - Files matching patterns in .gitignore are excluded
 - Files matching default ignore patterns are excluded
 - Files are sorted by Git change count (files with more changes are at the bottom)
@@ -41,12 +41,62 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
+.chezmoi.toml.tmpl
 .chezmoiscripts/run_before_check_prerequisites.sh.tmpl
+.chezmoitemplates/tokens.env
 utils/common.sh
 </directory_structure>
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path=".chezmoitemplates/tokens.env">
+{{- $folderIdOutput := output "bw" "list" "folders" | fromJson -}}
+{{- $folderId := "" -}}
+{{- range $folderIdOutput -}}
+  {{- if eq .name "Tokens" -}}
+    {{- $folderId = .id -}}
+  {{- end -}}
+{{- end -}}
+{{- if $folderId -}}
+  {{- $tokensOutput := output "bw" "list" "items" "--folderid" $folderId | fromJson -}}
+  {{- range $tokensOutput -}}
+    {{- $tokenName := .name -}}
+    {{- $fieldValue := "" -}}
+    {{- if .fields -}}
+      {{- range .fields -}}
+        {{- if eq .name "Token" -}}
+          {{- $fieldValue = .value -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end }}
+export {{ $tokenName }}={{ $fieldValue | quote }}
+  {{- end -}}
+{{- end -}}
+</file>
+
+<file path=".chezmoi.toml.tmpl">
+{{- $github_user := "" -}}
+{{- $github_email := "" -}}
+
+{{- if eq .chezmoi.os "linux" }}
+{{-   $github_user = promptStringOnce . "github_user" "GitHub username" -}}
+{{-   $github_email = promptStringOnce . "github_email" "GitHub email" -}}
+{{- end }}
+
+[tmpDir]
+    path = ".local/share/chezmoi/.tmp"
+
+{{- if ne .chezmoi.os "android" }}
+[data]
+    github_user = {{ $github_user | quote }}
+    github_email = {{ $github_email | quote }}
+
+bitwarden.unlock = "auto"
+{{- end }}
+#[hooks.read-source-state.pre]
+#    command = "sh ~/.local/share/chezmoi/.install-essentials.sh"
+</file>
 
 <file path=".chezmoiscripts/run_before_check_prerequisites.sh.tmpl">
 #!{{ lookPath "bash" }}
@@ -89,7 +139,6 @@ if ! command -v gum >/dev/null 2>&1; then
     if ! install_package "gum"; then
         log_warning "gum installation failed, but continuing..."
     fi
-else
 fi
 
 # Check if git is installed
@@ -97,7 +146,6 @@ if ! command -v git >/dev/null 2>&1; then
     if ! install_package "git"; then
         log_warning "git installation failed, but continuing..."
     fi
-else
 fi
 
 # Check if bitwarden-cli is installed
@@ -105,15 +153,12 @@ if ! command -v bw >/dev/null 2>&1; then
     if ! install_package "bitwarden-cli"; then
         log_warning "bitwarden-cli installation failed, but continuing..."
     fi
-else
 fi
 
 # Prerequisites fulfilled
 log_success "Prerequisites fulfilled!"
-
-# Check if bitwarden-cli is installed
-if command -v bw >/dev/null 2>&1; then
-    
+if command_exists bw; then
+    bw_login
 fi
 </file>
 
@@ -805,6 +850,109 @@ install_system_package() {
         log_error "Failed to install $package"
         return 1
     fi
+}
+
+bw_login() {
+    log_info "Logging in to BitWarden"
+    
+    # Check if already logged in (not just unlocked)
+    if bw login --check 2>&1 | grep -q "You are logged in"; then
+        log_success "Already logged in to Bitwarden"
+        # Still need to unlock if locked
+        if ! bw unlock --check &>/dev/null; then
+            log_info "Vault is locked, unlocking..."
+            if gum_available; then
+                MASTER_PASSWORD=$(gum input --password --placeholder "Enter master password")
+            else
+                echo -n "Enter master password: "
+                read -s MASTER_PASSWORD
+                echo
+            fi
+            
+            if [[ -z "$MASTER_PASSWORD" ]]; then
+                log_error "Master password is required"
+                return 1
+            fi
+            
+            BW_SESSION=$(bw unlock --raw "$MASTER_PASSWORD")
+            if [[ -z "$BW_SESSION" ]]; then
+                log_error "Failed to unlock vault"
+                return 1
+            fi
+            export BW_SESSION
+            log_success "Vault unlocked successfully"
+        else
+            log_success "Vault already unlocked"
+        fi
+        return 0
+    fi
+    
+    # Set client ID
+    export BW_CLIENTID="user.e4878fd7-8be5-4510-b457-ac6a00a44fff"
+    
+    # Prompt for client secret using gum if available, otherwise read
+    if gum_available; then
+        BW_CLIENTSECRET=$(gum input --password --placeholder "Enter Bitwarden client secret")
+        if [[ -z "$BW_CLIENTSECRET" ]]; then
+            log_error "Client secret is required"
+            return 1
+        fi
+    else
+        echo -n "Enter Bitwarden client secret: "
+        read -s BW_CLIENTSECRET
+        echo
+        if [[ -z "$BW_CLIENTSECRET" ]]; then
+            log_error "Client secret is required"
+            return 1
+        fi
+    fi
+    export BW_CLIENTSECRET
+    
+    # Login with API key
+    log_info "Logging in to Bitwarden..."
+    if bw login --apikey >/dev/null 2>&1; then
+        log_success "Login successful!"
+    else
+        log_error "Login failed"
+        unset BW_CLIENTSECRET
+        return 1
+    fi
+    
+    # Sync after successful login
+    log_info "Syncing vault..."
+    if bw sync >/dev/null 2>&1; then
+        log_success "Sync completed successfully"
+    else
+        log_warning "Sync failed, continuing anyway..."
+    fi
+    
+    # Unlock the vault
+    log_info "Unlocking vault..."
+    if gum_available; then
+        MASTER_PASSWORD=$(gum input --password --placeholder "Enter master password")
+    else
+        echo -n "Enter master password: "
+        read -s MASTER_PASSWORD
+        echo
+    fi
+    
+    if [[ -z "$MASTER_PASSWORD" ]]; then
+        log_error "Master password is required"
+        unset BW_CLIENTSECRET
+        return 1
+    fi
+    
+    BW_SESSION=$(bw unlock --raw "$MASTER_PASSWORD")
+    if [[ -z "$BW_SESSION" ]]; then
+        log_error "Failed to unlock vault"
+        unset BW_CLIENTSECRET
+        return 1
+    fi
+    export BW_SESSION
+    
+    log_success "Vault unlocked successfully"
+    unset BW_CLIENTSECRET
+    return 0
 }
 </file>
 
