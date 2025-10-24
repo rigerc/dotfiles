@@ -696,7 +696,7 @@ install_system_package() {
 
 # Helper function to check if Bitwarden is logged in
 is_bw_logged_in() {
-    bw login --check 2>&1 | grep -q "You are logged in"
+    bw login --check 2>&1 | grep -q "You are logged in!"
     return $?
 }
 
