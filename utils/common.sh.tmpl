@@ -694,31 +694,56 @@ install_system_package() {
     fi
 }
 
+# Helper function to check if Bitwarden is logged in
+is_bw_logged_in() {
+    bw login --check 2>&1 | grep -q "You are logged in"
+    return $?
+}
+
+# Helper function to check if Bitwarden vault is unlocked
+is_bw_unlocked() {
+    # First check if logged in at all
+    if ! is_bw_logged_in; then
+        return 1
+    fi
+    
+    # Check if unlocked - bw unlock --check returns 0 if unlocked
+    bw unlock --check &>/dev/null
+    return $?
+}
+
+# Fixed save_bw_session function
 save_bw_session() {
     if [[ -z "$BW_SESSION" ]]; then
         log_error "BW_SESSION is not set"
         return 1
     fi
     
-    echo "export BW_SESSION='$BW_SESSION'" > "$HOME/.bw_session"
+    echo "$BW_SESSION" > "$HOME/.bw_session"
     chmod 600 "$HOME/.bw_session"
     log_success "Session saved to ~/.bw_session"
     return 0
 }
 
+# Fixed bw_login function
 bw_login() {
     log_info "Logging in to BitWarden"
 
     # Load existing session if present
     if [[ -f "$HOME/.bw_session" ]]; then
-        export BW_SESSION=$(<"$HOME/.bw_session")
+        BW_SESSION=$(<"$HOME/.bw_session")
+        export BW_SESSION
     fi
 
-    # Check if already logged in (not just unlocked)
-    if bw login --check 2>&1 | grep -q "You are logged in"; then
+    # Check if already logged in and unlocked
+    if is_bw_logged_in; then
         log_success "Already logged in to Bitwarden"
-        # Still need to unlock if locked
-        if ! bw unlock --check &>/dev/null; then
+        
+        if is_bw_unlocked; then
+            log_success "Vault already unlocked"
+            return 0
+        else
+            # Vault is locked, need to unlock
             log_info "Vault is locked, unlocking..."
             if gum_available; then
                 MASTER_PASSWORD=$(gum input --password --placeholder "Enter master password")
@@ -738,39 +763,38 @@ bw_login() {
                 log_error "Failed to unlock vault"
                 return 1
             fi
+            
             export BW_SESSION
             save_bw_session
             log_success "Vault unlocked successfully"
-        else
-            log_success "Vault already unlocked"
-            save_bw_session
+            return 0
         fi
-        return 0
     fi
 
+    # Not logged in, need to do full login
     # Set client ID
     export BW_CLIENTID="user.e4878fd7-8be5-4510-b457-ac6a00a44fff"
 
-    # Prompt for client secret using gum if available, otherwise read
+    # Prompt for client secret
     if gum_available; then
         BW_CLIENTSECRET=$(gum input --password --placeholder "Enter Bitwarden client secret")
-        if [[ -z "$BW_CLIENTSECRET" ]]; then
-            log_error "Client secret is required"
-            return 1
-        fi
     else
         echo -n "Enter Bitwarden client secret: "
         read -s BW_CLIENTSECRET
         echo
-        if [[ -z "$BW_CLIENTSECRET" ]]; then
-            log_error "Client secret is required"
-            return 1
-        fi
     fi
+    
+    if [[ -z "$BW_CLIENTSECRET" ]]; then
+        log_error "Client secret is required"
+        return 1
+    fi
+    
     export BW_CLIENTSECRET
 
     # Login with API key
     log_info "Logging in to Bitwarden..."
+    log_info "BW_CLIENTSECRET is $BW_CLIENTSECRET"
+    
     if bw login --apikey >/dev/null 2>&1; then
         log_success "Login successful!"
     else
@@ -804,8 +828,8 @@ bw_login() {
 
     export BW_SESSION
     save_bw_session
-    log_success "Vault unlocked successfully"
     unset BW_CLIENTSECRET
+    log_success "Vault unlocked successfully"
 
     # Sync after successful login
     log_info "Syncing vault..."
