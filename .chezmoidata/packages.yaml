@@ -67,6 +67,7 @@ packages:
   android:
     termux:
       pkg:
+        - nodejs
         - termux-tools
         - gh
         - curl
@@ -84,3 +85,5 @@ packages:
         - fish
         - samba
         - atuin
+      npm:
+        - "@bitwarden/cli"

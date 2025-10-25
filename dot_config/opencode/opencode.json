@@ -7,6 +7,12 @@
         "apiKey": "{env:OPENROUTER_API_KEY}"
       }
     },
+    "mistral": {
+      "models": {},
+      "options": {
+        "apiKey": "{env:MISTRAL_API_KEY}"
+      }
+    },
     "zai": {
       "models": {},
       "options": {

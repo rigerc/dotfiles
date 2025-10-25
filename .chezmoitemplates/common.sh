@@ -389,7 +389,10 @@ install_npm() {
     log_info "Installing Node.js and npm..."
 
     # Try using system package manager first
-    if command_exists pacman; then
+    if is_android; then
+        log_info "Installing via Termux..."
+        pkg install -y nodejs npm >/dev/null
+    elif command_exists pacman; then
         log_info "Installing via pacman..."
         sudo pacman -S --noconfirm --needed nodejs npm >/dev/null
     elif command_exists apt-get; then
