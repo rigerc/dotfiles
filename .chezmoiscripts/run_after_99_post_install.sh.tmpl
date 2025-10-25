@@ -260,6 +260,33 @@ check_secrets() {
     fi
 }
 
+check_github_key_status() {
+    log_step "Checking GitHub SSH key status"
+    log_debug "Entering check_github_key_status function"
+
+    # Check if GitHub key addition failed during SSH setup
+    if [[ "${GITHUB_KEY_FAILED:-}" == "true" ]]; then
+        log_warning "GitHub SSH key was not added automatically during setup"
+        echo ""
+        log_info "To add your SSH key to GitHub manually:"
+        log_info "1. First, authenticate with GitHub CLI:"
+        log_info "   gh auth login"
+        log_info ""
+        log_info "2. Then add your SSH key to GitHub:"
+        log_info "   gh ssh-key add ~/.ssh/id_ed25519.pub --title \"$(whoami)@$(hostname)-$(date +%Y%m%d)\""
+        log_info ""
+        log_info "Or use the convenient helper function:"
+        log_info "   gh-add-key"
+        log_info ""
+        log_info "Your SSH public key is located at: ~/.ssh/id_ed25519.pub"
+        echo ""
+        return 1
+    else
+        log_success "GitHub SSH key status OK"
+        return 0
+    fi
+}
+
 copy_alacritty_config() {
     log_step "Copying Alacritty configuration"
     log_debug "Entering copy_alacritty_config function"
@@ -372,6 +399,7 @@ main() {
         operations=(
             "setup_fish"
             "check_secrets"
+            "check_github_key_status"
         )
     elif is_arch; then
         log_info "Detected Arch Linux platform"
