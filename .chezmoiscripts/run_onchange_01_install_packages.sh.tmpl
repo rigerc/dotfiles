@@ -275,6 +275,8 @@ init_android_packages() {
 
     log_debug "Detected Android platform, proceeding with package installation"
 
+    local overall_success=true
+
     if ! command_exists pkg; then
         log_error "pkg not available"
         log_debug "pkg command not found"
@@ -373,8 +375,84 @@ init_android_packages() {
     {{- else }}
     log_info "No Termux packages defined in configuration"
     {{- end }}
-    
-    return 0
+
+    # NPM installation
+    log_debug "Checking for npm installation"
+    if ! command_exists npm; then
+        log_debug "npm not found, installing"
+        log_info "Installing npm..."
+        if ! install_npm; then
+            log_error "npm installation failed"
+            log_warning "Skipping npm packages"
+            log_debug "npm installation returned failure"
+            overall_success=false
+            # Don't return - continue
+        else
+            log_debug "npm installation successful"
+        fi
+    else
+        log_debug "npm already installed: $(command -v npm)"
+    fi
+
+    # NPM packages
+    if command_exists npm; then
+        {{- if .packages.android.termux.npm }}
+        log_info "Checking npm packages..."
+        log_debug "Processing {{len .packages.android.termux.npm}} npm packages from config"
+
+        local npm_packages=(
+            {{- range .packages.android.termux.npm }}
+            {{ . | quote }}
+            {{- end }}
+        )
+
+        log_debug "Starting batch check for missing npm packages"
+        local missing_npm=()
+        while IFS= read -r pkg; do
+            [[ -n "$pkg" ]] && missing_npm+=("$pkg")
+        done < <(get_missing_npm_packages npm_packages)
+
+        log_debug "Found ${#missing_npm[@]} missing npm packages out of ${#npm_packages[@]} total"
+
+        local installed_count=$((${#npm_packages[@]} - ${#missing_npm[@]}))
+        if [[ $installed_count -gt 0 ]]; then
+            log_success "$installed_count npm package(s) already installed"
+        fi
+
+        if [[ ${#missing_npm[@]} -gt 0 ]]; then
+            log_info "Installing ${#missing_npm[@]} npm package(s): ${missing_npm[*]}"
+            log_debug "Missing npm packages: ${missing_npm[*]}"
+            local failed_packages=()
+
+            for pkg in "${missing_npm[@]}"; do
+                log_debug "Installing npm package: $pkg"
+                if ! install_npm_package "$pkg"; then
+                    failed_packages+=("$pkg")
+                    log_debug "npm package installation failed: $pkg"
+                fi
+            done
+
+            if [[ ${#failed_packages[@]} -gt 0 ]]; then
+                log_warning "Failed to install some npm packages:"
+                for pkg in "${failed_packages[@]}"; do
+                    log_warning "  - $pkg"
+                done
+                overall_success=false
+            fi
+        fi
+        {{- else }}
+        log_info "No npm packages defined in configuration"
+        {{- end }}
+    fi
+
+    if [[ "$overall_success" == true ]]; then
+        log_debug "All Android package installations completed successfully"
+        return 0
+    else
+        log_warning "Some package installations failed"
+        log_debug "Android package installation completed with failures"
+        return 1
+    fi
 }
 
 main() {
