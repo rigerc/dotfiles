@@ -8,7 +8,7 @@ alias config="cd ~/.config"
 alias dotfiles="chezmoi cd"
 alias chezmoi-update="chezmoi update && exec fish"
 alias lg="lazygit"
-alias chezmoi-go="chezmoi git pull -- --autostash --rebase && chezmoi init & CHEZMOI_VERBOSITY='minimal' chezmoi update"
+alias chezmoi-go="chezmoi git pull -- --autostash --rebase && chezmoi init && CHEZMOI_VERBOSITY='minimal' chezmoi update"
 
 function gobuild
     mkdir -p "$HOME/.local/bin"
