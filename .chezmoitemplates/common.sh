@@ -19,32 +19,82 @@ readonly BOLD='\033[1m'
 readonly NC='\033[0m' # No Color
 
 # -----------------------------------------------------------------------------
-# Debug flag (set to "true" to enable debug logging)
+# Logging verbosity levels
 # -----------------------------------------------------------------------------
+# CHEZMOI_VERBOSITY: minimal, normal, debug
+CHEZMOI_VERBOSITY="${CHEZMOI_VERBOSITY:-normal}"
+#CHEZMOI_VERBOSITY="debug"  # Uncomment to enable debug logging
+#CHEZMOI_VERBOSITY="minimal"  # Uncomment to enable minimal logging
+
+# Legacy debug flag for backward compatibility
 CHEZMOI_DEBUG="${CHEZMOI_DEBUG:-false}"
-#CHEZMOI_DEBUG="true"  # Uncomment to enable debug logging
+
+# Auto-set verbosity to debug if legacy debug flag is enabled
+if [ "$CHEZMOI_DEBUG" = "true" ]; then
+    CHEZMOI_VERBOSITY="debug"
+fi
 
 # -----------------------------------------------------------------------------
 # Logging Functions
 # -----------------------------------------------------------------------------
+
+# Check if message should be logged based on verbosity
+should_log() {
+    local level="$1"
+    
+    case "$CHEZMOI_VERBOSITY" in
+        "minimal")
+            case "$level" in
+                "success"|"error") return 0 ;;
+                *) return 1 ;;
+            esac
+            ;;
+        "normal")
+            case "$level" in
+                "debug") return 1 ;;
+                *) return 0 ;;
+            esac
+            ;;
+        "debug")
+            return 0
+            ;;
+        *)
+            # Default to normal behavior
+            case "$level" in
+                "debug") return 1 ;;
+                *) return 0 ;;
+            esac
+            ;;
+    esac
+}
+
 log_info() {
-    echo -e "${BLUE}ℹ️  [INFO]${NC} $*" >&2
+    if should_log "info"; then
+        echo -e "${BLUE}ℹ️  [INFO]${NC} $*" >&2
+    fi
 }
 
 log_success() {
-    echo -e "${GREEN}✅ [SUCCESS]${NC} $*" >&2
+    if should_log "success"; then
+        echo -e "${GREEN}✅ [SUCCESS]${NC} $*" >&2
+    fi
 }
 
 log_warning() {
-    echo -e "${YELLOW}⚠️  [WARNING]${NC} $*" >&2
+    if should_log "warning"; then
+        echo -e "${YELLOW}⚠️  [WARNING]${NC} $*" >&2
+    fi
 }
 
 log_error() {
-    echo -e "${RED}❌ [ERROR]${NC} $*" >&2
+    if should_log "error"; then
+        echo -e "${RED}❌ [ERROR]${NC} $*" >&2
+    fi
 }
 
 log_debug() {
-    if [ "$CHEZMOI_DEBUG" = "true" ]; then
+    # Check both new verbosity system and legacy debug flag
+    if should_log "debug" || [ "$CHEZMOI_DEBUG" = "true" ]; then
         # Get timestamp
         local timestamp
         timestamp=$(date '+%H:%M:%S')
@@ -65,11 +115,15 @@ log_debug() {
 }
 
 log_step() {
-    echo -e "${YELLOW}${BOLD}🧩 [STEP] $*${NC}" >&2
+    if should_log "step"; then
+        echo -e "${YELLOW}${BOLD}🧩 [STEP] $*${NC}" >&2
+    fi
 }
 
 log_header() {
-    echo -e "${GREEN}${BOLD}🚀 [START] $*${NC}" >&2
+    if should_log "header"; then
+        echo -e "${GREEN}${BOLD}🚀 [START] $*${NC}" >&2
+    fi
 }
 
 # -----------------------------------------------------------------------------
@@ -455,7 +509,9 @@ get_missing_homebrew_packages() {
     all_installed=$(brew list --formula -1 2>/dev/null)
     
     for pkg in "${packages[@]}"; do
-        if ! grep -qx "$pkg" <<<"$all_installed"; then
+        # Extract package name before @version suffix
+        local pkg_name="${pkg%%@*}"
+        if ! grep -qx "$pkg_name" <<<"$all_installed"; then
             missing+=("$pkg")
         fi
     done

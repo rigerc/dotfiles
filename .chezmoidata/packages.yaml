@@ -22,8 +22,9 @@ packages:
         - node
         - python
         - ruby
-        - golang
+        - go
         - rust
+        - vscli
         # Build tools
         #- cmake
         #- make
@@ -49,6 +50,7 @@ packages:
         - eza
         - zoxide
         - fastfetch
+        - onefetch
         - ggc
         - ranger
         # AI
@@ -74,6 +76,7 @@ packages:
         - openssh
         - sudo
         - fastfetch
+        - onefetch
         - zoxide
         - fzf
         - bat

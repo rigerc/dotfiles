@@ -287,6 +287,28 @@ check_github_key_status() {
     fi
 }
 
+update_tldr_cache() {
+    log_step "Updating tldr cache"
+    log_debug "Entering update_tldr_cache function"
+
+    if ! command_exists tldr; then
+        log_warning "tldr not found, skipping cache update"
+        log_debug "tldr command not available"
+        return 0
+    fi
+
+    log_info "Updating tldr cache..."
+    if tldr --update >/dev/null 2>&1; then
+        log_success "tldr cache updated"
+        log_debug "tldr --update completed successfully"
+        return 0
+    else
+        log_warning "tldr cache update had issues"
+        log_debug "tldr --update exited with code: $?"
+        return 1
+    fi
+}
+
 copy_alacritty_config() {
     log_step "Copying Alacritty configuration"
     log_debug "Entering copy_alacritty_config function"
@@ -398,6 +420,7 @@ main() {
         log_debug "Platform detection: Android"
         operations=(
             "setup_fish"
+            "update_tldr_cache"
             "check_secrets"
             "check_github_key_status"
         )
@@ -412,6 +435,7 @@ main() {
             "generate_locales"
             "install_tmux_plugins"
             "copy_alacritty_config"
+            "update_tldr_cache"
             "check_secrets"
         )
     else
