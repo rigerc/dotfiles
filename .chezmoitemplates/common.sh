@@ -21,8 +21,8 @@ readonly NC='\033[0m' # No Color
 # -----------------------------------------------------------------------------
 # Debug flag (set to "true" to enable debug logging)
 # -----------------------------------------------------------------------------
-DEBUG="${DEBUG:-false}"
-DEBUG="true"  # Uncomment to enable debug logging
+CHEZMOI_DEBUG="${DEBUG:-false}"
+#CHEZMOI_DEBUG="true"  # Uncomment to enable debug logging
 
 # -----------------------------------------------------------------------------
 # Logging Functions
