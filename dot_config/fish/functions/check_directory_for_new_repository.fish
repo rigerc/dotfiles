@@ -1,6 +1,6 @@
 function check_directory_for_new_repository
     # Early exit if no .git directory exists
-    if not test -d .git
+    if not test -d ./.git
         set -gx last_repository ""
         return
     end
