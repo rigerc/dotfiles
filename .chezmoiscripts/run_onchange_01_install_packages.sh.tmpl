@@ -231,7 +231,7 @@ init_arch_packages() {
         fi
         
         if [[ ${#missing_npm[@]} -gt 0 ]]; then
-            log_info "Installing ${#missing_npm[@]} npm package(s): ${missing_npm[*]"
+            log_info "Installing ${#missing_npm[@]} npm package(s): ${missing_npm[*]}"
             log_debug "Missing npm packages: ${missing_npm[*]}"
             local failed_packages=()
 
