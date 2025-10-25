@@ -21,7 +21,7 @@ readonly NC='\033[0m' # No Color
 # -----------------------------------------------------------------------------
 # Debug flag (set to "true" to enable debug logging)
 # -----------------------------------------------------------------------------
-CHEZMOI_DEBUG="${DEBUG:-false}"
+CHEZMOI_DEBUG="${CHEZMOI_DEBUG:-false}"
 #CHEZMOI_DEBUG="true"  # Uncomment to enable debug logging
 
 # -----------------------------------------------------------------------------
@@ -44,7 +44,7 @@ log_error() {
 }
 
 log_debug() {
-    if [ "$DEBUG" = "true" ]; then
+    if [ "$CHEZMOI_DEBUG" = "true" ]; then
         # Get timestamp
         local timestamp
         timestamp=$(date '+%H:%M:%S')
