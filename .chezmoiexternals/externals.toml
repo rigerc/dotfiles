@@ -61,3 +61,11 @@
     type = "git-repo"
     clone.args = ["-q"]
     url = "https://github.com/zdharma-continuum/zinit.git"
+
+# Zinit Zsh Plugin Manager
+["."]
+    type = "git-repo"
+    clone.args = ["-q"]
+    url = "https://github.com/rigerc/claudecode.git"
+
+    

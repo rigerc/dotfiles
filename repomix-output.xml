@@ -1,0 +1,2521 @@
+This file is a merged representation of a subset of the codebase, containing specifically included files, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of a subset of the repository's contents that is considered the most important context.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Only files matching these patterns are included: .chezmoitemplates/common.sh, .chezmoiscripts/run_onchange_01_install_packages.sh.tmpl, .chezmoiscripts/run_before_00_check_prerequisites.sh.tmpl, .chezmoiscripts/run_after_99_post_install.sh.tmpl, .chezmoiscripts/run_02_enable_ssh_service.sh.tmpl
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.chezmoiscripts/run_02_enable_ssh_service.sh.tmpl
+.chezmoiscripts/run_after_99_post_install.sh.tmpl
+.chezmoiscripts/run_before_00_check_prerequisites.sh.tmpl
+.chezmoiscripts/run_onchange_01_install_packages.sh.tmpl
+.chezmoitemplates/common.sh
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".chezmoiscripts/run_before_00_check_prerequisites.sh.tmpl">
+#!{{ lookPath "bash" }}
+set -uo pipefail
+
+{{ template "common.sh" . }}
+
+log_header "Checking prerequisites"
+log_debug "Starting prerequisite checks"
+
+# Check if gum is installed
+log_debug "Checking for gum installation"
+if ! command -v gum >/dev/null 2>&1; then
+    log_debug "gum not found, attempting installation"
+    if ! install_system_package "gum"; then
+        log_warning "gum installation failed, but continuing..."
+        log_debug "gum installation returned failure"
+    fi
+else
+    log_debug "gum is already installed: $(command -v gum)"
+fi
+
+# Check if git is installed
+log_debug "Checking for git installation"
+if ! command -v git >/dev/null 2>&1; then
+    log_debug "git not found, attempting installation"
+    if ! install_system_package "git"; then
+        log_warning "git installation failed, but continuing..."
+        log_debug "git installation returned failure"
+    fi
+else
+    log_debug "git is already installed: $(command -v git)"
+fi
+
+# Check if bitwarden-cli is installed
+log_debug "Checking for bitwarden-cli installation"
+if ! command -v bw >/dev/null 2>&1; then
+    log_debug "bw not found, attempting installation"
+    if ! install_system_package "bitwarden-cli"; then
+        log_warning "bitwarden-cli installation failed, but continuing..."
+        log_debug "bitwarden-cli installation returned failure"
+    fi
+else
+    log_debug "bitwarden-cli is already installed: $(command -v bw)"
+fi
+
+# Prerequisites fulfilled
+log_success "Prerequisites fulfilled!"
+
+log_debug "Checking if bw command exists for login"
+if command_exists bw; then
+    log_debug "Calling bw_login function"
+    bw_login
+else
+    log_debug "bw command not available, skipping login"
+fi
+</file>
+
+<file path=".chezmoiscripts/run_after_99_post_install.sh.tmpl">
+#!{{ lookPath "bash" }}
+set -uo pipefail
+
+{{ template "common.sh" . }}
+
+# Configuration
+
+readonly TMUX_PLUGIN_PATH="$HOME/.config/tmux/plugins/tpm/bin/install_plugins"
+readonly ALACRITTY_SOURCE="$HOME/.config/alacritty/alacritty.toml"
+readonly ALACRITTY_TARGET="/mnt/c/Users/bondg/appdata/roaming/alacritty/alacritty.toml"
+readonly ALACRITTY_THEMES_SOURCE="$HOME/.config/alacritty/themes"
+readonly ALACRITTY_THEMES_TARGET="/mnt/c/Users/bondg/appdata/roaming/alacritty/themes"
+
+# Set default shell
+set_default_shell() {
+    local shell_name="$1"
+    log_debug "set_default_shell called with shell_name=$shell_name"
+
+    if ! command_exists "$shell_name"; then
+        log_error "$shell_name not found"
+        log_debug "Shell binary not found in PATH"
+        log_debug "Current PATH: $PATH"
+        return 1
+    fi
+    
+    local shell_path
+    shell_path=$(command -v "$shell_name")
+
+    log_debug "Found shell at: $shell_path"
+    
+    # Add to /etc/shells if needed
+    #if ! grep -q "^${shell_path}$" /etc/shells 2>/dev/null; then
+    #    echo "$shell_path" | sudo tee -a /etc/shells >/dev/null
+    #    log_success "Added $shell_name to /etc/shells"
+    #else
+    #    log_success "$shell_name already in /etc/shells"
+    #fi
+    
+    # Only set as default shell on Android
+    if is_android; then
+        log_debug "Running on Android, checking current shell"
+        log_debug "Current SHELL: $SHELL"
+        if [[ "$SHELL" != "$shell_path" ]]; then
+            log_info "Changing default shell to $shell_name..."
+            log_debug "Executing: chsh -s $shell_name"
+            chsh -s "$shell_name"
+        else
+            log_success "$shell_name already set as default shell"
+        fi
+    else
+        log_success "$shell_name is available (shell change skipped - only done on Android)"
+    fi
+    
+    return 0
+}
+
+setup_zsh() {
+    log_step "Setting up Zsh as default shell"
+    log_debug "Entering setup_zsh function"
+
+    if ! command_exists zsh; then
+        log_warning "Zsh not installed, skipping"
+        log_debug "Zsh command not found"
+        return 0
+    fi
+    
+    if set_default_shell "zsh"; then
+        log_success "Zsh setup completed"
+        return 0
+    else
+        log_error "Zsh setup failed"
+        return 1
+    fi
+}
+
+setup_fish() {
+    log_step "Setting up Fish as default shell"
+    log_debug "Entering setup_fish function"
+
+    if ! command_exists fish; then
+        log_warning "Fish not installed, skipping"
+        log_debug "Fish command not found"
+        return 0
+    fi
+    
+    if set_default_shell "fish"; then
+        log_success "Fish setup completed"
+        return 0
+    else
+        log_error "Fish setup failed"
+        return 1
+    fi
+}
+
+cleanup_lazyvim() {
+    log_step "Cleaning up LazyVim"
+    log_debug "Entering cleanup_lazyvim function"
+    log_debug "Checking directory: $HOME/.config/nvim"
+
+    # Check if nvim config exists
+    if [[ ! -d "$HOME/.config/nvim" ]]; then
+        log_success "LazyVim not installed, nothing to clean"
+        log_debug "Nvim config directory does not exist"
+        return 0
+    fi
+
+    if [[ -d "$HOME/.config/nvim/.git" ]]; then
+        if rm -rf "$HOME/.config/nvim/.git"; then
+            log_success "LazyVim .git directory removed"
+            log_debug "Successfully removed .git directory"
+        else
+            log_error "Failed to remove LazyVim .git directory"
+            log_debug "rm command failed with exit code: $?"
+            return 1
+        fi
+    else
+        log_success "LazyVim already clean (no .git directory)"
+    fi
+    return 0
+}
+
+rebuild_fonts() {
+    log_step "Rebuilding font cache"
+    log_debug "Entering rebuild_fonts function"
+
+    if ! command_exists fc-cache; then
+        log_warning "fc-cache not found, skipping"
+        log_debug "fc-cache command not available"
+        return 0
+    fi
+
+    # Check if fonts directory exists and has fonts
+    local fonts_exist=false
+    for font_dir in "$HOME/.local/share/fonts" "$HOME/.fonts" "/usr/share/fonts" "/usr/local/share/fonts"; do
+        log_debug "Checking font directory: $font_dir"
+        if [[ -d "$font_dir" ]] && [[ -n "$(find "$font_dir" -type f 2>/dev/null)" ]]; then
+            fonts_exist=true
+            log_debug "Found fonts in: $font_dir"
+            break
+        fi
+    done
+
+    if [[ "$fonts_exist" == false ]]; then
+        log_success "No custom fonts found, cache rebuild not needed"
+        log_debug "No font directories found with fonts"
+        return 0
+    fi
+
+    log_info "Rebuilding font cache..."
+    if fc-cache -f -v >/dev/null 2>&1; then
+        log_success "Font cache rebuilt"
+        log_debug "fc-cache completed successfully"
+        return 0
+    else
+        log_warning "Font cache rebuild had issues"
+        log_debug "fc-cache exited with code: $?"
+        return 1
+    fi
+}
+
+generate_locales() {
+    log_step "Generating system locales"
+    log_debug "Entering generate_locales function"
+
+    if ! command_exists locale-gen; then
+        log_warning "locale-gen not found, skipping"
+        log_debug "locale-gen command not available"
+        return 0
+    fi
+
+    # Check if locale is already generated
+    log_debug "Checking existing locales"
+    if locale -a 2>/dev/null | grep -qi "^en_US.utf8$"; then
+        log_success "en_US.UTF-8 locale already generated"
+        log_debug "Found en_US.UTF-8 in locale -a output"
+        return 0
+    fi
+
+    log_info "Generating locales..."
+    log_debug "Uncommenting en_US.UTF-8 in /etc/locale.gen"
+    sudo sed -i 's:#en_US.UTF-8 UTF-8:en_US.UTF-8 UTF-8:g' /etc/locale.gen 2>/dev/null || true
+
+    if sudo locale-gen >/dev/null 2>&1; then
+        log_success "Locales generated"
+        log_debug "locale-gen completed successfully"
+        return 0
+    else
+        log_warning "Locale generation had issues"
+        log_debug "locale-gen exited with code: $?"
+        return 1
+    fi
+}
+
+install_tmux_plugins() {
+    log_step "Installing Tmux plugins"
+    log_debug "Entering install_tmux_plugins function"
+    log_debug "Plugin manager path: $TMUX_PLUGIN_PATH"
+
+    # Check if tmux is installed
+    if ! command_exists tmux; then
+        log_warning "Tmux not installed, skipping plugin installation"
+        log_debug "tmux command not found"
+        return 0
+    fi
+
+    # Check if TPM is installed
+    if [[ ! -x "$TMUX_PLUGIN_PATH" ]]; then
+        log_warning "Tmux plugin manager not found at $TMUX_PLUGIN_PATH"
+        log_debug "TPM binary not executable or doesn't exist"
+        return 0
+    fi
+
+    # Check if plugins are already installed
+    local plugin_dir="$HOME/.config/tmux/plugins"
+    if [[ -d "$plugin_dir" ]]; then
+        local plugin_count
+        plugin_count=$(find "$plugin_dir" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
+        log_debug "Found $plugin_count plugin directories"
+        if [[ $plugin_count -gt 1 ]]; then
+            log_success "Tmux plugins already installed ($plugin_count plugins found)"
+            log_debug "Plugins appear already installed, skipping"
+            return 0
+        fi
+    fi
+
+    log_info "Installing Tmux plugins..."
+    if "$TMUX_PLUGIN_PATH" >/dev/null 2>&1; then
+        log_success "Tmux plugins installed"
+        log_debug "TPM install script completed successfully"
+        return 0
+    else
+        log_warning "Tmux plugin installation had issues"
+        log_debug "TPM install script exited with code: $?"
+        return 1
+    fi
+}
+
+check_secrets() {
+    log_step "Checking secrets configuration"
+    log_debug "Entering check_secrets function"
+    log_debug "Looking for .env file at: $HOME/.env"
+
+    # Source the .env file if it exists
+    if [[ -f "$HOME/.env" ]]; then
+        log_debug ".env file exists, attempting to source"
+        # Use subshell to avoid polluting current environment
+        if (source "$HOME/.env" 2>/dev/null && [[ "$ENV_SECRETS_IMPORTED" == "true" ]]); then
+            log_success "Secrets properly imported (ENV_SECRETS_IMPORTED=true)"
+            log_debug "ENV_SECRETS_IMPORTED variable is set correctly"
+            return 0
+        else
+            log_warning "ENV_SECRETS_IMPORTED is not set to 'true'"
+            log_debug "ENV_SECRETS_IMPORTED value: ${ENV_SECRETS_IMPORTED:-<not set>}"
+            return 1
+        fi
+    else
+        log_warning "Secrets file not found at $HOME/.env"
+        log_debug ".env file does not exist"
+        return 1
+    fi
+}
+
+check_github_key_status() {
+    log_step "Checking GitHub SSH key status"
+    log_debug "Entering check_github_key_status function"
+
+    # Check if GitHub key addition failed during SSH setup
+    if [[ "${GITHUB_KEY_FAILED:-}" == "true" ]]; then
+        log_warning "GitHub SSH key was not added automatically during setup"
+        echo ""
+        log_info "To add your SSH key to GitHub manually:"
+        log_info "1. First, authenticate with GitHub CLI:"
+        log_info "   gh auth login"
+        log_info ""
+        log_info "2. Then add your SSH key to GitHub:"
+        log_info "   gh ssh-key add ~/.ssh/id_ed25519.pub --title \"$(whoami)@$(hostname)-$(date +%Y%m%d)\""
+        log_info ""
+        log_info "Or use the convenient helper function:"
+        log_info "   gh-add-key"
+        log_info ""
+        log_info "Your SSH public key is located at: ~/.ssh/id_ed25519.pub"
+        echo ""
+        return 1
+    else
+        log_success "GitHub SSH key status OK"
+        return 0
+    fi
+}
+
+update_tldr_cache() {
+    log_step "Updating tldr cache"
+    log_debug "Entering update_tldr_cache function"
+
+    if ! command_exists tldr; then
+        log_warning "tldr not found, skipping cache update"
+        log_debug "tldr command not available"
+        return 0
+    fi
+
+    log_info "Updating tldr cache..."
+    if tldr --update >/dev/null 2>&1; then
+        log_success "tldr cache updated"
+        log_debug "tldr --update completed successfully"
+        return 0
+    else
+        log_warning "tldr cache update had issues"
+        log_debug "tldr --update exited with code: $?"
+        return 1
+    fi
+}
+
+copy_alacritty_config() {
+    log_step "Copying Alacritty configuration"
+    log_debug "Entering copy_alacritty_config function"
+
+    if ! is_wsl; then
+        log_success "Not running on WSL, Alacritty copy not needed"
+        log_debug "Platform is not WSL"
+        return 0
+    fi
+    
+    local success=true
+    local any_copied=false
+    
+    # Copy alacritty.toml
+    log_debug "Checking source: $ALACRITTY_SOURCE"
+    log_debug "Target: $ALACRITTY_TARGET"
+    if [[ -f "$ALACRITTY_SOURCE" ]]; then
+        # Check if file already exists and is identical
+        if [[ -f "$ALACRITTY_TARGET" ]] && cmp -s "$ALACRITTY_SOURCE" "$ALACRITTY_TARGET"; then
+            log_success "Alacritty config already up to date"
+            log_debug "Files are identical, no copy needed"
+        else
+            log_debug "Files differ or target doesn't exist, copying"
+            if safe_copy "$ALACRITTY_SOURCE" "$ALACRITTY_TARGET"; then
+                log_success "Alacritty config copied"
+                any_copied=true
+                log_debug "Copy completed successfully"
+            else
+                log_warning "Failed to copy Alacritty config"
+                success=false
+            fi
+        fi
+    else
+        log_warning "Alacritty config not found at $ALACRITTY_SOURCE"
+        log_debug "Source file does not exist"
+        success=false
+    fi
+    
+    # Copy themes directory
+    log_debug "Checking themes source: $ALACRITTY_THEMES_SOURCE"
+    log_debug "Themes target: $ALACRITTY_THEMES_TARGET"
+    if [[ -d "$ALACRITTY_THEMES_SOURCE" ]]; then
+        # Check if themes directory exists and has content
+        if [[ -d "$ALACRITTY_THEMES_TARGET" ]]; then
+            local source_count target_count
+            source_count=$(find "$ALACRITTY_THEMES_SOURCE" -type f 2>/dev/null | wc -l)
+            target_count=$(find "$ALACRITTY_THEMES_TARGET" -type f 2>/dev/null | wc -l)
+            log_debug "Source theme count: $source_count"
+            log_debug "Target theme count: $target_count"
+
+            if [[ $source_count -eq $target_count ]] && [[ $source_count -gt 0 ]]; then
+                log_success "Alacritty themes already up to date ($target_count themes)"
+                log_debug "Theme counts match, skipping copy"
+            else
+                log_debug "Theme counts differ, copying"
+                if safe_copy "$ALACRITTY_THEMES_SOURCE" "$ALACRITTY_THEMES_TARGET"; then
+                    log_success "Alacritty themes copied"
+                    any_copied=true
+                    log_debug "Themes copied successfully"
+                else
+                    log_warning "Failed to copy Alacritty themes"
+                    success=false
+                fi
+            fi
+        else
+            log_debug "Target themes directory doesn't exist, copying"
+            if safe_copy "$ALACRITTY_THEMES_SOURCE" "$ALACRITTY_THEMES_TARGET"; then
+                log_success "Alacritty themes copied"
+                any_copied=true
+                log_debug "Themes copied successfully"
+            else
+                log_warning "Failed to copy Alacritty themes"
+                success=false
+            fi
+        fi
+    else
+        log_warning "Alacritty themes not found at $ALACRITTY_THEMES_SOURCE"
+        log_debug "Themes source directory does not exist"
+        success=false
+    fi
+    
+    if [[ "$any_copied" == false ]] && [[ "$success" == true ]]; then
+        log_success "Alacritty configuration already synchronized"
+    fi
+    
+    [[ "$success" == true ]]
+}
+
+main() {
+    log_header "Running Post-Installation Operations"
+    log_debug "Starting main post-installation function"
+
+    # Load environment
+    source "$HOME/.bashrc" 2>/dev/null || true
+    load_homebrew || true
+
+    log_info "Running as user: $(whoami)"
+    log_debug "UID: $UID, EUID: $EUID"
+    echo ""
+    
+    # Track overall success
+    local all_success=true
+    
+    # Define operations based on platform
+    local operations=()
+    
+    if is_android; then
+        log_info "Detected Android platform"
+        log_debug "Platform detection: Android"
+        operations=(
+            "setup_fish"
+            "update_tldr_cache"
+            "check_secrets"
+            "check_github_key_status"
+        )
+    elif is_arch; then
+        log_info "Detected Arch Linux platform"
+        log_debug "Platform detection: Arch Linux"
+        operations=(
+            "setup_zsh"
+            "setup_fish"
+            "cleanup_lazyvim"
+            "rebuild_fonts"
+            "generate_locales"
+            "install_tmux_plugins"
+            "copy_alacritty_config"
+            "update_tldr_cache"
+            "check_secrets"
+        )
+    else
+        log_warning "Unknown platform, running default operations"
+        log_debug "Platform detection: Unknown ($(uname -s))"
+        operations=(
+            "setup_zsh"
+            "setup_fish"
+            "cleanup_lazyvim"
+            "rebuild_fonts"
+            "generate_locales"
+            "install_tmux_plugins"
+            "copy_alacritty_config"
+        )
+    fi
+
+    echo ""
+
+    log_debug "Running ${#operations[@]} operations: ${operations[*]}"
+    # Run platform-specific operations
+    for operation in "${operations[@]}"; do
+        log_debug "Starting operation: $operation"
+        if ! $operation; then
+            all_success=false
+            log_debug "Operation $operation returned failure"
+        fi
+        echo ""
+    done
+    
+    # Print final status
+    if [[ "$all_success" == true ]]; then
+        log_header "All Post-Installation Operations Completed Successfully!"
+        echo ""
+        log_warning "Please restart your shell to apply all changes"
+        log_info "Run: exec \$SHELL"
+        return 0
+    else
+        log_header "Post-Installation Completed With Some Warnings"
+        echo ""
+        log_info "Review the output above for details"
+        log_warning "Please restart your shell to apply changes"
+        return 0  # Don't fail the script for warnings
+    fi
+}
+
+main "$@"
+</file>
+
+<file path=".chezmoiscripts/run_onchange_01_install_packages.sh.tmpl">
+#!{{ lookPath "bash" }}
+set -uo pipefail
+
+{{ template "common.sh" . }}
+
+# Initialize Arch Linux packages
+init_arch_packages() {
+    log_debug "Entering init_arch_packages function"
+    if ! is_arch; then
+        log_info "Not an Arch Linux system, skipping Arch packages"
+        log_debug "Platform is not Arch Linux"
+        return 0
+    fi
+
+    log_debug "Detected Arch Linux, proceeding with package installation"
+    
+    local overall_success=true
+    
+    # Pacman packages
+    if ! command_exists pacman; then
+        log_error "Pacman not available"
+        return 1
+    fi
+    
+    {{- if .packages.linux.arch.pacman }}
+    log_info "Checking Pacman packages..."
+    log_debug "Processing {{len .packages.linux.arch.pacman}} pacman packages from config"
+
+    # Collect all packages into an array for batch checking
+    local all_packages=(
+        {{- range .packages.linux.arch.pacman }}
+        {{ . | quote }}
+        {{- end }}
+    )
+
+    # Batch check which packages are missing - MUCH FASTER
+    log_debug "Starting batch check for missing pacman packages"
+    local missing_packages=()
+    while IFS= read -r pkg; do
+        [[ -n "$pkg" ]] && missing_packages+=("$pkg")
+    done < <(get_missing_pacman_packages all_packages)
+
+    log_debug "Found ${#missing_packages[@]} missing packages out of ${#all_packages[@]} total"
+    
+    # Report already installed packages
+    local installed_count=$((${#all_packages[@]} - ${#missing_packages[@]}))
+    if [[ $installed_count -gt 0 ]]; then
+        log_success "$installed_count Pacman package(s) already installed"
+    fi
+    
+    # Install only missing packages
+    if [[ ${#missing_packages[@]} -gt 0 ]]; then
+        log_info "Installing ${#missing_packages[@]} Pacman package(s)..."
+        log_debug "Missing packages: ${missing_packages[*]}"
+        local failed_packages=()
+
+        for pkg in "${missing_packages[@]}"; do
+            log_debug "Installing package: $pkg"
+            if ! install_pacman_package "$pkg"; then
+                failed_packages+=("$pkg")
+                log_debug "Package installation failed: $pkg"
+            fi
+        done
+        
+        if [[ ${#failed_packages[@]} -gt 0 ]]; then
+            log_warning "Failed to install some Pacman packages:"
+            for pkg in "${failed_packages[@]}"; do
+                log_warning "  - $pkg"
+            done
+            overall_success=false
+        fi
+    fi
+    {{- end }}
+    
+    # Homebrew installation
+    log_debug "Checking for Homebrew installation"
+    if ! command_exists brew; then
+        log_debug "Homebrew not found, installing"
+        log_info "Installing Homebrew..."
+        if ! install_homebrew; then
+            log_error "Homebrew installation failed"
+            log_warning "Skipping Homebrew packages"
+            log_debug "Homebrew installation returned failure"
+            overall_success=false
+            # Don't return - continue with other package managers
+        else
+            log_debug "Homebrew installation successful"
+        fi
+    else
+        log_debug "Homebrew already installed: $(command -v brew)"
+    fi
+    
+    # Homebrew packages
+    if command_exists brew; then
+        {{- if .packages.linux.arch.brew }}
+        log_info "Checking Homebrew packages..."
+        log_debug "Processing {{len .packages.linux.arch.brew}} brew packages from config"
+
+        # Collect all packages for batch checking
+        local brew_packages=(
+            {{- range .packages.linux.arch.brew }}
+            {{ . | quote }}
+            {{- end }}
+        )
+
+        # Batch check missing packages
+        log_debug "Starting batch check for missing brew packages"
+        local missing_brew=()
+        while IFS= read -r pkg; do
+            [[ -n "$pkg" ]] && missing_brew+=("$pkg")
+        done < <(get_missing_homebrew_packages brew_packages)
+
+        log_debug "Found ${#missing_brew[@]} missing brew packages out of ${#brew_packages[@]} total"
+        
+        local installed_count=$((${#brew_packages[@]} - ${#missing_brew[@]}))
+        if [[ $installed_count -gt 0 ]]; then
+            log_success "$installed_count Homebrew package(s) already installed"
+        fi
+        
+        if [[ ${#missing_brew[@]} -gt 0 ]]; then
+            log_info "Installing ${#missing_brew[@]} Homebrew package(s)..."
+            log_debug "Missing brew packages: ${missing_brew[*]}"
+            local failed_packages=()
+
+            for pkg in "${missing_brew[@]}"; do
+                log_debug "Installing brew package: $pkg"
+                if ! install_homebrew_package "$pkg"; then
+                    failed_packages+=("$pkg")
+                    log_debug "Brew package installation failed: $pkg"
+                fi
+            done
+            
+            if [[ ${#failed_packages[@]} -gt 0 ]]; then
+                log_warning "Failed to install some Homebrew packages:"
+                for pkg in "${failed_packages[@]}"; do
+                    log_warning "  - $pkg"
+                done
+                overall_success=false
+            fi
+        fi
+        {{- end }}
+        
+        {{- if .packages.linux.arch.casks }}
+        log_info "Checking Homebrew casks..."
+        log_debug "Processing {{len .packages.linux.arch.casks}} cask packages from config"
+
+        local cask_packages=(
+            {{- range .packages.linux.arch.casks }}
+            {{ . | quote }}
+            {{- end }}
+        )
+
+        log_debug "Starting batch check for missing casks"
+        local missing_casks=()
+        while IFS= read -r pkg; do
+            [[ -n "$pkg" ]] && missing_casks+=("$pkg")
+        done < <(get_missing_homebrew_casks cask_packages)
+
+        log_debug "Found ${#missing_casks[@]} missing casks out of ${#cask_packages[@]} total"
+        
+        local installed_count=$((${#cask_packages[@]} - ${#missing_casks[@]}))
+        if [[ $installed_count -gt 0 ]]; then
+            log_success "$installed_count cask(s) already installed"
+        fi
+        
+        if [[ ${#missing_casks[@]} -gt 0 ]]; then
+            log_info "Installing ${#missing_casks[@]} cask(s)..."
+            log_debug "Missing casks: ${missing_casks[*]}"
+            local failed_packages=()
+
+            for pkg in "${missing_casks[@]}"; do
+                log_debug "Installing cask: $pkg"
+                if ! install_homebrew_cask_package "$pkg"; then
+                    failed_packages+=("$pkg")
+                    log_debug "Cask installation failed: $pkg"
+                fi
+            done
+            
+            if [[ ${#failed_packages[@]} -gt 0 ]]; then
+                log_warning "Failed to install some casks:"
+                for pkg in "${failed_packages[@]}"; do
+                    log_warning "  - $pkg"
+                done
+                overall_success=false
+            fi
+        fi
+        {{- end }}
+    fi
+    
+    # NPM installation
+    log_debug "Checking for npm installation"
+    if ! command_exists npm; then
+        log_debug "npm not found, installing"
+        log_info "Installing npm..."
+        if ! install_npm; then
+            log_error "npm installation failed"
+            log_warning "Skipping npm packages"
+            log_debug "npm installation returned failure"
+            overall_success=false
+            # Don't return - continue
+        else
+            log_debug "npm installation successful"
+        fi
+    else
+        log_debug "npm already installed: $(command -v npm)"
+    fi
+    
+    # NPM packages
+    if command_exists npm; then
+        {{- if .packages.linux.arch.npm }}
+        log_info "Checking npm packages..."
+        log_debug "Processing {{len .packages.linux.arch.npm}} npm packages from config"
+
+        local npm_packages=(
+            {{- range .packages.linux.arch.npm }}
+            {{ . | quote }}
+            {{- end }}
+        )
+
+        log_debug "Starting batch check for missing npm packages"
+        local missing_npm=()
+        while IFS= read -r pkg; do
+            [[ -n "$pkg" ]] && missing_npm+=("$pkg")
+        done < <(get_missing_npm_packages npm_packages)
+
+        log_debug "Found ${#missing_npm[@]} missing npm packages out of ${#npm_packages[@]} total"
+        
+        local installed_count=$((${#npm_packages[@]} - ${#missing_npm[@]}))
+        if [[ $installed_count -gt 0 ]]; then
+            log_success "$installed_count npm package(s) already installed"
+        fi
+        
+        if [[ ${#missing_npm[@]} -gt 0 ]]; then
+            log_info "Installing ${#missing_npm[@]} npm package(s): ${missing_npm[*]}"
+            log_debug "Missing npm packages: ${missing_npm[*]}"
+            local failed_packages=()
+
+            for pkg in "${missing_npm[@]}"; do
+                log_debug "Installing npm package: $pkg"
+                if ! install_npm_package "$pkg"; then
+                    failed_packages+=("$pkg")
+                    log_debug "npm package installation failed: $pkg"
+                fi
+            done
+            
+            if [[ ${#failed_packages[@]} -gt 0 ]]; then
+                log_warning "Failed to install some npm packages:"
+                for pkg in "${failed_packages[@]}"; do
+                    log_warning "  - $pkg"
+                done
+                overall_success=false
+            fi
+        fi
+        {{- end }}
+    fi
+    
+    if [[ "$overall_success" == true ]]; then
+        log_debug "All Arch package installations completed successfully"
+        return 0
+    else
+        log_warning "Some package installations failed"
+        log_debug "Arch package installation completed with failures"
+        return 1
+    fi
+}
+
+# Initialize Android/Termux packages
+init_android_packages() {
+    log_debug "Entering init_android_packages function"
+    if ! is_android; then
+        log_info "Not an Android system, skipping Termux packages"
+        log_debug "Platform is not Android"
+        return 0
+    fi
+
+    log_debug "Detected Android platform, proceeding with package installation"
+
+    local overall_success=true
+
+    if ! command_exists pkg; then
+        log_error "pkg not available"
+        log_debug "pkg command not found"
+        return 1
+    fi
+    
+    export DEBIAN_FRONTEND=noninteractive
+    
+    # Setup storage and repository
+    log_info "Setting up Termux environment..."
+    log_debug "Checking for Termux storage setup"
+
+    # Check if storage is already set up
+    if [[ ! -d "$HOME/storage" ]]; then
+        log_debug "Storage directory not found, running termux-setup-storage"
+        log_info "Setting up Termux storage (may require user interaction)..."
+        if termux-setup-storage; then
+            log_success "Termux storage configured successfully"
+            log_debug "termux-setup-storage completed successfully"
+        else
+            log_warning "Storage setup failed or was cancelled"
+            log_debug "termux-setup-storage returned failure"
+        fi
+    else
+        log_success "Termux storage already configured"
+        log_debug "Storage directory already exists at $HOME/storage"
+    fi
+    
+    {{- if .packages.android.termux }}
+    log_info "Upgrading packages..."
+    log_debug "Running pkg upgrade"
+
+    if ! yes | pkg upgrade -y >/dev/null; then
+        log_warning "pkg upgrade had issues (continuing anyway)"
+        log_debug "pkg upgrade returned non-zero exit code"
+    fi
+
+    log_info "Checking Termux packages..."
+    log_debug "Processing {{len .packages.android.termux.pkg}} termux packages from config"
+
+    # Collect all packages for batch checking
+    local termux_packages=(
+        {{- range .packages.android.termux.pkg }}
+        {{ . | quote }}
+        {{- end }}
+    )
+
+    # Batch check which packages are missing - MUCH FASTER
+    log_debug "Starting batch check for missing termux packages"
+    local missing_packages=()
+    while IFS= read -r pkg; do
+        [[ -n "$pkg" ]] && missing_packages+=("$pkg")
+    done < <(get_missing_termux_packages termux_packages)
+
+    log_debug "Found ${#missing_packages[@]} missing packages out of ${#termux_packages[@]} total"
+    
+    # Report already installed packages
+    local installed_count=$((${#termux_packages[@]} - ${#missing_packages[@]}))
+    if [[ $installed_count -gt 0 ]]; then
+        log_success "$installed_count Termux package(s) already installed"
+    fi
+    
+    # Install only missing packages
+    if [[ ${#missing_packages[@]} -gt 0 ]]; then
+        log_info "Installing ${#missing_packages[@]} Termux package(s)..."
+        log_debug "Missing termux packages: ${missing_packages[*]}"
+        local failed_packages=()
+
+        for pkg in "${missing_packages[@]}"; do
+            log_debug "Installing termux package: $pkg"
+            if ! install_termux_package "$pkg"; then
+                failed_packages+=("$pkg")
+                log_debug "Termux package installation failed: $pkg"
+            fi
+        done
+
+        if [[ ${#failed_packages[@]} -gt 0 ]]; then
+            log_warning "Failed to install some Termux packages:"
+            for pkg in "${failed_packages[@]}"; do
+                log_warning "  - $pkg"
+            done
+
+            log_debug "Cleaning pkg cache after failures"
+            log_info "Cleaning pkg..."
+            pkg clean >/dev/null 2>&1 || log_warning "pkg clean had issues"
+            pkg autoclean >/dev/null 2>&1 || log_warning "pkg autoclean had issues"
+
+            return 1
+        fi
+    fi
+
+    log_debug "Performing final pkg cleanup"
+    log_info "Cleaning pkg..."
+    pkg clean >/dev/null 2>&1 || log_warning "pkg clean had issues"
+    pkg autoclean >/dev/null 2>&1 || log_warning "pkg autoclean had issues"
+    {{- else }}
+    log_info "No Termux packages defined in configuration"
+    {{- end }}
+
+    # NPM installation
+    log_debug "Checking for npm installation"
+    if ! command_exists npm; then
+        log_debug "npm not found, installing"
+        log_info "Installing npm..."
+        if ! install_npm; then
+            log_error "npm installation failed"
+            log_warning "Skipping npm packages"
+            log_debug "npm installation returned failure"
+            overall_success=false
+            # Don't return - continue
+        else
+            log_debug "npm installation successful"
+        fi
+    else
+        log_debug "npm already installed: $(command -v npm)"
+    fi
+
+    # NPM packages
+    if command_exists npm; then
+        {{- if .packages.android.termux.npm }}
+        log_info "Checking npm packages..."
+        log_debug "Processing {{len .packages.android.termux.npm}} npm packages from config"
+
+        local npm_packages=(
+            {{- range .packages.android.termux.npm }}
+            {{ . | quote }}
+            {{- end }}
+        )
+
+        log_debug "Starting batch check for missing npm packages"
+        local missing_npm=()
+        while IFS= read -r pkg; do
+            [[ -n "$pkg" ]] && missing_npm+=("$pkg")
+        done < <(get_missing_npm_packages npm_packages)
+
+        log_debug "Found ${#missing_npm[@]} missing npm packages out of ${#npm_packages[@]} total"
+
+        local installed_count=$((${#npm_packages[@]} - ${#missing_npm[@]}))
+        if [[ $installed_count -gt 0 ]]; then
+            log_success "$installed_count npm package(s) already installed"
+        fi
+
+        if [[ ${#missing_npm[@]} -gt 0 ]]; then
+            log_info "Installing ${#missing_npm[@]} npm package(s): ${missing_npm[*]}"
+            log_debug "Missing npm packages: ${missing_npm[*]}"
+            local failed_packages=()
+
+            for pkg in "${missing_npm[@]}"; do
+                log_debug "Installing npm package: $pkg"
+                if ! install_npm_package "$pkg"; then
+                    failed_packages+=("$pkg")
+                    log_debug "npm package installation failed: $pkg"
+                fi
+            done
+
+            if [[ ${#failed_packages[@]} -gt 0 ]]; then
+                log_warning "Failed to install some npm packages:"
+                for pkg in "${failed_packages[@]}"; do
+                    log_warning "  - $pkg"
+                done
+                overall_success=false
+            fi
+        fi
+        {{- else }}
+        log_info "No npm packages defined in configuration"
+        {{- end }}
+    fi
+
+    if [[ "$overall_success" == true ]]; then
+        log_debug "All Android package installations completed successfully"
+        return 0
+    else
+        log_warning "Some package installations failed"
+        log_debug "Android package installation completed with failures"
+        return 1
+    fi
+}
+
+main() {
+    log_header "Installing Packages"
+    log_debug "Starting main package installation function"
+
+    local install_success=true
+
+    # Initialize packages based on platform
+    if is_arch; then
+        log_debug "Detected Arch platform, calling init_arch_packages"
+        if ! init_arch_packages; then
+            log_warning "Arch package installation had some failures"
+            log_debug "init_arch_packages returned failure"
+            install_success=false
+        fi
+    elif is_android; then
+        log_debug "Detected Android platform, calling init_android_packages"
+        if ! init_android_packages; then
+            log_warning "Android package installation had some failures"
+            log_debug "init_android_packages returned failure"
+            install_success=false
+        fi
+    else
+        log_warning "Unknown platform, skipping package installation"
+        log_debug "Platform not recognized: $(uname -s)"
+        return 0
+    fi
+    
+    # Handle WSL-specific installation (WSL can also be Arch-based)
+    if is_wsl; then
+        log_info "Detected WSL environment"
+        log_debug "Running WSL-specific package installation"
+
+        # Check if wslu is already installed
+        if command_exists wslfetch; then
+            log_success "WSLU is already installed"
+            log_debug "wslfetch command found: $(command -v wslfetch)"
+        else
+            log_debug "WSLU not found, installing"
+            log_info "Installing WSLU..."
+            if curl -fsSL https://raw.githubusercontent.com/wslutilities/wslu/master/extras/scripts/wslu-install 2>/dev/null | bash; then
+                log_success "WSLU installed successfully"
+                log_debug "WSLU installation script completed successfully"
+            else
+                log_error "Failed to install WSLU"
+                log_warning "Continuing despite WSLU failure"
+                log_debug "WSLU installation script returned failure"
+                install_success=false
+            fi
+        fi
+    fi
+
+    if [[ "$install_success" == true ]]; then
+        log_success "Package installation completed successfully"
+        log_debug "All package installations succeeded"
+        return 0
+    else
+        log_warning "Package installation completed with some failures"
+        log_info "Review the warnings above for details"
+        log_debug "Some package installations failed but continuing"
+        return 0
+    fi
+}
+
+main "$@"
+</file>
+
+<file path=".chezmoiscripts/run_02_enable_ssh_service.sh.tmpl">
+#!{{ lookPath "bash" }}
+set -uo pipefail
+
+{{ template "common.sh" . }}
+
+# Configuration
+readonly SSH_PORT="4444"
+readonly SSHD_CONFIG="/etc/ssh/sshd_config"
+readonly TMP_DIR="$HOME/.tmp"
+
+# Check if systemd is available
+has_systemd() {
+    log_debug "Checking for systemd availability"
+    command_exists systemctl && [[ -d /run/systemd/system ]]
+}
+
+# Backup file with timestamp
+backup_file() {
+    local file="$1"
+    log_debug "Backing up file: $file"
+    local filename=$(basename "$file")
+    local backup="$TMP_DIR/${filename}.backup.$(date +%Y%m%d_%H%M%S)"
+
+    log_debug "Backup destination: $backup"
+
+    # Create $TMP_DIR if it doesn't exist
+    if [[ ! -d "$TMP_DIR" ]]; then
+        log_debug "Creating temporary directory: $TMP_DIR"
+        mkdir -p "$TMP_DIR"
+        log_info "Created temporary directory: $TMP_DIR"
+    fi
+
+    if [[ -f "$file" ]]; then
+        cp "$file" "$backup"
+        log_info "Backup created: $backup"
+        log_debug "File backed up successfully"
+        echo "$backup"
+    else
+        log_debug "Source file does not exist, skipping backup"
+    fi
+}
+
+# Validate SSH configuration
+validate_sshd_config() {
+    log_debug "Validating SSH configuration"
+    if ! command_exists sshd; then
+        log_error "sshd not found"
+        log_debug "sshd command not available"
+        return 1
+    fi
+
+    log_debug "Running: sshd -t"
+    sudo sshd -t 2>&1
+}
+
+# Check if SSH is listening on port
+check_ssh_port() {
+    local port="$1"
+    local max_attempts=10
+    local attempt=0
+
+    log_debug "Checking if SSH is listening on port: $port"
+    log_debug "Max attempts: $max_attempts"
+
+    # Validate port number
+    if [[ ! "$port" =~ ^[0-9]+$ ]] || [[ "$port" -lt 1 ]] || [[ "$port" -gt 65535 ]]; then
+        log_error "Invalid port number: $port"
+        log_debug "Port validation failed"
+        return 1
+    fi
+
+    # Check if we have the required tools
+    if ! command_exists ss && ! command_exists netstat; then
+        log_warning "Neither ss nor netstat available, cannot verify port"
+        log_debug "No port checking tools available"
+        return 0  # Assume success
+    fi
+
+    log_info "Checking if SSH is listening on port $port..."
+    
+    while [[ $attempt -lt $max_attempts ]]; do
+        log_debug "Port check attempt $((attempt + 1))/$max_attempts"
+        local found=0
+
+        if command_exists ss; then
+            log_debug "Using ss command to check port"
+            # More precise pattern matching
+            if ss -tlnp 2>&1 | grep -E "LISTEN.*:${port}\s+" >/dev/null; then
+                found=1
+                log_debug "Port found via ss command"
+            else
+                # Debug: show what we found (optional, remove in production)
+                log_info "Attempt $((attempt + 1))/$max_attempts - Not found yet"
+                # Uncomment to see actual ss output:
+                # ss -tlnp 2>&1 | grep ":${port}" || true
+            fi
+        elif command_exists netstat; then
+            log_debug "Using netstat command to check port"
+            # More precise pattern matching
+            if netstat -tlnp 2>&1 | grep -E "LISTEN.*:${port}\s+" >/dev/null; then
+                found=1
+                log_debug "Port found via netstat command"
+            else
+                log_info "Attempt $((attempt + 1))/$max_attempts - Not found yet"
+            fi
+        fi
+
+        if [[ $found -eq 1 ]]; then
+            log_info "SSH is listening on port $port"
+            log_debug "Port check successful"
+            return 0
+        fi
+
+        sleep 1
+        ((attempt++))
+    done
+
+    log_error "SSH failed to listen on port $port after $max_attempts attempts"
+    log_debug "Port check failed after all attempts"
+    
+    # Final diagnostic check
+    if command_exists ss; then
+        log_error "Current listening ports:"
+        log_debug "Dumping all listening ports for diagnostics"
+        ss -tlnp 2>&1 | grep LISTEN || log_error "No listening ports found"
+    fi
+    
+    return 1
+}
+
+create_sshd_config() {
+    log_info "Creating SSH configuration..."
+    log_debug "Writing SSH config to: $SSHD_CONFIG"
+    log_debug "SSH port configured: $SSH_PORT"
+    
+    sudo tee "$SSHD_CONFIG" > /dev/null << 'SSHD_EOF'
+# SSH Daemon Configuration
+# Port configuration
+Port 4444
+ListenAddress 0.0.0.0
+
+# Protocol
+Protocol 2
+
+# Host keys
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# Logging
+SyslogFacility AUTH
+LogLevel INFO
+
+# Authentication settings
+LoginGraceTime 120
+PermitRootLogin no
+StrictModes yes
+
+# Public key authentication (disabled)
+PubkeyAuthentication yes
+
+# Password authentication (enabled)
+PasswordAuthentication no
+PermitEmptyPasswords no
+
+# Challenge response authentication
+ChallengeResponseAuthentication no
+
+# Use PAM authentication
+UsePAM yes
+
+# Allow all users
+AllowUsers *
+
+# Connection settings
+ClientAliveInterval 300
+ClientAliveCountMax 2
+MaxAuthTries 6
+MaxSessions 10
+
+# Security settings
+X11Forwarding no
+PrintMotd no
+TCPKeepAlive yes
+
+# Subsystem configuration
+Subsystem sftp internal-sftp
+SSHD_EOF
+    
+    sudo chmod 644 "$SSHD_CONFIG"
+    log_success "SSH configuration created"
+    log_debug "Config file permissions set to 644"
+}
+
+configure_sshd() {
+    log_header "Configuring SSH Service"
+    log_debug "Entering configure_sshd function"
+    log_debug "Target SSH port: $SSH_PORT"
+
+    # Check for systemd
+    if ! has_systemd; then
+        log_error "systemd not available - cannot manage SSH service"
+        log_debug "systemd check failed"
+        return 1
+    fi
+    log_debug "systemd is available"
+
+    # Check if SSH is already running on configured port
+    log_info "Checking if SSH is already running on port $SSH_PORT..."
+    if check_ssh_port "$SSH_PORT"; then
+        log_success "SSH is already running on port $SSH_PORT"
+        log_debug "SSH service already configured and running"
+        log_header "SSH Service Configuration Completed"
+        return 0
+    fi
+    log_debug "SSH not running on target port, proceeding with configuration"
+
+    # Backup existing configuration
+    if [[ -f "$SSHD_CONFIG" ]]; then
+        log_debug "Existing config found, creating backup"
+        backup_file "$SSHD_CONFIG"
+    else
+        log_debug "No existing SSH config found"
+    fi
+
+    # Create SSH configuration
+    log_debug "Creating new SSH configuration"
+    create_sshd_config
+
+    # Generate host keys
+    log_info "Generating SSH host keys..."
+    log_debug "Running: ssh-keygen -A"
+    if sudo ssh-keygen -A 2>/dev/null; then
+        log_success "SSH host keys generated"
+        log_debug "Host key generation successful"
+    else
+        log_warning "SSH host key generation had issues (may already exist)"
+        log_debug "ssh-keygen -A returned non-zero exit code"
+    fi
+
+    # Validate configuration
+    log_info "Validating SSH configuration..."
+    log_debug "Running sshd configuration test"
+    if ! validate_sshd_config; then
+        log_error "SSH configuration is invalid"
+        log_debug "Configuration validation failed, showing errors"
+        sudo sshd -t
+        return 1
+    fi
+    log_success "SSH configuration is valid"
+    log_debug "Configuration passed validation"
+
+    # Enable SSH service
+    log_info "Enabling SSH service to start on boot..."
+    log_debug "Running: systemctl enable sshd"
+    if sudo systemctl enable sshd 2>/dev/null; then
+        log_success "SSH service enabled"
+        log_debug "Service enabled successfully"
+    else
+        log_warning "Could not enable SSH service"
+        log_debug "systemctl enable failed"
+    fi
+
+    # Start SSH service
+    log_info "Starting SSH service..."
+    log_debug "Running: systemctl restart sshd"
+    if sudo systemctl restart sshd; then
+        log_success "SSH service started"
+        log_debug "Service started successfully"
+    else
+        log_error "Failed to start SSH service"
+        log_debug "systemctl restart failed, showing status"
+        sudo systemctl status sshd --no-pager
+        return 1
+    fi
+
+    # Verify service is running
+    log_debug "Verifying service is active"
+    if ! sudo systemctl is-active --quiet sshd; then
+        log_error "SSH service is not running"
+        log_debug "Service is not active, showing status"
+        sudo systemctl status sshd --no-pager
+        return 1
+    fi
+    log_success "SSH service is running"
+    log_debug "Service is active and running"
+
+    # Check port
+    log_info "Verifying SSH is listening on port $SSH_PORT..."
+    if check_ssh_port "$SSH_PORT"; then
+        log_success "SSH is listening on port $SSH_PORT"
+        log_debug "Port check passed"
+    else
+        log_warning "Cannot verify SSH is listening on port $SSH_PORT"
+        log_info "Checking all SSH ports..."
+        log_debug "Listing all ports sshd is listening on"
+        if command_exists ss; then
+            sudo ss -tlnp | grep sshd || true
+        elif command_exists netstat; then
+            sudo netstat -tlnp | grep sshd || true
+        fi
+    fi
+
+    log_header "SSH Service Configuration Completed"
+    log_debug "configure_sshd completed successfully"
+}
+
+# Add SSH public key to GitHub using gh CLI
+add_key_to_github() {
+    local ssh_pub_key="$1"
+    local github_user="{{ .github_user }}"
+    log_header "Adding SSH key to GitHub"
+    log_debug "Entering add_key_to_github function"
+    log_debug "GitHub user: $github_user"
+    log_debug "Public key file: $ssh_pub_key"
+
+    # Initialize success flag
+    local github_key_success=true
+
+    # Check if gh CLI is available
+    if ! command_exists gh; then
+        log_error "GitHub CLI (gh) not found"
+        log_debug "Please install gh CLI to add SSH key to GitHub"
+        github_key_success=false
+    fi
+
+    # Check if user is authenticated with gh (only if gh is available)
+    if [[ "$github_key_success" == true ]] && ! gh auth status >/dev/null 2>&1; then
+        log_error "Not authenticated with GitHub CLI"
+        log_debug "Run 'gh auth login' to authenticate"
+        github_key_success=false
+    fi
+
+    # Read the public key content (only if we haven't failed yet)
+    local pub_key_content
+    if [[ "$github_key_success" == true ]]; then
+        pub_key_content=$(cat "$ssh_pub_key")
+        log_debug "Public key content read successfully"
+
+        # Create a title for the key
+        local key_title="$(whoami)@$(hostname)-$(date +%Y%m%d)"
+        log_debug "Key title: $key_title"
+
+        # Add the key to GitHub
+        log_info "Adding SSH key to GitHub for user: $github_user..."
+        log_debug "Running: gh ssh-key add $ssh_pub_key --title $key_title"
+
+        if gh ssh-key add "$ssh_pub_key" --title "$key_title"; then
+            log_success "SSH key added to GitHub successfully"
+            log_debug "GitHub key addition completed"
+        else
+            log_error "Failed to add SSH key to GitHub"
+            log_debug "gh ssh-key add command failed"
+            github_key_success=false
+        fi
+    fi
+
+    # Store the result for later use
+    export GITHUB_KEY_ADDED="$github_key_success"
+    log_debug "GitHub key addition result stored: $github_key_success"
+}
+
+# Copy SSH public key to remote WSL instance via Samba
+generate_ssh_key() {
+    local ssh_key="${HOME}/.ssh/id_ed25519"  # Private key (no .pub)
+    local ssh_pub_key="${ssh_key}.pub"
+    log_header "Generating SSH key"
+    log_debug "Entering generate_ssh_key function"
+    log_debug "Key path: $ssh_key"
+
+    # Generate SSH key if it doesn't exist
+    if [[ ! -f "$ssh_pub_key" ]]; then
+        log_info "SSH public key not found, generating new key..."
+        log_debug "Public key does not exist: $ssh_pub_key"
+
+        # Create .ssh directory if needed
+        log_debug "Ensuring .ssh directory exists"
+        mkdir -p "${HOME}/.ssh"
+        chmod 700 "${HOME}/.ssh"
+        log_debug ".ssh directory permissions set to 700"
+
+        # Generate ed25519 key without passphrase
+        log_debug "Running: ssh-keygen -t ed25519 -f $ssh_key -N \"\" -C \"$(whoami)@$(hostname)\""
+        if ssh-keygen -t ed25519 -f "$ssh_key" -N "" -C "$(whoami)@$(hostname)" >dev/null; then
+            log_success "SSH key generated: $ssh_key"
+            log_debug "Key generation successful"
+        else
+            log_error "Failed to generate SSH key"
+            log_debug "ssh-keygen returned failure"
+            return 1
+        fi
+    else
+        log_success "Found SSH public key: $ssh_pub_key"
+        log_debug "Public key already exists"
+    fi
+
+    # Read the public key content
+    local pub_key_content
+    pub_key_content=$(cat "$ssh_pub_key")
+    log_debug "Public key length: ${#pub_key_content} characters"
+
+    log_success "Public key generated"
+
+    # Add the key to GitHub
+    add_key_to_github "$ssh_pub_key"
+
+    # Check if GitHub key addition failed and inform user
+    if [[ "${GITHUB_KEY_ADDED:-}" != "true" ]]; then
+        log_warning "SSH key could not be added to GitHub automatically"
+        log_info "To add your SSH key to GitHub manually:"
+        log_info "1. Authenticate with GitHub: gh auth login"
+        log_info "2. Add the SSH key: gh ssh-key add $ssh_pub_key --title \"$(whoami)@$(hostname)-$(date +%Y%m%d)\""
+        log_info "Or use the helper function: gh-add-key"
+        log_info ""
+        log_info "The SSH key is available at: $ssh_pub_key"
+
+        # Store failure state for post-install script
+        export GITHUB_KEY_FAILED="true"
+        log_debug "GitHub key failure state stored for post-install script"
+    else
+        log_success "SSH key successfully added to GitHub"
+    fi
+}
+
+main() {
+    log_debug "Entering main function for SSH setup"
+    log_debug "Detecting platform..."
+    if is_arch; then
+        log_debug "Platform: Arch Linux"
+        configure_sshd
+    elif is_android; then
+        log_debug "Platform: Android"
+        generate_ssh_key
+    else
+        log_debug "Platform: Unknown ($(uname -s))"
+    fi
+}
+main "$@"
+</file>
+
+<file path=".chezmoitemplates/common.sh">
+#!{{ lookPath "bash" }}
+# =============================================================================
+# utils/common.sh
+# Shared utility functions for all chezmoi scripts
+# Optimized for faster package installation
+# =============================================================================
+
+set -uo pipefail
+
+# -----------------------------------------------------------------------------
+# Color Definitions
+# -----------------------------------------------------------------------------
+readonly RED='\033[0;31m'
+readonly GREEN='\033[0;32m'
+readonly YELLOW='\033[1;33m'
+readonly BLUE='\033[0;34m'
+readonly CYAN='\033[0;36m'
+readonly BOLD='\033[1m'
+readonly NC='\033[0m' # No Color
+
+# -----------------------------------------------------------------------------
+# Logging verbosity levels
+# -----------------------------------------------------------------------------
+# CHEZMOI_VERBOSITY: minimal, normal, debug
+CHEZMOI_VERBOSITY="${CHEZMOI_VERBOSITY:-normal}"
+#CHEZMOI_VERBOSITY="debug"  # Uncomment to enable debug logging
+#CHEZMOI_VERBOSITY="minimal"  # Uncomment to enable minimal logging
+
+# Legacy debug flag for backward compatibility
+CHEZMOI_DEBUG="${CHEZMOI_DEBUG:-false}"
+
+# Auto-set verbosity to debug if legacy debug flag is enabled
+if [ "$CHEZMOI_DEBUG" = "true" ]; then
+    CHEZMOI_VERBOSITY="debug"
+fi
+
+# -----------------------------------------------------------------------------
+# Logging Functions
+# -----------------------------------------------------------------------------
+
+# Check if message should be logged based on verbosity
+should_log() {
+    local level="$1"
+    
+    case "$CHEZMOI_VERBOSITY" in
+        "minimal")
+            case "$level" in
+                "success"|"error") return 0 ;;
+                *) return 1 ;;
+            esac
+            ;;
+        "normal")
+            case "$level" in
+                "debug") return 1 ;;
+                *) return 0 ;;
+            esac
+            ;;
+        "debug")
+            return 0
+            ;;
+        *)
+            # Default to normal behavior
+            case "$level" in
+                "debug") return 1 ;;
+                *) return 0 ;;
+            esac
+            ;;
+    esac
+}
+
+log_info() {
+    if should_log "info"; then
+        echo -e "${BLUE}ℹ️  [INFO]${NC} $*" >&2
+    fi
+}
+
+log_success() {
+    if should_log "success"; then
+        echo -e "${GREEN}✅ [SUCCESS]${NC} $*" >&2
+    fi
+}
+
+log_warning() {
+    if should_log "warning"; then
+        echo -e "${YELLOW}⚠️  [WARNING]${NC} $*" >&2
+    fi
+}
+
+log_error() {
+    if should_log "error"; then
+        echo -e "${RED}❌ [ERROR]${NC} $*" >&2
+    fi
+}
+
+log_debug() {
+    # Check both new verbosity system and legacy debug flag
+    if should_log "debug" || [ "$CHEZMOI_DEBUG" = "true" ]; then
+        # Get timestamp
+        local timestamp
+        timestamp=$(date '+%H:%M:%S')
+
+        # Get calling function name if available
+        local caller=""
+        if [ "${#FUNCNAME[@]}" -gt 1 ]; then
+            caller="${FUNCNAME[1]}(): "
+        fi
+
+        # Get script name for context
+        local script_name
+        script_name=$(basename "$0")
+
+        # Format debug message with enhanced context
+        echo -e "${CYAN}🔍 [DEBUG ${timestamp}]${NC} ${script_name}: ${caller}$*" >&2
+    fi
+}
+
+log_step() {
+    if should_log "step"; then
+        echo -e "${YELLOW}${BOLD}🧩 [STEP] $*${NC}" >&2
+    fi
+}
+
+log_header() {
+    if should_log "header"; then
+        echo -e "${GREEN}${BOLD}🚀 [START] $*${NC}" >&2
+    fi
+}
+
+# -----------------------------------------------------------------------------
+# Error Handling
+# -----------------------------------------------------------------------------
+error_handler() {
+    local line_num=$1
+    log_error "Script failed at line ${line_num}"
+    exit 1
+}
+
+trap 'error_handler ${LINENO}' ERR
+
+# -----------------------------------------------------------------------------
+# Utility Functions
+# -----------------------------------------------------------------------------
+
+# Check if command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Create directory if it doesn't exist
+ensure_directory() {
+    local dir="$1"
+    if [[ ! -d "$dir" ]]; then
+        mkdir -p "$dir"
+        log_info "Created directory: $dir"
+    fi
+}
+
+# Safe file copy with directory creation
+safe_copy() {
+    local source="$1"
+    local target="$2"
+
+    if [[ ! -e "$source" ]]; then
+        log_warning "Source not found: $source"
+        return 1
+    fi
+
+    local target_dir
+    target_dir=$(dirname "$target")
+    ensure_directory "$target_dir"
+
+    if [[ -d "$source" ]]; then
+        # Directory copy
+        [[ -d "$target" ]] && rm -rf "$target"
+        cp -r "$source" "$target"
+    else
+        # File copy
+        cp "$source" "$target"
+    fi
+
+    if [[ -e "$target" ]]; then
+        log_success "Copied to $target"
+        return 0
+    else
+        log_error "Copy failed: $target not found after copy"
+        return 1
+    fi
+}
+
+# Check if running on Arch Linux
+is_arch() {
+    [[ -f /etc/os-release ]] && grep -qi "^ID=arch$" /etc/os-release
+}
+
+# Check if running on WSL
+is_wsl() {
+    [[ -f /proc/version ]] && grep -qi microsoft /proc/version
+}
+
+# Check if running on Android
+is_android() {
+    [[ -d /system/app || -d /system/priv-app ]] || [[ "$(uname -o 2>/dev/null)" == "Android" ]]
+}
+
+# -----------------------------------------------------------------------------
+# Homebrew Functions
+# -----------------------------------------------------------------------------
+
+# Standard Homebrew installation paths
+readonly HOMEBREW_PATHS=(
+    "$HOME/.linuxbrew"
+    "/home/linuxbrew/.linuxbrew"
+    "/opt/homebrew"  # Apple Silicon
+    "/usr/local"     # Intel Mac
+)
+
+# Find Homebrew installation
+find_homebrew() {
+    for path in "${HOMEBREW_PATHS[@]}"; do
+        if [[ -d "$path" && -x "$path/bin/brew" ]]; then
+            echo "$path"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Check if Homebrew is in PATH
+is_homebrew_available() {
+    command_exists brew
+}
+
+# Load Homebrew environment
+load_homebrew() {
+    if is_homebrew_available; then
+        return 0
+    fi
+
+    local homebrew_path
+    if homebrew_path=$(find_homebrew); then
+        eval "$($homebrew_path/bin/brew shellenv)"
+        return 0
+    fi
+
+    return 1
+}
+
+install_homebrew() {
+    log_header "Installing Homebrew"
+
+    # Check if already installed
+    if is_homebrew_available; then
+        log_success "Homebrew already installed: $(command -v brew)"
+        log_info "Version: $(brew --version | head -n1)"
+        return 0
+    fi
+
+    # Try to find existing installation
+    if load_homebrew; then
+        log_success "Found existing Homebrew installation $(brew --version | head -n1)"
+        return 0
+    fi
+
+    # Install Homebrew
+    log_info "Installing Homebrew..."
+    export NONINTERACTIVE=1
+
+    if /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
+        log_success "Homebrew installed"
+    else
+        log_error "Homebrew installation failed"
+        return 1
+    fi
+
+    # Load newly installed Homebrew
+    if ! load_homebrew; then
+        log_error "Cannot find Homebrew after installation"
+        log_info "Standard locations checked:"
+        for path in "${HOMEBREW_PATHS[@]}"; do
+            log_info "  - $path"
+        done
+        return 1
+    fi
+
+    # Update Homebrew
+    log_info "Updating Homebrew..."
+    brew update --force --quiet
+
+    # Fix zsh permissions if needed
+    if command_exists zsh; then
+        chmod -R go-w "$(brew --prefix)/share/zsh" 2>/dev/null || true
+        log_info "Fixed zsh permissions"
+    fi
+
+    log_success "Homebrew installation completed"
+    log_info "Location: $(command -v brew)"
+    log_info "Version: $(brew --version | head -n1)"
+}
+
+# -----------------------------------------------------------------------------
+# NPM Functions
+# -----------------------------------------------------------------------------
+
+# Standard NPM installation paths (Node.js)
+readonly NODE_PATHS=(
+    "$HOME/.nvm/versions/node"
+    "$HOME/.volta/tools/image/node"
+    "$HOME/.asdf/installs/nodejs"
+    "/usr/local/bin"
+    "/usr/bin"
+)
+
+# Find npm installation
+find_npm() {
+    # First check if npm is already in PATH
+    if command_exists npm; then
+        command -v npm
+        return 0
+    fi
+
+    # Check standard Node.js installation paths
+    for path in "${NODE_PATHS[@]}"; do
+        if [[ -d "$path" ]]; then
+            # Find the latest version directory if exists
+            local npm_bin
+            if [[ -f "$path/bin/npm" ]]; then
+                npm_bin="$path/bin/npm"
+            elif [[ -d "$path" ]]; then
+                # Find latest version in version directories (nvm style)
+                local latest_version
+                latest_version=$(find "$path" -maxdepth 1 -type d -name "v*" | sort -V | tail -n1)
+                if [[ -n "$latest_version" && -f "$latest_version/bin/npm" ]]; then
+                    npm_bin="$latest_version/bin/npm"
+                fi
+            fi
+
+            if [[ -n "$npm_bin" && -x "$npm_bin" ]]; then
+                echo "$npm_bin"
+                return 0
+            fi
+        fi
+    done
+    return 1
+}
+
+# Check if npm is available
+is_npm_available() {
+    command_exists npm
+}
+
+# Load npm environment
+load_npm() {
+    if is_npm_available; then
+        return 0
+    fi
+
+    local npm_path
+    if npm_path=$(find_npm); then
+        local npm_dir
+        npm_dir=$(dirname "$npm_path")
+        export PATH="$npm_dir:$PATH"
+        return 0
+    fi
+
+    return 1
+}
+
+# Install Node.js and npm
+install_npm() {
+    log_header "Installing Node.js and npm"
+
+    # Check if npm is already available
+    if is_npm_available; then
+        log_success "npm already installed: $(command -v npm)"
+        log_info "Version: $(npm --version)"
+        log_info "Node.js: $(node --version)"
+        return 0
+    fi
+
+    # Try to find existing installation
+    if load_npm; then
+        log_success "Found existing npm installation"
+        log_info "npm version: $(npm --version)"
+        log_info "Node.js version: $(node --version)"
+        return 0
+    fi
+
+    # Determine installation method based on system
+    log_info "Installing Node.js and npm..."
+
+    # Try using system package manager first
+    if is_android; then
+        log_info "Installing via Termux..."
+        pkg install -y nodejs npm >/dev/null
+    elif command_exists pacman; then
+        log_info "Installing via pacman..."
+        sudo pacman -S --noconfirm --needed nodejs npm >/dev/null
+    elif command_exists apt-get; then
+        log_info "Installing via apt..."
+        sudo apt-get update >/dev/null
+        sudo apt-get install -y nodejs npm >/dev/null
+    elif command_exists yum; then
+        log_info "Installing via yum..."
+        sudo yum install -y nodejs npm >/dev/null
+    elif command_exists brew; then
+        log_info "Installing via Homebrew..."
+        brew install node >/dev/null
+    else
+        log_error "No supported package manager found"
+        log_info "Please install Node.js manually from https://nodejs.org/"
+        return 1
+    fi
+
+    # Verify installation
+    if ! load_npm; then
+        log_error "Cannot find npm after installation"
+        return 1
+    fi
+
+    log_success "Node.js and npm installation completed"
+    log_info "npm location: $(command -v npm)"
+    log_info "npm version: $(npm --version)"
+    log_info "Node.js version: $(node --version)"
+}
+
+# -----------------------------------------------------------------------------
+# Optimized Package Installation Functions
+# -----------------------------------------------------------------------------
+
+# Batch check installed pacman packages
+# Returns a list of packages that are NOT installed
+get_missing_pacman_packages() {
+    local -n packages=$1
+    local missing=()
+    
+    # Single pacman query for all packages - MUCH faster
+    local all_installed
+    all_installed=$(pacman -Qq 2>/dev/null)
+    
+    for pkg in "${packages[@]}"; do
+        if ! grep -qx "$pkg" <<<"$all_installed"; then
+            missing+=("$pkg")
+        fi
+    done
+    
+    printf '%s\n' "${missing[@]}"
+}
+
+# Install package on Arch Linux using pacman
+install_pacman_package() {
+    local package="$1"
+
+    if ! command_exists pacman; then
+        log_error "Not an Arch-based system"
+        return 1
+    fi
+
+    # This function now expects the caller to have already checked if installed
+    if sudo pacman -S --noconfirm --needed "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package"
+        return 1
+    fi
+}
+
+# Batch check installed Termux packages
+get_missing_termux_packages() {
+    local -n packages=$1
+    local missing=()
+    
+    # Single dpkg query for all packages - MUCH faster
+    local all_installed
+    all_installed=$(dpkg -l 2>/dev/null | awk '/^ii/ {print $2}' | cut -d: -f1)
+    
+    for pkg in "${packages[@]}"; do
+        if ! grep -qx "$pkg" <<<"$all_installed"; then
+            missing+=("$pkg")
+        fi
+    done
+    
+    printf '%s\n' "${missing[@]}"
+}
+
+# Install package on Termux
+install_termux_package() {
+    local package="$1"
+
+    if ! command_exists pkg; then
+        log_error "Not a Termux system"
+        return 1
+    fi
+
+    # This function now expects the caller to have already checked if installed
+    if pkg install -y "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package"
+        return 1
+    fi
+}
+
+# Batch check installed Homebrew packages
+get_missing_homebrew_packages() {
+    local -n packages=$1
+    local missing=()
+    
+    # Single brew list command - MUCH faster
+    local all_installed
+    all_installed=$(brew list --formula -1 2>/dev/null)
+    
+    for pkg in "${packages[@]}"; do
+        # Extract package name before @version suffix
+        local pkg_name="${pkg%%@*}"
+        if ! grep -qx "$pkg_name" <<<"$all_installed"; then
+            missing+=("$pkg")
+        fi
+    done
+    
+    printf '%s\n' "${missing[@]}"
+}
+
+# Install package using Homebrew
+install_homebrew_package() {
+    local package="$1"
+
+    # This function now expects the caller to have already checked if installed
+    if brew install "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package"
+        return 1
+    fi
+}
+
+# Batch check installed Homebrew casks
+get_missing_homebrew_casks() {
+    local -n packages=$1
+    local missing=()
+    
+    # Single brew list command for casks
+    local all_installed
+    all_installed=$(brew list --cask -1 2>/dev/null)
+    
+    for pkg in "${packages[@]}"; do
+        if ! grep -qx "$pkg" <<<"$all_installed"; then
+            missing+=("$pkg")
+        fi
+    done
+    
+    printf '%s\n' "${missing[@]}"
+}
+
+# Install package using Homebrew (Cask)
+install_homebrew_cask_package() {
+    local package="$1"
+
+    # This function now expects the caller to have already checked if installed
+    if brew install --cask "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package"
+        return 1
+    fi
+}
+
+# Batch check installed npm packages
+get_missing_npm_packages() {
+    local -n packages=$1
+    local missing=()
+    
+    # Single npm list command - MUCH faster
+    local all_installed
+    all_installed=$(npm list -g --depth=0 --parseable 2>/dev/null | xargs -n1 basename)
+    
+    for pkg in "${packages[@]}"; do
+        if ! grep -qx "$pkg" <<<"$all_installed"; then
+            missing+=("$pkg")
+        fi
+    done
+    
+    printf '%s\n' "${missing[@]}"
+}
+
+# Install package using npm
+install_npm_package() {
+    local package="$1"
+
+    # This function now expects the caller to have already checked if installed
+    if npm install -g "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package"
+        return 1
+    fi
+}
+
+# Check if running with elevated privileges
+is_root() {
+    [[ "$EUID" -eq 0 ]] || [[ -n "$SUDO_USER" ]]
+}
+
+# Check if sudo is available and we need it
+needs_sudo() {
+    ! is_root && command_exists sudo
+}
+
+# Check if running on Debian/Ubuntu-based system
+is_debian() {
+    command_exists apt-get
+}
+
+# Check if running on RHEL/CentOS/Fedora-based system
+is_rhel() {
+    command_exists yum || command_exists dnf
+}
+
+# Check if running on macOS
+is_macos() {
+    [[ "$(uname)" == "Darwin" ]]
+}
+
+# Install package using system package manager
+install_system_package() {
+    local package="$1"
+
+    # Fast command check first
+    if command -v "$package" >/dev/null 2>&1; then
+        log_success "$package is already installed"
+        return 0
+    fi
+
+    log_info "Installing $package using system package manager..."
+
+    # Try different package managers in order of preference
+    if is_arch; then
+        install_pacman_package "$package"
+    elif is_android; then
+        install_termux_package "$package"
+    elif is_macos && command_exists brew; then
+        install_homebrew_package "$package"
+    elif is_debian; then
+        # Fast check for Debian systems using dpkg
+        if dpkg -s "$package" >/dev/null 2>&1; then
+            log_success "$package is already installed"
+            return 0
+        fi
+        
+        if needs_sudo; then
+            sudo apt-get update >/dev/null 2>&1
+            sudo apt-get install -y "$package" >/dev/null 2>&1
+        else
+            apt-get update >/dev/null 2>&1
+            apt-get install -y "$package" >/dev/null 2>&1
+        fi
+    elif command_exists dnf; then
+        # Fast check for dnf systems
+        if rpm -q "$package" >/dev/null 2>&1; then
+            log_success "$package is already installed"
+            return 0
+        fi
+        
+        if needs_sudo; then
+            sudo dnf install -y "$package" >/dev/null 2>&1
+        else
+            dnf install -y "$package" >/dev/null 2>&1
+        fi
+    elif command_exists yum; then
+        # Fast check for yum systems
+        if rpm -q "$package" >/dev/null 2>&1; then
+            log_success "$package is already installed"
+            return 0
+        fi
+        
+        if needs_sudo; then
+            sudo yum install -y "$package" >/dev/null 2>&1
+        else
+            yum install -y "$package" >/dev/null 2>&1
+        fi
+    elif command_exists brew; then
+        brew install "$package" >/dev/null 2>&1
+    else
+        log_error "No supported package manager found"
+        return 1
+    fi
+
+    # Check if installation was successful
+    if command -v "$package" >/dev/null 2>&1; then
+        log_success "$package installed successfully"
+        return 0
+    else
+        log_error "Failed to install $package"
+        return 1
+    fi
+}
+
+# -----------------------------------------------------------------------------
+# Bitwarden Session Management Functions
+# -----------------------------------------------------------------------------
+save_bw_session() {
+    local session="$1"
+    local session_file="$HOME/.bw_session"
+
+    log_debug "Saving Bitwarden session to $session_file..."
+
+    # Validate session parameter
+    if [ -z "$session" ]; then
+        log_error "Cannot save empty session value"
+        return 1
+    fi
+
+    # Check if session looks valid (basic format check)
+    if [[ ${#session} -lt 10 ]]; then
+        log_error "Session value appears too short (${#session} chars), not saving"
+        return 1
+    fi
+
+    # Create/overwrite the session file
+    if echo "$session" > "$session_file"; then
+        log_success "Bitwarden session saved to $session_file (${#session} chars)"
+        log_debug "Session file permissions: $(ls -la "$session_file" 2>/dev/null || echo 'File not found')"
+        return 0
+    else
+        log_error "Failed to write session to $session_file"
+        return 1
+    fi
+}
+
+delete_bw_session() {
+    local session_file="$HOME/.bw_session"
+
+    log_debug "Deleting Bitwarden session file: $session_file"
+
+    if [[ -f "$session_file" ]]; then
+        if rm "$session_file"; then
+            log_success "Bitwarden session file deleted: $session_file"
+            return 0
+        else
+            log_error "Failed to delete session file: $session_file"
+            return 1
+        fi
+    else
+        log_debug "Session file does not exist: $session_file"
+        return 0
+    fi
+}
+
+# -----------------------------------------------------------------------------
+# Bitwarden Helper Functions
+# -----------------------------------------------------------------------------
+bw_check_login_status() {
+    log_debug "Checking current login status..."
+
+    local login_check_output
+    if login_check_output=$(bw login --check --raw 2>&1); then
+        log_debug "Login check successful: ${login_check_output}"
+        return 0
+    else
+        log_debug "Login check failed: ${login_check_output}"
+        return 1
+    fi
+}
+
+bw_perform_login() {
+    log_info "Not logged into Bitwarden, attempting login..."
+
+    # Login using API key
+    log_debug "Attempting API key login..."
+    local login_output
+    if ! login_output=$(bw login --apikey --raw); then
+        log_error "Bitwarden login failed: ${login_output}"
+        return 1
+    fi
+
+    log_debug "Login command output: ${login_output}"
+    log_success "Bitwarden login successful"
+    return 0
+}
+
+bw_verify_session() {
+    local session="$1"
+
+    log_debug "Verifying login status after login attempt..."
+    if ! bw login --check --raw >/dev/null 2>&1; then
+        log_error "Login verification failed - not properly authenticated"
+        return 1
+    fi
+    log_debug "Login verification successful"
+
+    log_debug "Verifying session validity..."
+    local session_test
+    if session_test=$(BW_SESSION="$session" bw status --raw 2>&1); then
+        # Parse JSON to check status field
+        local status
+        status=$(echo "$session_test" | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+        log_debug "Session test successful: ${session_test}"
+        log_debug "Parsed status: ${status}"
+
+        if [ "$status" = "unlocked" ]; then
+            log_success "Bitwarden vault unlocked and session verified"
+            return 0
+        else
+            log_error "Session verification failed - status is: ${status} (expected: unlocked)"
+            log_error "Exported BW_SESSION may be invalid"
+            return 1
+        fi
+    else
+        log_error "Session verification failed: ${session_test}"
+        log_error "Exported BW_SESSION may be invalid"
+        return 1
+    fi
+}
+
+bw_unlock_vault() {
+    log_debug "Unlocking Bitwarden vault..."
+    local session
+    session=$(bw unlock --raw)
+    local unlock_exit_code=$?
+
+    log_debug "Unlock command exit code: ${unlock_exit_code}"
+    log_debug "Unlock command output: ${session}"
+
+    if [ $unlock_exit_code -ne 0 ]; then
+        log_error "Failed to unlock Bitwarden vault (exit code: ${unlock_exit_code})"
+        log_error "Unlock output: ${session}"
+        return 1
+    fi
+
+    # Validate session value
+    if [ -z "$session" ]; then
+        log_error "Session value is empty after unlock"
+        return 1
+    fi
+
+    # Check if session looks valid (basic format check)
+    if [[ ${#session} -lt 10 ]]; then
+        log_error "Session value appears too short (${#session} chars): ${session}"
+        return 1
+    fi
+
+    export BW_SESSION="$session"
+    log_debug "BW_SESSION exported successfully (length: ${#BW_SESSION} chars, starts with: ${BW_SESSION:0:8}...)"
+
+    # Return the session for further processing
+    echo "$session"
+    return 0
+}
+
+bw_sync_vault() {
+    log_debug "Syncing Bitwarden vault..."
+    local sync_output
+    if ! sync_output=$(bw sync 2>&1); then
+        log_warning "Bitwarden sync failed (continuing anyway): ${sync_output}"
+        return 1
+    else
+        log_debug "Sync output: ${sync_output}"
+        log_success "Bitwarden vault synced"
+        return 0
+    fi
+}
+
+# -----------------------------------------------------------------------------
+# Bitwarden Login Function
+# -----------------------------------------------------------------------------
+bw_login() {
+    # Set Bitwarden client ID
+    export BW_CLIENTID="{{ .bitwarden_clientid | quote }}"
+
+    log_debug "Starting Bitwarden login process..."
+    log_debug "Using client ID: ${BW_CLIENTID:0:8}..." # Show only first 8 chars for security
+
+    # Try to read existing session file first
+    local session_file="$HOME/.bw_session"
+    if [[ -f "$session_file" ]]; then
+        log_debug "Found existing session file: $session_file"
+        log_debug "Reading session file..."
+
+        local session
+        if session=$(cat "$session_file" 2>/dev/null); then
+            log_debug "Session file read successfully"
+
+            # Export the session for verification
+            export BW_SESSION="$session"
+
+            # Verify if the session is valid and vault is unlocked
+            if [[ -n "$BW_SESSION" ]] && bw_verify_session "$BW_SESSION"; then
+                log_success "Using existing valid session from file"
+                # Sync vault and return
+                bw_sync_vault
+                return 0
+            else
+                log_debug "Existing session is invalid or expired, proceeding with fresh login"
+                # Clear invalid session
+                unset BW_SESSION
+            fi
+        else
+            log_warning "Failed to read session file: $session_file"
+        fi
+    else
+        log_debug "No existing session file found: $session_file"
+    fi
+
+    # Check if already logged in
+    if bw_check_login_status; then
+        log_debug "Already logged into Bitwarden"
+    else
+        # Perform login
+        if ! bw_perform_login; then
+            return 1
+        fi
+    fi
+
+    # Unlock vault and get session
+    local session
+    if ! session=$(bw_unlock_vault); then
+        return 1
+    fi
+
+    # Verify the session
+    if ! bw_verify_session "$session"; then
+        return 1
+    fi
+
+    # Save the verified session to file
+    if save_bw_session "$session"; then
+        log_debug "Session saved successfully"
+    else
+        log_warning "Failed to save session to file, but continuing with in-memory session"
+    fi
+
+    # Sync vault
+    bw_sync_vault
+
+    # Final verification
+    log_debug "Performing final verification..."
+    if bw_check_login_status; then
+        log_success "Bitwarden login process completed successfully"
+        log_debug "Final status: logged in, session active (${#BW_SESSION} chars)"
+        return 0
+    else
+        log_error "Final verification failed"
+        # In debug mode, return 0 instead of 1 on failure
+        if [ "$DEBUG" = "true" ]; then
+            log_debug "Debug mode: returning 0 instead of 1 on final verification failure"
+            return 0
+        else
+            return 1
+        fi
+    fi
+}
+</file>
+
+</files>
