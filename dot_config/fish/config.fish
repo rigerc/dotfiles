@@ -9,6 +9,13 @@ source ~/.env
 # aliases
 source ~/.aliases
 
+# alman 
+alman init fish | source
+
+#carapace
+set -Ux CARAPACE_BRIDGES 'zsh,fish,bash,inshellisense' # optional
+carapace _carapace | source
+
 # starship prompt
 # starship init fish | source
 
