@@ -427,22 +427,69 @@ install_npm() {
 # Optimized Package Installation Functions
 # -----------------------------------------------------------------------------
 
+# Install yay (Yet Another Yaourt) - AUR helper for Arch Linux
+install_yay() {
+    log_header "Installing yay"
+
+    # Check if already installed
+    if command_exists yay; then
+        log_success "yay already installed: $(command -v yay)"
+        log_info "Version: $(yay --version | head -n1)"
+        return 0
+    fi
+
+    # Install dependencies
+    log_info "Installing dependencies..."
+    if ! sudo pacman -S --needed --noconfirm git base-devel >/dev/null; then
+        log_error "Failed to install dependencies"
+        return 1
+    fi
+
+    # Clone and build yay
+    log_info "Cloning yay repository..."
+    if ! git clone https://aur.archlinux.org/yay.git /tmp/yay >/dev/null 2>&1; then
+        log_error "Failed to clone yay repository"
+        return 1
+    fi
+
+    cd /tmp/yay
+    log_info "Building and installing yay..."
+    if ! makepkg -si --noconfirm >/dev/null 2>&1; then
+        log_error "Failed to build and install yay"
+        rm -rf /tmp/yay
+        return 1
+    fi
+
+    # Cleanup
+    rm -rf /tmp/yay
+
+    # Verify installation
+    if ! command_exists yay; then
+        log_error "yay installation failed - command not found"
+        return 1
+    fi
+
+    log_success "yay installation completed"
+    log_info "Location: $(command -v yay)"
+    log_info "Version: $(yay --version | head -n1)"
+}
+
 # Batch check installed pacman packages
 # Returns a list of packages that are NOT installed
 get_missing_pacman_packages() {
     local -n packages=$1
     local missing=()
-    
+
     # Single pacman query for all packages - MUCH faster
     local all_installed
     all_installed=$(pacman -Qq 2>/dev/null)
-    
+
     for pkg in "${packages[@]}"; do
         if ! grep -qx "$pkg" <<<"$all_installed"; then
             missing+=("$pkg")
         fi
     done
-    
+
     printf '%s\n' "${missing[@]}"
 }
 
@@ -457,6 +504,44 @@ install_pacman_package() {
 
     # This function now expects the caller to have already checked if installed
     if sudo pacman -S --noconfirm --needed "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package"
+        return 1
+    fi
+}
+
+# Batch check installed yay packages (AUR packages)
+# Returns a list of packages that are NOT installed
+get_missing_yay_packages() {
+    local -n packages=$1
+    local missing=()
+
+    # Single pacman query for all packages - MUCH faster (yay installs to system)
+    local all_installed
+    all_installed=$(pacman -Qq 2>/dev/null)
+
+    for pkg in "${packages[@]}"; do
+        if ! grep -qx "$pkg" <<<"$all_installed"; then
+            missing+=("$pkg")
+        fi
+    done
+
+    printf '%s\n' "${missing[@]}"
+}
+
+# Install package using yay (AUR)
+install_yay_package() {
+    local package="$1"
+
+    if ! command_exists yay; then
+        log_error "yay not available"
+        return 1
+    fi
+
+    # This function now expects the caller to have already checked if installed
+    if yay -S --noconfirm "$package" >/dev/null 2>&1; then
         log_success "Installed $package"
         return 0
     else

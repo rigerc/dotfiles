@@ -71,7 +71,76 @@ init_arch_packages() {
         fi
     fi
     {{- end }}
-    
+
+    # Yay installation (AUR helper)
+    log_debug "Checking for yay installation"
+    if ! command_exists yay; then
+        log_debug "yay not found, installing"
+        log_info "Installing yay..."
+        if ! install_yay; then
+            log_error "yay installation failed"
+            log_warning "Skipping AUR packages"
+            log_debug "yay installation returned failure"
+            overall_success=false
+            # Don't return - continue with other package managers
+        else
+            log_debug "yay installation successful"
+        fi
+    else
+        log_debug "yay already installed: $(command -v yay)"
+    fi
+
+    # Yay packages (AUR)
+    if command_exists yay; then
+        {{- if .packages.linux.arch.yay }}
+        log_info "Checking AUR packages..."
+        log_debug "Processing {{len .packages.linux.arch.yay}} yay packages from config"
+
+        # Collect all packages for batch checking
+        local yay_packages=(
+            {{- range .packages.linux.arch.yay }}
+            {{ . | quote }}
+            {{- end }}
+        )
+
+        # Batch check missing packages
+        log_debug "Starting batch check for missing yay packages"
+        local missing_yay=()
+        while IFS= read -r pkg; do
+            [[ -n "$pkg" ]] && missing_yay+=("$pkg")
+        done < <(get_missing_yay_packages yay_packages)
+
+        log_debug "Found ${#missing_yay[@]} missing yay packages out of ${#yay_packages[@]} total"
+
+        local installed_count=$((${#yay_packages[@]} - ${#missing_yay[@]}))
+        if [[ $installed_count -gt 0 ]]; then
+            log_success "$installed_count AUR package(s) already installed"
+        fi
+
+        if [[ ${#missing_yay[@]} -gt 0 ]]; then
+            log_info "Installing ${#missing_yay[@]} AUR package(s)..."
+            log_debug "Missing yay packages: ${missing_yay[*]}"
+            local failed_packages=()
+
+            for pkg in "${missing_yay[@]}"; do
+                log_debug "Installing yay package: $pkg"
+                if ! install_yay_package "$pkg"; then
+                    failed_packages+=("$pkg")
+                    log_debug "Yay package installation failed: $pkg"
+                fi
+            done
+
+            if [[ ${#failed_packages[@]} -gt 0 ]]; then
+                log_warning "Failed to install some AUR packages:"
+                for pkg in "${failed_packages[@]}"; do
+                    log_warning "  - $pkg"
+                done
+                overall_success=false
+            fi
+        fi
+        {{- end }}
+    fi
+
     # Homebrew installation
     log_debug "Checking for Homebrew installation"
     if ! command_exists brew; then
