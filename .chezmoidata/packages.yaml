@@ -2,7 +2,6 @@ packages:
   linux:
     arch:
       npm:
-        - "@musistudio/claude-code-router"
       go:
         - github.com/cweill/gotests/gotests@latest
       pacman:

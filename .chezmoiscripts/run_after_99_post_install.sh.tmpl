@@ -309,6 +309,43 @@ update_tldr_cache() {
     fi
 }
 
+atuin_sync() {
+    log_step "Syncing Atuin history"
+    log_debug "Entering atuin_sync function"
+
+    if ! command_exists atuin; then
+        log_warning "atuin not found, skipping sync"
+        log_debug "atuin command not available"
+        return 0
+    fi
+
+    # Check if environment variables are set
+    if [[ -z "${ATUIN_USER:-}" ]] || [[ -z "${ATUIN_KEY:-}" ]]; then
+        log_warning "ATUIN_USER or ATUIN_KEY not set, skipping sync"
+        log_debug "ATUIN_USER: ${ATUIN_USER:-<not set>}"
+        log_debug "ATUIN_KEY: ${ATUIN_KEY:+<set>}"
+        return 0
+    fi
+
+    log_info "Logging in to Atuin"
+    if atuin login -u "$ATUIN_USER" -k "$ATUIN_KEY" >/dev/null 2>&1; then
+        log_debug "atuin login completed successfully"
+        if atuin sync -f >/dev/null 2>&1; then
+            log_success "Atuin history synced"
+            log_debug "atuin sync completed successfully"
+            return 0
+        else
+            log_warning "Atuin sync failed"
+            log_debug "atuin sync exited with code: $?"
+            return 1
+        fi
+    else
+        log_warning "Atuin login had issues"
+        log_debug "atuin login exited with code: $?"
+        return 1
+    fi
+}
+
 copy_alacritty_config() {
     log_step "Copying Alacritty configuration"
     log_debug "Entering copy_alacritty_config function"
@@ -436,6 +473,7 @@ main() {
             "install_tmux_plugins"
             "copy_alacritty_config"
             "update_tldr_cache"
+            "atuin_sync"
             "check_secrets"
         )
     else
@@ -449,6 +487,7 @@ main() {
             "generate_locales"
             "install_tmux_plugins"
             "copy_alacritty_config"
+            "atuin_sync"
         )
     fi
 
