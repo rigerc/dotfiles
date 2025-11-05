@@ -785,6 +785,131 @@ install_system_package() {
 }
 
 # -----------------------------------------------------------------------------
+# Go Functions
+# -----------------------------------------------------------------------------
+
+# Check if Go is available
+is_go_available() {
+    command_exists go
+}
+
+# Load Go environment
+load_go() {
+    if is_go_available; then
+        return 0
+    fi
+
+    # Try to find Go in common installation paths
+    local go_paths=(
+        "$HOME/go/bin"
+        "/usr/local/go/bin"
+        "/usr/bin"
+        "$HOME/.local/go/bin"
+    )
+
+    for path in "${go_paths[@]}"; do
+        if [[ -x "$path/go" ]]; then
+            export PATH="$path:$PATH"
+            if is_go_available; then
+                log_debug "Found Go at: $path/go"
+                return 0
+            fi
+        fi
+    done
+
+    return 1
+}
+
+# Install Go
+install_go() {
+    log_header "Installing Go"
+
+    # Check if already installed
+    if is_go_available; then
+        log_success "Go already installed: $(command -v go)"
+        log_info "Version: $(go version)"
+        return 0
+    fi
+
+    # Try to find existing installation
+    if load_go; then
+        log_success "Found existing Go installation: $(go version)"
+        return 0
+    fi
+
+    # Install Go using system package manager
+    log_info "Installing Go..."
+    if is_android; then
+        log_info "Installing via Termux..."
+        pkg install -y golang >/dev/null 2>&1
+    elif command_exists pacman; then
+        log_info "Installing via pacman..."
+        sudo pacman -S --noconfirm --needed go >/dev/null 2>&1
+    elif command_exists apt-get; then
+        log_info "Installing via apt..."
+        sudo apt-get update >/dev/null 2>&1
+        sudo apt-get install -y golang-go >/dev/null 2>&1
+    elif command_exists yum; then
+        log_info "Installing via yum..."
+        sudo yum install -y golang >/dev/null 2>&1
+    elif command_exists brew; then
+        log_info "Installing via Homebrew..."
+        brew install go >/dev/null 2>&1
+    else
+        log_error "No supported package manager found for Go installation"
+        return 1
+    fi
+
+    # Verify installation
+    if ! load_go; then
+        log_error "Cannot find Go after installation"
+        return 1
+    fi
+
+    log_success "Go installation completed"
+    log_info "Go location: $(command -v go)"
+    log_info "Go version: $(go version)"
+}
+
+# Batch check installed Go packages
+get_missing_go_packages() {
+    local -n packages=$1
+    local missing=()
+
+    for pkg in "${packages[@]}"; do
+        # Extract package name (remove version suffixes and paths)
+        local pkg_name="${pkg##*/}"
+        pkg_name="${pkg_name%%@*}"
+
+        # Check if package is installed using go list
+        if ! go list -m "$pkg" >/dev/null 2>&1; then
+            missing+=("$pkg")
+        fi
+    done
+
+    printf '%s\n' "${missing[@]}"
+}
+
+# Install Go package
+install_go_package() {
+    local package="$1"
+
+    if ! is_go_available; then
+        log_error "Go not available"
+        return 1
+    fi
+
+    # Install silently with -q flag for quiet mode
+    if go install -q "$package" >/dev/null 2>&1; then
+        log_success "Installed $package"
+        return 0
+    else
+        log_error "Failed to install $package"
+        return 1
+    fi
+}
+
+# -----------------------------------------------------------------------------
 # Bitwarden Session Management Functions
 # -----------------------------------------------------------------------------
 save_bw_session() {

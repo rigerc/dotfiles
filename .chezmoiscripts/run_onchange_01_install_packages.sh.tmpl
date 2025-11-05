@@ -141,6 +141,75 @@ init_arch_packages() {
         {{- end }}
     fi
 
+    # Go installation
+    log_debug "Checking for Go installation"
+    if ! command_exists go; then
+        log_debug "Go not found, installing"
+        log_info "Installing Go..."
+        if ! install_go; then
+            log_error "Go installation failed"
+            log_warning "Skipping Go packages"
+            log_debug "Go installation returned failure"
+            overall_success=false
+            # Don't return - continue with other package managers
+        else
+            log_debug "Go installation successful"
+        fi
+    else
+        log_debug "Go already installed: $(command -v go)"
+    fi
+
+    # Go packages
+    if command_exists go; then
+        {{- if .packages.linux.arch.go }}
+        log_info "Checking Go packages..."
+        log_debug "Processing {{len .packages.linux.arch.go}} go packages from config"
+
+        # Collect all packages for batch checking
+        local go_packages=(
+            {{- range .packages.linux.arch.go }}
+            {{ . | quote }}
+            {{- end }}
+        )
+
+        # Batch check missing packages
+        log_debug "Starting batch check for missing go packages"
+        local missing_go=()
+        while IFS= read -r pkg; do
+            [[ -n "$pkg" ]] && missing_go+=("$pkg")
+        done < <(get_missing_go_packages go_packages)
+
+        log_debug "Found ${#missing_go[@]} missing go packages out of ${#go_packages[@]} total"
+
+        local installed_count=$((${#go_packages[@]} - ${#missing_go[@]}))
+        if [[ $installed_count -gt 0 ]]; then
+            log_success "$installed_count Go package(s) already installed"
+        fi
+
+        if [[ ${#missing_go[@]} -gt 0 ]]; then
+            log_info "Installing ${#missing_go[@]} Go package(s)..."
+            log_debug "Missing go packages: ${missing_go[*]}"
+            local failed_packages=()
+
+            for pkg in "${missing_go[@]}"; do
+                log_debug "Installing go package: $pkg"
+                if ! install_go_package "$pkg"; then
+                    failed_packages+=("$pkg")
+                    log_debug "Go package installation failed: $pkg"
+                fi
+            done
+
+            if [[ ${#failed_packages[@]} -gt 0 ]]; then
+                log_warning "Failed to install some Go packages:"
+                for pkg in "${failed_packages[@]}"; do
+                    log_warning "  - $pkg"
+                done
+                overall_success=false
+            fi
+        fi
+        {{- end }}
+    fi
+
     # Homebrew installation
     log_debug "Checking for Homebrew installation"
     if ! command_exists brew; then
