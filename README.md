@@ -17,11 +17,35 @@ bash install.sh --dry-run
 bash install.sh
 ```
 
-The installer checks Wi-Fi tools, offers the NetworkManager text interface
-(`nmtui connect`) or iwd fallback, asks before installing Git and chezmoi via
+The installer detects an active network route first and **skips Wi-Fi setup**
+when one is available (including QEMU virtual Ethernet). Otherwise it offers
+NetworkManager (`nmtui connect`) or the interactive iwd fallback. It asks
+before installing Git and chezmoi via
 `pacman`, and runs interactive `chezmoi init` prompts. It separately asks before
 applying files or running provisioning scripts. Wi-Fi passwords never enter
 chezmoi data or the Git repository. See [bootstrap details](docs/BOOTSTRAP.md).
+
+To bootstrap a fresh Arch machine **using curl without cloning first**:
+
+```sh
+bootstrap=$(mktemp)
+curl -fsSLo "$bootstrap" \
+  https://raw.githubusercontent.com/rigerc/dotfiles/main/install.sh
+less "$bootstrap"  # Review downloaded code before execution
+bash "$bootstrap"
+rm -f -- "$bootstrap"
+```
+
+For a direct interactive one-liner (review remote scripts before trusting them):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/rigerc/dotfiles/main/install.sh | bash
+```
+
+The installer uses `/dev/tty` to collect responses in piped mode, never the
+pipeline itself. The machine must already run Arch and have enough initial
+network access to download the script. `bash install.sh --check-network` reports
+route detection without making changes.
 
 ## First setup (native chezmoi commands)
 
@@ -96,12 +120,14 @@ recognized and skipped. The tuning can be rolled back using the script in
 
 ## QEMU virtual-machine rehearsal
 
-`vm/launch.sh` boots an existing Arch ISO with a disposable qcow2 disk,
+`vm/launch.sh` **automatically downloads and SHA-256 verifies** the current Arch
+ISO when no `--iso` path is provided, then boots a disposable qcow2 disk,
 virtual Ethernet, and a read-only checkout share. The guest smoke test checks
 the installer preview, runs the test suite if its tools are present, and
 stages/rolls back tuning without modifying the real `/etc`. For an interactive
 installer rehearsal, install Arch in the VM and log in as a normal test user.
-See [VM test guide](docs/VM.md).
+Fetch the ISO without launching QEMU using `bash vm/launch.sh --download-only`;
+reuse a local ISO via `--iso /path/to/archlinux.iso`. See [VM test guide](docs/VM.md).
 
 ## Managed files
 
