@@ -19,7 +19,7 @@ Initialize the repo; this runs the interactive prompts but does not apply:
 chezmoi init rigerc/dotfiles
 ```
 
-Prompts cover Git name/email, personal/work machine, desktop/laptop/server role,
+Prompts cover Git name/email, personal/work machine, desktop/laptop/chromebook/server role,
 package profile, and whether to install packages. Package installation is
 **disabled by default**. Leave it disabled during initial review.
 
@@ -55,10 +55,21 @@ The only package manifest is `home/.chezmoidata/packages.toml`.
 | `desktop` (default) | Core plus Ghostty, Hyprland, Noctalia, Wayland portals, PipeWire, clipboard, brightness, and screenshot tools |
 | `developer` | Desktop plus jq, ripgrep, fd, fzf, Neovim, tmux |
 
+On `machineRole = "chromebook"`, the desktop/developer profiles add an
+**official-repository-only** Chromebook package supplement (audio and graphics
+utilities, fonts, laptop tools). The `core` profile does not add the supplement.
+
 Provisioning runs through a templated `run_onchange_before_` script only after
 you opt in. It checks missing packages first, retains pacman's interactive
 confirmation, and refuses non-Arch hosts. No AUR packages or additional package
 repositories are installed automatically.
+
+The **Chromebook** role retains your existing shared Fish, Atuin, Ghostty,
+Hyprland rules and keybindings, Noctalia and Git configurations. It loads an
+additional low-effects Hyprland override and Chromebook-only GTK 3/4 settings.
+No alternate desktop configuration is deployed. On an x86_64 Chromebook
+**already running Arch**, run the read-only `bash scripts/chromebook-preflight.sh`
+and see [Chromebook setup and safety](docs/CHROMEBOOK.md) before applying.
 
 A `server` role ignores Ghostty, Hyprland, and Noctalia configs; use the
 `core` package profile for servers.
@@ -72,7 +83,7 @@ Chezmoi uses the `home/` source subtree via `.chezmoiroot`.
 | `home/dot_config/fish/config.fish` | `~/.config/fish/config.fish` |
 | `home/dot_atuin/config.toml` | `~/.atuin/config.toml` |
 | `home/dot_config/ghostty/config` | `~/.config/ghostty/config` |
-| `home/dot_config/hypr/*.lua` | `~/.config/hypr/*.lua` |
+| `home/dot_config/hypr/hyprland.lua.tmpl` and `*.lua` | `~/.config/hypr/*.lua` |
 | `home/dot_config/noctalia/config.toml` | `~/.config/noctalia/config.toml` |
 | `home/dot_gitconfig.tmpl` | `~/.gitconfig` |
 | `home/dot_config/git/ignore` | `~/.config/git/ignore` |
@@ -104,7 +115,8 @@ chezmoi update
 python3 -m unittest discover -s tests -v
 ```
 
-Offline tests never modify your home or install packages. When chezmoi is
+Offline tests never modify your home or install packages.
+Chromebook-specific hardware tuning and AUR packages are deliberately not automated. When chezmoi is
 installed, additional integration tests use a temporary home and exclude
 scripts. Always review changes before `chezmoi apply`; do not use
 `chezmoi apply --force` without understanding overwrites.
