@@ -1,0 +1,3 @@
+{{- if and (eq .machineRole "chromebook") .chromebookTuning -}}
+{{ include ".chezmoitemplates/chromebook-tune.sh" }}
+{{- end -}}
