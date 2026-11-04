@@ -116,4 +116,5 @@ Then set `chromebookTuning=false` in your local chezmoi configuration to avoid
 reapplying the configuration. Reboot to restore runtime defaults. Other tuning
 or existing unmanaged files are never deleted.
 
-For a full Arch VM rehearsal, see [VM harness](VM.md).
+For isolated chezmoi checks, including this role's file rendering and staged
+system-tuning rollback, see the [Podman container guide](CONTAINER.md).
