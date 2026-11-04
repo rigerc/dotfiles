@@ -1,0 +1,9 @@
+# Copy to ~/.ssh/config.d/lan.conf and replace the example values.
+# mkdir -p ~/.ssh/config.d && chmod 700 ~/.ssh ~/.ssh/config.d
+# chmod 600 ~/.ssh/config.d/lan.conf
+Host lan-box
+    HostName 192.168.1.100
+    User your-user
+    Port 22
+    # IdentityFile ~/.ssh/id_ed25519
+    # IdentitiesOnly yes

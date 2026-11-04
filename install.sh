@@ -102,7 +102,7 @@ DRY RUN — this script will not modify your system.
   3. With explicit consent, use sudo pacman -Syu --needed to install
      missing git and chezmoi (full system upgrade).
   4. Initialize chezmoi, prompting for Git identity, machine role,
-     package profile, and opt-in Chromebook tuning.
+     package profile, Herdr/LAN SSH opt-ins, and opt-in Chromebook tuning.
   5. Preview chezmoi's diff and file-only dry run.
   6. With separate consent, apply files and run enabled chezmoi scripts.
 Wi-Fi/network access is required before pacman or git clone can work.
@@ -198,9 +198,15 @@ if ask 'Apply configuration files only (no scripts or package installation)?'; t
 else
     info 'Files not applied.'
 fi
-if ask 'Run enabled chezmoi scripts now (may upgrade packages and tune this Chromebook)?'; then
+if ask 'Run enabled chezmoi scripts now (may upgrade packages, install Herdr, enable LAN SSH, and tune this Chromebook)?'; then
     chezmoi apply --verbose <&3
 else
     info 'Provisioning skipped. Run chezmoi apply --verbose later when ready.'
+fi
+github_setup=${HOME:?}/.local/bin/dotfiles-github-auth
+if [[ -x $github_setup ]] && have gh && have ssh-keygen; then
+    if ask 'Set up GitHub browser/device authentication and an SSH key now?'; then
+        "$github_setup" <&3
+    fi
 fi
 info 'Setup complete. Your dotfiles and machine-local chezmoi config are managed by chezmoi.'

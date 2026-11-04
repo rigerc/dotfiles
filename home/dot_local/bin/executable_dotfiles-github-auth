@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Interactive, machine-local authentication; never run during chezmoi rendering.
+set -euo pipefail
+umask 077
+if [[ ${1:-} == --help ]]; then
+    echo 'Usage: dotfiles-github-auth [PATH_TO_PRIVATE_KEY]'
+    echo 'Log in to GitHub.com via browser/device flow and offer SSH key registration.'
+    exit 0
+fi
+(($# <= 1)) || { echo 'Expected at most one private-key path.' >&2; exit 1; }
+[[ -t 0 && -t 1 ]] || { echo 'Run this command in an interactive terminal.' >&2; exit 1; }
+for tool in gh ssh-keygen; do
+    command -v "$tool" >/dev/null || { echo "Install $tool first." >&2; exit 1; }
+done
+# Environment tokens would override device authentication and its stored identity.
+if [[ -n ${GH_TOKEN:-}${GITHUB_TOKEN:-} ]]; then
+    echo 'Unset GH_TOKEN/GITHUB_TOKEN for persistent browser/device authentication.' >&2
+    exit 1
+fi
+# ssh-key subcommands use GH_HOST rather than a --hostname flag.
+export GH_HOST=github.com
+if ! gh auth status --hostname github.com >/dev/null 2>&1; then
+    gh auth login --hostname github.com --web --git-protocol ssh --skip-ssh-key
+fi
+gh config set git_protocol ssh --host github.com
+
+ask() {
+    local answer
+    read -r -p "$1 [y/N]: " answer
+    [[ $answer == [yY] || $answer == [yY][eE][sS] ]]
+}
+key=${1:-}
+if [[ -z $key ]]; then
+    # Prefer existing standard keys; accept a custom identity as the argument.
+    for candidate in "$HOME/.ssh/id_ed25519" "$HOME/.ssh/id_ecdsa" "$HOME/.ssh/id_rsa"; do
+        if [[ -f $candidate ]]; then key=$candidate; break; fi
+    done
+    key=${key:-$HOME/.ssh/id_ed25519}
+fi
+if [[ ! -f $key ]]; then
+    # Never overwrite an orphan public key or create a key at a mistyped custom path.
+    [[ $# == 0 && ! -e $key && ! -e $key.pub ]] || {
+        echo "No private key at $key; resolve the existing path or create it manually." >&2; exit 1;
+    }
+    ask "Generate a new per-machine Ed25519 key at $key?" || exit 0
+    mkdir -p "$HOME/.ssh"
+    chmod 700 "$HOME/.ssh"
+    # ssh-keygen prompts for a passphrase; no secret enters argv or the repository.
+    ssh-keygen -t ed25519 -f "$key" -C "$(id -un)@$(hostname)"
+fi
+public_key=$(mktemp)
+trap 'rm -f -- "$public_key"' EXIT
+# Derive the public key from the selected private key, avoiding stale .pub files.
+ssh-keygen -y -f "$key" > "$public_key"
+if ask "Register the public key for $key with your GitHub account?"; then
+    gh auth refresh --hostname github.com --scopes admin:public_key
+    gh ssh-key add "$public_key" --type authentication --title "$(id -un)@$(hostname)"
+fi
+printf '\nGitHub uses SSH. Selected key: %s\n' "$key"
+echo 'For a custom key, set IdentityFile in ~/.ssh/config.d/github.conf.'
+echo 'If passphrase-protected, load it into your existing agent with ssh-add.'

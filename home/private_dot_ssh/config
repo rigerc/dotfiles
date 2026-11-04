@@ -1,0 +1,11 @@
+# Host-specific settings belong in local files, outside chezmoi management.
+Include ~/.ssh/config.d/*.conf
+
+Host github.com
+    HostName github.com
+    User git
+
+Host *
+    ServerAliveInterval 30
+    ServerAliveCountMax 3
+    ForwardAgent no

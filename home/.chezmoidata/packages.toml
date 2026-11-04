@@ -1,5 +1,5 @@
 [packages.pacman]
-core = ["git", "chezmoi", "fish", "atuin"]
+core = ["git", "chezmoi", "fish", "atuin", "github-cli", "openssh", "curl"]
 desktop = [
   "ghostty", "hyprland", "noctalia",
   "xdg-desktop-portal-hyprland", "xdg-desktop-portal-gtk",

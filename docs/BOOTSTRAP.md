@@ -87,6 +87,12 @@ network power-saving settings, or GPU drivers.
 not issue `git config --global`, replace an existing `.gitconfig` without a
 preview, or push private identity into your public repo.
 
+The final bootstrap step offers `dotfiles-github-auth` when GitHub CLI and
+OpenSSH are available. You can run it later for browser/device login, SSH Git
+transport, and optional key creation/registration. Authentication and private
+keys remain local. Herdr installation and LAN SSH serving have independent,
+default-off `chezmoi init` prompts; see [remote setup](../README.md#github-and-lan-ssh).
+
 If this script is run outside the repository, it clones the public source
 into `~/.local/share/chezmoi-bootstrap`. It will not overwrite an existing
 path. You may instead pass `--source` and use an extracted checkout.

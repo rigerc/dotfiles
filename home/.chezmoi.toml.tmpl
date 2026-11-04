@@ -7,6 +7,8 @@
 {{- if eq $role "server" -}}{{- $profileDefault = "core" -}}{{- end -}}
 {{- $profile := promptChoiceOnce . "packageProfile" "Arch package profile: core, desktop, or developer" (list "core" "desktop" "developer") $profileDefault -}}
 {{- $install := promptBoolOnce . "installPackages" "Install missing pacman packages? This performs pacman -Syu (system upgrade)" false -}}
+{{- $herdr := promptBoolOnce . "installHerdr" "Install Herdr using its official stable installer and auto-attach in SSH Fish logins?" false -}}
+{{- $sshd := promptBoolOnce . "enableSshd" "Configure and enable SSH access for this user from private LAN addresses (sudo required)?" false -}}
 {{- $tune := false -}}
 {{- if eq $role "chromebook" -}}
 {{- $tune = promptBoolOnce . "chromebookTuning" "Enable automatic Chromebook zram, memory and journal tuning (requires sudo)?" false -}}
@@ -21,4 +23,6 @@ sourceDir = {{ .chezmoi.sourceDir | quote }}
     machineRole = {{ $role | quote }}
     packageProfile = {{ $profile | quote }}
     installPackages = {{ $install }}
+    installHerdr = {{ $herdr }}
+    enableSshd = {{ $sshd }}
     chromebookTuning = {{ $tune }}

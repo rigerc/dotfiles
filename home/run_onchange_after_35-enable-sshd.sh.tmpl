@@ -1,0 +1,3 @@
+{{- if (get . "enableSshd" | default false) -}}
+{{ include ".chezmoitemplates/sshd-lan.sh" }}
+{{- end -}}

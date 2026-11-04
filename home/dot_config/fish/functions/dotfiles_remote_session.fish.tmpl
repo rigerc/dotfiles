@@ -1,0 +1,19 @@
+# Generated from the machine-local installHerdr choice.
+function dotfiles_remote_session --description 'Attach Herdr in interactive SSH logins'
+{{ if (get . "installHerdr" | default false) }}
+    status is-interactive; or return 0
+    status is-login; or return 0
+    test -t 0; and test -t 1; or return 0
+    set -q SSH_TTY; and set -q SSH_CONNECTION; or return 0
+    # Herdr exports these in its panes; also leave other multiplexers alone.
+    set -q HERDR_ENV; and return 0
+    set -q HERDR_PANE_ID; and return 0
+    set -q TMUX; and return 0
+    set -q STY; and return 0
+    test "$DOTFILES_NO_HERDR" = 1; and return 0
+    if command -sq herdr
+        # Detach returns to this shell; failed startup also leaves a usable shell.
+        command herdr
+    end
+{{ end }}
+end

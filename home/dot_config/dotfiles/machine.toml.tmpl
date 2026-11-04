@@ -3,3 +3,5 @@ machine_type = {{ .machineType | quote }}
 machine_role = {{ .machineRole | quote }}
 package_profile = {{ .packageProfile | quote }}
 install_packages = {{ .installPackages }}
+install_herdr = {{ get . "installHerdr" | default false }}
+enable_sshd = {{ get . "enableSshd" | default false }}
