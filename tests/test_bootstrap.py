@@ -102,6 +102,14 @@ class BootstrapTests(unittest.TestCase):
             env = {**os.environ,
                    "PATH": f"{td}:{os.environ.get('PATH', '')}",
                    "PODMAN_CAPTURE": str(output)}
+            if os.geteuid() == 0:
+                rejected = subprocess.run(
+                    ["bash", str(host), "--role", "chromebook"],
+                    env=env, capture_output=True, text=True, timeout=15,
+                )
+                self.assertEqual(rejected.returncode, 2)
+                self.assertIn("rootless Podman", rejected.stderr)
+                return
             result = subprocess.run(
                 ["bash", str(host), "--role", "chromebook"],
                 env=env, capture_output=True, text=True, timeout=15,
