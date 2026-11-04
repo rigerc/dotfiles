@@ -1,17 +1,42 @@
 {{- /* Prompts save only machine-local choices; never commit the generated config. */ -}}
+{{- $interactive := and (stdinIsATTY) (not .chezmoi.flags.noTTY) -}}
+{{- if $interactive -}}
+{{- writeToStdout "\n  1/4  Git identity\n  ----------------------------------------\n  Used for commit authorship, not GitHub login.\n" -}}
+{{- end -}}
 {{- $name := promptStringOnce . "gitName" "Git author name" -}}
-{{- $email := promptStringOnce . "gitEmail" "Git author email" -}}
-{{- $machine := promptChoiceOnce . "machineType" "Machine type" (list "personal" "work") "personal" -}}
+{{- $email := promptStringOnce . "gitEmail" "Git author email (a GitHub noreply address is fine)" -}}
+{{- if $interactive -}}
+{{- writeToStdout "\n  2/4  This machine\n  ----------------------------------------\n  Choose a number or type a listed value; Enter accepts the default.\n  Server skips graphical configuration and defaults to core packages.\n" -}}
+{{- end -}}
+{{- $machine := promptChoiceOnce . "machineType" "Machine purpose" (list "personal" "work") "personal" -}}
 {{- $role := promptChoiceOnce . "machineRole" "Machine role" (list "desktop" "laptop" "chromebook" "server") "desktop" -}}
 {{- $profileDefault := "desktop" -}}
 {{- if eq $role "server" -}}{{- $profileDefault = "core" -}}{{- end -}}
-{{- $profile := promptChoiceOnce . "packageProfile" "Arch package profile: core, desktop, or developer" (list "core" "desktop" "developer") $profileDefault -}}
-{{- $install := promptBoolOnce . "installPackages" "Install missing pacman packages? This performs pacman -Syu (system upgrade)" false -}}
-{{- $herdr := promptBoolOnce . "installHerdr" "Install Herdr using its official stable installer and auto-attach in SSH Fish logins?" false -}}
-{{- $sshd := promptBoolOnce . "enableSshd" "Configure and enable SSH access for this user from private LAN addresses (sudo required)?" false -}}
+{{- if $interactive -}}
+{{- writeToStdout "\n  3/4  Packages\n  ----------------------------------------\n  core       CLI essentials, GitHub CLI and OpenSSH\n  desktop    Core + Wayland desktop and apps\n  developer  Desktop + editor, search tools and tmux\n\n  Selecting a profile does not install anything yet.\n" -}}
+{{- end -}}
+{{- $profile := promptChoiceOnce . "packageProfile" "Package profile" (list "core" "desktop" "developer") $profileDefault -}}
+{{- if $interactive -}}
+{{- writeToStdout "\n  Package installation runs pacman -Syu and may upgrade the whole system.\n  Requires a terminal and sudo; Enter keeps installation off.\n" -}}
+{{- end -}}
+{{- $install := promptBoolOnce . "installPackages" "Install missing pacman packages?" false -}}
+{{- if $interactive -}}
+{{- writeToStdout "\n  4/4  Optional setup\n  ----------------------------------------\n  Each choice is independent; Enter leaves it off.\n  These tasks run only when you later apply scripts.\n\n  Herdr: official stable installer; auto-attach in SSH Fish logins only.\n  Local terminals stay as ordinary Fish shells.\n" -}}
+{{- end -}}
+{{- $herdr := promptBoolOnce . "installHerdr" "Install Herdr for remote sessions?" false -}}
+{{- if $interactive -}}
+{{- writeToStdout "\n  LAN SSH: enables sshd for this user from private/local IP ranges.\n  Allows keys and passwords; root login is disabled. Requires sudo.\n" -}}
+{{- end -}}
+{{- $sshd := promptBoolOnce . "enableSshd" "Enable incoming LAN SSH on this machine?" false -}}
 {{- $tune := false -}}
 {{- if eq $role "chromebook" -}}
-{{- $tune = promptBoolOnce . "chromebookTuning" "Enable automatic Chromebook zram, memory and journal tuning (requires sudo)?" false -}}
+{{- if $interactive -}}
+{{- writeToStdout "\n  Chromebook tuning: zram, memory and journal limits. Requires sudo.\n" -}}
+{{- end -}}
+{{- $tune = promptBoolOnce . "chromebookTuning" "Enable Chromebook tuning?" false -}}
+{{- end -}}
+{{- if $interactive -}}
+{{- writeToStdout (printf "\n  Settings summary\n  ----------------------------------------\n  Machine          %s / %s\n  Package profile  %s\n  Install packages %s\n  Herdr over SSH   %s\n  Incoming LAN SSH %s\n  Chromebook tune  %s\n\n  No files or scripts have been applied.\n  Change saved choices with: chezmoi edit-config\n\n" $machine $role $profile (ternary "on" "off" $install) (ternary "on" "off" $herdr) (ternary "on" "off" $sshd) (ternary "on" "off" $tune)) -}}
 {{- end -}}
 # Local-only file created by chezmoi init. Never commit your rendered config.
 sourceDir = {{ .chezmoi.sourceDir | quote }}

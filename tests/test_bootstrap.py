@@ -1,6 +1,7 @@
 """No privileged operations: exercise installer preview and staged Chromebook tune."""
 import os
 from pathlib import Path
+import pty
 import shutil
 import subprocess
 import tempfile
@@ -20,6 +21,65 @@ def run_shell(*args, cwd=ROOT):
 
 
 class BootstrapTests(unittest.TestCase):
+    def prompt_script(self):
+        # Exercise the real standalone prompt helpers without running bootstrap.
+        helpers = INSTALL.read_text().split('\nwhile (($#)); do', 1)[0]
+        return helpers + '''
+exec 3<&0
+section 'Test stage'
+if ask 'Apply now?' 'This writes configuration files.'; then
+    echo accepted
+else
+    echo skipped
+fi
+'''
+
+    def test_confirmation_retries_and_accepts_case_and_whitespace(self):
+        result = subprocess.run(["bash", "-c", self.prompt_script()], input="",
+                                text=True, capture_output=True)
+        # Running from a closed input stream defaults safely to No.
+        self.assertIn("skipped", result.stdout)
+        for answer, expected in (("\n", "skipped"), ("NO\n", "skipped"),
+                                 ("  YES  \n", "accepted"), ("maybe\ny\n", "accepted")):
+            with self.subTest(answer=answer):
+                result = subprocess.run(["bash", "-c", self.prompt_script()], input=answer,
+                                        capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), expected)
+                self.assertNotIn("\x1b", result.stderr)
+                if answer.startswith("maybe"):
+                    self.assertIn("Enter yes or no", result.stderr)
+
+    def test_terminal_colors_respect_no_color_and_dumb_terminal(self):
+        base = {key: value for key, value in os.environ.items() if key != "NO_COLOR"}
+        for overrides, colored in (({"TERM": "xterm-256color"}, True),
+                                   ({"TERM": "xterm-256color", "NO_COLOR": "1"}, False),
+                                   ({"TERM": "dumb"}, False)):
+            with self.subTest(overrides=overrides):
+                master, slave = pty.openpty()
+                try:
+                    result = subprocess.run(["bash", "-c", self.prompt_script()],
+                                            input="n\n", text=True, stdout=subprocess.PIPE,
+                                            stderr=slave, env={**base, **overrides}, timeout=10)
+                    os.close(slave)
+                    slave = None
+                    output = b""
+                    while True:
+                        try:
+                            chunk = os.read(master, 4096)
+                        except OSError:
+                            break
+                        if not chunk:
+                            break
+                        output += chunk
+                    self.assertEqual(result.returncode, 0)
+                    self.assertEqual(b"\x1b[" in output, colored)
+                    self.assertIn(b"[y/N]", output)
+                finally:
+                    os.close(master)
+                    if slave is not None:
+                        os.close(slave)
+
     def test_syntax_all_scripts(self):
         for rel in (
             "install.sh", "container/run.sh", "container/guest.sh",

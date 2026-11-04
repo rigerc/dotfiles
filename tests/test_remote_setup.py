@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import tomllib
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT / "home"
@@ -83,6 +84,24 @@ class RemoteRenderingTests(Sandbox):
             self.assertFalse(self.render(relative).strip())
         function = self.render("dot_config/fish/functions/dotfiles_remote_session.fish.tmpl")
         self.assertNotIn("command herdr", function)
+
+    def test_interactive_init_summary_does_not_pollute_saved_config(self):
+        command = [arg for arg in self.cmd if arg != "--no-tty"]
+        self.assertEqual(self.terminal([*command, "init", "--promptDefaults"]), 0)
+        saved = tomllib.loads(self.cfg.read_text())
+        self.assertEqual(saved["data"]["machineRole"], "server")
+        self.assertEqual(saved["data"]["packageProfile"], "core")
+        self.assertFalse(saved["data"]["installHerdr"])
+        self.assertFalse(saved["data"]["enableSshd"])
+        self.assertNotIn("Settings summary", self.cfg.read_text())
+        self.assertFalse((self.home / ".gitconfig").exists())
+
+    def test_scripts_only_apply_respects_declined_file_changes(self):
+        result = subprocess.run([*self.cmd, "apply", "--include=scripts"],
+                                capture_output=True, text=True, env=self.env, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse((self.home / ".gitconfig").exists())
+        self.assertFalse((self.home / ".ssh/config").exists())
 
     def test_opt_ins_render_independently_of_package_installation(self):
         with self.cfg.open("a") as config:
@@ -194,6 +213,12 @@ if [[ "$1 $2" == "auth status" ]]; then exit 1; fi''')
         self.assertEqual(self.terminal(["bash", str(helper)], answers=b"n\n"), 0)
         self.assertIn("auth login --hostname github.com --web --git-protocol ssh --skip-ssh-key",
                       self.log.read_text())
+        self.assertFalse((self.home / ".ssh").exists())
+
+    def test_invalid_confirmation_retries_without_creating_a_key(self):
+        self.stub("gh", 'printf "%s\\n" "$*" >> "$TEST_LOG"')
+        helper = SOURCE / "dot_local/bin/executable_dotfiles-github-auth"
+        self.assertEqual(self.terminal(["bash", str(helper)], answers=b"maybe\nNO\n"), 0)
         self.assertFalse((self.home / ".ssh").exists())
 
 
