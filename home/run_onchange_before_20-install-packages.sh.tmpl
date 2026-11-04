@@ -1,0 +1,43 @@
+{{- if .installPackages -}}
+#!/bin/sh
+set -eu
+# Generated only after explicit package-installation opt-in.
+{{ if ne .chezmoi.os "linux" }}
+echo 'chezmoi: refusing pacman on non-Linux host' >&2
+exit 1
+{{ else }}
+[ -r /etc/os-release ] || { echo 'chezmoi: /etc/os-release missing' >&2; exit 1; }
+. /etc/os-release
+is_arch=false
+for distro in "${ID:-}" ${ID_LIKE:-}; do
+    case "$distro" in arch|manjaro|endeavouros) is_arch=true ;; esac
+done
+[ "$is_arch" = true ] || { echo 'chezmoi: Arch Linux or derivative required' >&2; exit 1; }
+command -v pacman >/dev/null 2>&1 || { echo 'chezmoi: pacman unavailable' >&2; exit 1; }
+
+# Shell-quote every list entry; never interpolate untrusted package strings.
+set --{{ range .packages.pacman.core }} {{ shellQuote . }}{{ end }}{{ if or (eq .packageProfile "desktop") (eq .packageProfile "developer") }}{{ range .packages.pacman.desktop }} {{ shellQuote . }}{{ end }}{{ end }}{{ if eq .packageProfile "developer" }}{{ range .packages.pacman.developer }} {{ shellQuote . }}{{ end }}{{ end }}
+missing=false
+for pkg do
+    if pacman -Q "$pkg" >/dev/null 2>&1; then
+        printf 'chezmoi: installed: %s\n' "$pkg"
+    else
+        printf 'chezmoi: missing: %s\n' "$pkg"
+        missing=true
+    fi
+done
+if [ "$missing" != true ]; then
+    echo 'chezmoi: all packages already installed'
+    exit 0
+fi
+# -Syu performs a full upgrade; never run a partial pacman -Sy update.
+[ -t 0 ] || { echo 'chezmoi: package installation requires a terminal' >&2; exit 1; }
+echo 'chezmoi: pacman -Syu --needed may perform a full system upgrade'
+if [ "$(id -u)" = 0 ]; then
+    pacman -Syu --needed "$@"
+else
+    command -v sudo >/dev/null 2>&1 || { echo 'chezmoi: sudo unavailable' >&2; exit 1; }
+    sudo pacman -Syu --needed "$@"
+fi
+{{ end }}
+{{ end -}}
