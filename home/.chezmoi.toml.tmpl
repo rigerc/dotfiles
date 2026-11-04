@@ -7,6 +7,10 @@
 {{- if eq $role "server" -}}{{- $profileDefault = "core" -}}{{- end -}}
 {{- $profile := promptChoiceOnce . "packageProfile" "Arch package profile: core, desktop, or developer" (list "core" "desktop" "developer") $profileDefault -}}
 {{- $install := promptBoolOnce . "installPackages" "Install missing pacman packages? This performs pacman -Syu (system upgrade)" false -}}
+{{- $tune := false -}}
+{{- if eq $role "chromebook" -}}
+{{- $tune = promptBoolOnce . "chromebookTuning" "Enable automatic Chromebook zram, memory and journal tuning (requires sudo)?" false -}}
+{{- end -}}
 # Local-only file created by chezmoi init. Never commit your rendered config.
 sourceDir = {{ .chezmoi.sourceDir | quote }}
 
@@ -17,3 +21,4 @@ sourceDir = {{ .chezmoi.sourceDir | quote }}
     machineRole = {{ $role | quote }}
     packageProfile = {{ $profile | quote }}
     installPackages = {{ $install }}
+    chromebookTuning = {{ $tune }}
