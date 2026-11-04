@@ -1,0 +1,19 @@
+{{- /* Prompts save only machine-local choices; never commit the generated config. */ -}}
+{{- $name := promptStringOnce . "gitName" "Git author name" -}}
+{{- $email := promptStringOnce . "gitEmail" "Git author email" -}}
+{{- $machine := promptChoiceOnce . "machineType" "Machine type" (list "personal" "work") "personal" -}}
+{{- $role := promptChoiceOnce . "machineRole" "Machine role" (list "desktop" "laptop" "server") "desktop" -}}
+{{- $profileDefault := "desktop" -}}
+{{- if eq $role "server" -}}{{- $profileDefault = "core" -}}{{- end -}}
+{{- $profile := promptChoiceOnce . "packageProfile" "Arch package profile: core, desktop, or developer" (list "core" "desktop" "developer") $profileDefault -}}
+{{- $install := promptBoolOnce . "installPackages" "Install missing pacman packages? This performs pacman -Syu (system upgrade)" false -}}
+# Local-only file created by chezmoi init. Never commit your rendered config.
+sourceDir = {{ .chezmoi.sourceDir | quote }}
+
+[data]
+    gitName = {{ $name | quote }}
+    gitEmail = {{ $email | quote }}
+    machineType = {{ $machine | quote }}
+    machineRole = {{ $role | quote }}
+    packageProfile = {{ $profile | quote }}
+    installPackages = {{ $install }}
