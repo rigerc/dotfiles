@@ -68,7 +68,7 @@ The **Chromebook** role retains your existing shared Fish, Atuin, Ghostty,
 Hyprland rules and keybindings, Noctalia and Git configurations. It loads an
 additional low-effects Hyprland override and Chromebook-only GTK 3/4 settings.
 No alternate desktop configuration is deployed. On an x86_64 Chromebook
-**already running Arch**, run the read-only `bash scripts/chromebook-preflight.sh`
+**already running Arch**, run the read-only `bash "$(chezmoi source-path)/scripts/chromebook-preflight.sh"`
 and see [Chromebook setup and safety](docs/CHROMEBOOK.md) before applying.
 
 A `server` role ignores Ghostty, Hyprland, and Noctalia configs; use the
