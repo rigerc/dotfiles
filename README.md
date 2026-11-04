@@ -18,7 +18,7 @@ bash install.sh
 ```
 
 The installer detects an active network route first and **skips Wi-Fi setup**
-when one is available (including QEMU virtual Ethernet). Otherwise it offers
+when one is available (including container/virtual Ethernet). Otherwise it offers
 NetworkManager (`nmtui connect`) or the interactive iwd fallback. It asks
 before installing Git and chezmoi via
 `pacman`, and runs interactive `chezmoi init` prompts. It separately asks before
@@ -118,16 +118,24 @@ confirmation. Existing unmanaged files are protected; virtual machines are
 recognized and skipped. The tuning can be rolled back using the script in
 `home/.chezmoitemplates/`. Full details: [Chromebook guide](docs/CHROMEBOOK.md).
 
-## QEMU virtual-machine rehearsal
+## Disposable Arch container rehearsal
 
-`vm/launch.sh` **automatically downloads and SHA-256 verifies** the current Arch
-ISO when no `--iso` path is provided, then boots a disposable qcow2 disk,
-virtual Ethernet, and a read-only checkout share. The guest smoke test checks
-the installer preview, runs the test suite if its tools are present, and
-stages/rolls back tuning without modifying the real `/etc`. For an interactive
-installer rehearsal, install Arch in the VM and log in as a normal test user.
-Fetch the ISO without launching QEMU using `bash vm/launch.sh --download-only`;
-reuse a local ISO via `--iso /path/to/archlinux.iso`. See [VM test guide](docs/VM.md).
+Use the [Podman container harness](docs/CONTAINER.md) to test the **real**
+chezmoi source and all machine roles without installing Arch in a VM:
+
+```sh
+bash container/run.sh                    # All roles + Python/chezmoi tests
+bash container/run.sh --role chromebook  # Chromebook-specific file rendering
+bash container/run.sh --prompt           # Interactive first-run chezmoi prompts
+bash container/run.sh --role desktop --shell  # Inspect a disposable test home
+```
+
+The runner mounts the checkout read-only, installs test tools **inside** an
+isolated, disposable Arch container, applies *files only* (never scripts), and
+stages/rolls back Chromebook system tuning under a temporary directory. It
+never changes your real dotfiles or `/etc`. Rootless Podman and network access
+are needed. Containers do **not** emulate Chromebook firmware, Wi-Fi devices,
+or systemd boot. No ISO download or QEMU image is needed.
 
 ## Managed files
 
