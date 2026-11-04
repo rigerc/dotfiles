@@ -23,24 +23,55 @@ OS, not by chezmoi. Do not enable shell tracing (`bash -x`) around credentials.
 
 ```sh
 bash install.sh --dry-run       # no change, no prompt, safe on any OS
+bash install.sh --check-network # check for an active default route, no changes
 bash install.sh                 # interactive first-run setup on Arch
 bash install.sh --no-wifi       # keep existing network setup
 bash install.sh --no-apply      # initialize chezmoi without deploying anything
 bash install.sh --source PATH   # use another existing source checkout
 ```
 
+## Bootstrap directly with curl
+
+On an **already installed Arch Linux system**, you can fetch the bootstrap
+without cloning the repository. Prefer downloading and reviewing it first:
+
+```sh
+bootstrap=$(mktemp)
+curl -fsSLo "$bootstrap" \
+  https://raw.githubusercontent.com/rigerc/dotfiles/main/install.sh
+less "$bootstrap"
+bash "$bootstrap"
+rm -f -- "$bootstrap"
+```
+
+Alternatively, if you have already inspected and trust the GitHub source:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/rigerc/dotfiles/main/install.sh | bash
+```
+
+The pipe mode keeps prompts and interactive tools attached to `/dev/tty`, not
+stdin. Run in an interactive terminal, not a non-interactive SSH job. No
+passwords or identity answers are passed as CLI flags. Before the curl command
+can work, you need some initial networking (e.g., existing Ethernet or a
+connection established using the Arch ISO's `iwctl`). If the installer detects
+an active default route or connected NetworkManager state, it **automatically
+skips all Wi-Fi setup**, preserving the active network manager. A route does
+not guarantee DNS/Internet access, so verify connectivity if package downloads
+fail.
+
 The interactive steps are deliberately separate:
 
-1. Optionally configure Wi-Fi via `nmtui connect` or `iwctl`. If iwd is active,
-   the installer does not stop it or switch the network backend automatically.
-2. Ask before `sudo pacman -Syu --needed` installs missing `git`, `chezmoi`,
-   or `networkmanager`. **`-Syu` may upgrade the entire host.**
-3. Ask before starting and enabling NetworkManager when it is not competing
-   with an active iwd service.
-4. Run `chezmoi init`, which prompts for Git identity, machine role, package
+1. Check for an existing active network route and skip Wi-Fi configuration if
+   one exists. Otherwise optionally use `nmtui connect` or `iwctl`. If iwd is
+   active, the installer does not stop it or switch backends automatically.
+2. Ask before `sudo pacman -Syu --needed` installs missing `git` and `chezmoi`.
+   **`-Syu` may upgrade the entire host.** NetworkManager is not installed
+   merely because it is missing when an existing network already works.
+3. Run `chezmoi init`, which prompts for Git identity, machine role, package
    profile, package-installation opt-in, and Chromebook tuning opt-in.
-5. Display `chezmoi diff` and `chezmoi apply --dry-run --verbose`.
-6. Ask separately before a file-only `chezmoi apply --exclude=scripts` and
+4. Display `chezmoi diff` and `chezmoi apply --dry-run --verbose`.
+5. Ask separately before a file-only `chezmoi apply --exclude=scripts` and
    before any full `chezmoi apply` that runs provisioning scripts.
 
 If you select `machineRole=chromebook`, you can enable automatic zram, sysctl,
