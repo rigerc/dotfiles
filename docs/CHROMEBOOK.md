@@ -39,7 +39,7 @@ zram tuning or AUR build is performed by this role.
 Run the **read-only** hardware inventory on working Arch:
 
 ```sh
-bash scripts/chromebook-preflight.sh
+bash "$(chezmoi source-path)/scripts/chromebook-preflight.sh"
 ```
 
 Review compatibility:
