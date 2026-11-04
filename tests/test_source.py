@@ -23,7 +23,7 @@ class SourceChecks(unittest.TestCase):
     def test_managed_configs_exist(self):
         targets = (
             "dot_config/fish/config.fish", "dot_atuin/config.toml",
-            "dot_config/ghostty/config", "dot_config/hypr/hyprland.lua",
+            "dot_config/ghostty/config", "dot_config/hypr/hyprland.lua.tmpl",
             "dot_config/hypr/binds.lua", "dot_config/hypr/rules.lua",
             "dot_config/hypr/scrolling.lua", "dot_config/hypr/session.lua",
             "dot_config/noctalia/config.toml", "dot_gitconfig.tmpl",
@@ -36,10 +36,11 @@ class SourceChecks(unittest.TestCase):
         groups = tomllib.loads(
             (SOURCE / ".chezmoidata/packages.toml").read_text()
         )["packages"]["pacman"]
-        self.assertEqual(set(groups), {"core", "desktop", "developer"})
+        self.assertEqual(set(groups), {"core", "desktop", "developer", "chromebook"})
         self.assertIn("chezmoi", groups["core"])
         self.assertIn("hyprland", groups["desktop"])
         self.assertIn("neovim", groups["developer"])
+        self.assertIn("sof-firmware", groups["chromebook"])
         for items in groups.values():
             self.assertEqual(len(items), len(set(items)))
             for item in items:
@@ -53,6 +54,7 @@ class SourceChecks(unittest.TestCase):
         ):
             self.assertIn('"' + key + '"', config)
         self.assertIn("promptBoolOnce", config)
+        self.assertIn('"chromebook"', config)
         self.assertIn("false -}}", config)
 
     def test_pacman_script_safety(self):
@@ -68,6 +70,34 @@ class SourceChecks(unittest.TestCase):
         for forbidden in ("--noconfirm", "yay -S", "paru -S", "curl | sh"):
             self.assertNotIn(forbidden, script)
         self.assertNotRegex(script, r"(?m)^\s*(?:sudo\s+)?pacman -Sy\s")
+
+
+    def test_chromebook_role_and_shared_configuration(self):
+        root = SOURCE / "dot_config/hypr"
+        shared = (root / "hyprland.lua.tmpl").read_text()
+        self.assertIn('eq .machineRole "chromebook"', shared)
+        for module in ('"scrolling"', '"rules"', '"binds"', '"session"'):
+            self.assertIn('require(' + module + ')', shared)
+        self.assertIn('require("chromebook")', shared)
+        overlay = (root / "chromebook.lua").read_text()
+        self.assertIn("animations = { enabled = false }", overlay)
+        self.assertIn("column_width = 0.65", overlay)
+        self.assertTrue((SOURCE / "dot_config/gtk-3.0/settings.ini").is_file())
+        self.assertTrue((SOURCE / "dot_config/gtk-4.0/settings.ini").is_file())
+        rules = (SOURCE / ".chezmoiignore").read_text()
+        self.assertIn('ne .machineRole "chromebook"', rules)
+        self.assertIn(".config/hypr/chromebook.lua", rules)
+
+    def test_chromebook_packages_remain_optional(self):
+        script = (
+            SOURCE / "run_onchange_before_20-install-packages.sh.tmpl"
+        ).read_text()
+        self.assertIn('.packages.pacman.chromebook', script)
+        self.assertIn('ne .packageProfile "core"', script)
+        self.assertIn('eq .machineRole "chromebook"', script)
+        self.assertIn('"$(uname -m)" = x86_64', script)
+        self.assertTrue((ROOT / "scripts/chromebook-preflight.sh").is_file())
+        self.assertTrue((ROOT / "docs/CHROMEBOOK.md").is_file())
 
     def test_no_destructive_source_directives(self):
         for path in SOURCE.rglob("*"):
@@ -136,6 +166,22 @@ class LiveChezmoiSmoke(unittest.TestCase):
             (self.home / ".config/fish/config.fish").read_bytes(),
             (SOURCE / "dot_config/fish/config.fish").read_bytes(),
         )
+
+
+    def test_chromebook_renders_shared_hyprland(self):
+        self.cfg.write_text(
+            self.cfg.read_text().replace(
+                'machineRole = "desktop"', 'machineRole = "chromebook"'
+            )
+        )
+        rendered = self.run_chezmoi("cat", str(self.home / ".config/hypr/hyprland.lua"))
+        self.assertEqual(rendered.returncode, 0, rendered.stderr)
+        for module in ("scrolling", "rules", "binds", "chromebook", "session"):
+            self.assertIn('require("' + module + '")', rendered.stdout)
+        applied = self.run_chezmoi("apply", "--exclude=scripts")
+        self.assertEqual(applied.returncode, 0, applied.stderr)
+        self.assertTrue((self.home / ".config/hypr/chromebook.lua").exists())
+        self.assertTrue((self.home / ".config/gtk-3.0/settings.ini").exists())
 
     def test_server_role_excludes_gui(self):
         self.cfg.write_text(
