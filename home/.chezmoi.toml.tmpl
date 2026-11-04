@@ -2,7 +2,7 @@
 {{- $name := promptStringOnce . "gitName" "Git author name" -}}
 {{- $email := promptStringOnce . "gitEmail" "Git author email" -}}
 {{- $machine := promptChoiceOnce . "machineType" "Machine type" (list "personal" "work") "personal" -}}
-{{- $role := promptChoiceOnce . "machineRole" "Machine role" (list "desktop" "laptop" "server") "desktop" -}}
+{{- $role := promptChoiceOnce . "machineRole" "Machine role" (list "desktop" "laptop" "chromebook" "server") "desktop" -}}
 {{- $profileDefault := "desktop" -}}
 {{- if eq $role "server" -}}{{- $profileDefault = "core" -}}{{- end -}}
 {{- $profile := promptChoiceOnce . "packageProfile" "Arch package profile: core, desktop, or developer" (list "core" "desktop" "developer") $profileDefault -}}
