@@ -111,6 +111,7 @@ fi
 if $shell; then
     printf '\nDisposable container shell. HOME=%s\n' "$HOME"
     printf 'Private source copy: %s\n' "$source_dir"
+    printf 'Rendered targets: %s\n' "$work/targets"
     printf 'Inspect changes; exit to discard the entire container.\n'
     cd "$source_dir"
     bash -i
