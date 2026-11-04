@@ -8,17 +8,33 @@ Chromebook.
 
 ## Host prerequisites
 
-Install QEMU (`qemu-system-x86_64` and `qemu-img`) on your host, and download
-and verify an official **Arch Linux x86_64 ISO** from
-https://archlinux.org/download/. The harness never downloads an ISO or modifies
-the host configuration. It allocates a 20 GiB qcow2 disk on first launch,
-4 GiB RAM, and 2 vCPUs by default. If KVM is available, it is enabled.
+Install QEMU (`qemu-system-x86_64` and `qemu-img`) and `curl`/`sha256sum` on
+your host. By default the harness **downloads the current Arch Linux x86_64 ISO
+automatically** from the official Arch `geo.mirror.pkgbuild.com` HTTPS mirror,
+and verifies its SHA-256 against that mirror's `sha256sums.txt`. It uses
+`~/.cache/dotfiles-arch-vm/archlinux-x86_64.iso` (or `$XDG_CACHE_HOME`). A
+cached ISO is reused only when the current release manifest hash matches.
+The script will re-download it when Arch releases a new ISO; an invalid hash
+fails closed and the download is not used. For stronger provenance, you can
+also verify the detached PGP signature as documented at
+https://archlinux.org/download/. A SHA-256 fetched from the same mirror checks
+integrity, not independent signing-key authenticity.
+
+**The ISO cache and QEMU disk image are created locally; no host configuration is changed.**
+The VM allocates a 20 GiB qcow2 disk on first launch, 4 GiB RAM, and 2 vCPUs by default. If KVM is available, it is enabled.
 
 ## 1. Boot the live ISO
 
 From the repository root:
 
 ```sh
+# Default: download, verify, then boot the ISO automatically.
+bash vm/launch.sh
+
+# Download and verify without QEMU, for later use/offline boot.
+bash vm/launch.sh --download-only
+
+# Optional: use an ISO you downloaded and verified yourself.
 bash vm/launch.sh --iso /path/to/archlinux-x86_64.iso
 ```
 
@@ -61,7 +77,7 @@ bash "$HOME/src/dotfiles-test/install.sh" --source "$HOME/src/dotfiles-test"
 
 Use a throwaway Git identity and select `chromebook` to exercise prompts,
 file rendering, preview, and opt-in package profiles. QEMU uses **virtual
-Ethernet**, so the installer should offer to preserve existing network access;
+Ethernet**. The installer detects the guest's active route and skips the Wi-Fi prompt;
 Wi-Fi setup can only be truly tested on hardware with a Wi-Fi device. If you
 opt in to tuning, its hardware check skips real `/etc` mutations inside a VM;
 use the staging tests to inspect generated files.
@@ -74,6 +90,7 @@ QEMU and delete only its qcow2 disk image.
 
 ```sh
 bash install.sh --dry-run
+bash install.sh --check-network
 python3 -m unittest discover -s tests -v
 bash home/.chezmoitemplates/chromebook-tune.sh --dry-run --root /tmp
 ```
