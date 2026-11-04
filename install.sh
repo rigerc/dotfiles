@@ -17,6 +17,13 @@ skip_wifi=false
 skip_apply=false
 check_network=false
 
+# Keep this bootstrap self-contained for curl | bash. Color is decoration only.
+prompt_title='' prompt_accent='' prompt_muted='' prompt_reset=''
+if [[ -t 2 && -n ${TERM:-} && ${TERM:-} != dumb && -z ${NO_COLOR:-} ]]; then
+    prompt_title=$'\e[1;36m' prompt_accent=$'\e[1m'
+    prompt_muted=$'\e[2m' prompt_reset=$'\e[0m'
+fi
+
 usage() {
     cat <<'EOF'
 Usage: ./install.sh [--dry-run] [--check-network] [--no-wifi] [--no-apply] [--source PATH]
@@ -28,21 +35,32 @@ Usage: ./install.sh [--dry-run] [--check-network] [--no-wifi] [--no-apply] [--so
   --source PATH  Use an existing local checkout as the chezmoi source.
   -h, --help     Show this help.
 
-Run as an ordinary user on an Arch installation, not as root. Existing
+Run as an ordinary user on an Arch installation, not as root.
 An active network route skips Wi-Fi setup automatically, including in VMs.
 NetworkManager or iwd connections are preserved. Wi-Fi secrets are entered
 through their interfaces, never through shell arguments or dotfile prompts.
 A controlling terminal is required; piped installers read answers from /dev/tty.
+Optional actions default to No. Set NO_COLOR=1 to disable terminal colors.
 EOF
 }
-fail() { printf 'Error: %s\n' "$*" >&2; exit 1; }
-info() { printf '\n%s\n' "$*"; }
+fail() { printf '\nError: %s\n' "$*" >&2; exit 1; }
+section() { printf '\n%s%s%s\n' "$prompt_title" "$*" "$prompt_reset" >&2; }
+info() { printf '  %s\n' "$*"; }
 ask() {
-    # Defaults to No. No destructive step may be approved by empty input.
+    # Defaults to No; invalid input retries instead of silently skipping a step.
     local answer
-    printf '%s [y/N]: ' "$1" >&2
-    IFS= read -r answer <&3 || return 1
-    [[ $answer == [yY] || $answer == [yY][eE][sS] ]]
+    printf '\n' >&2
+    [[ -z ${2:-} ]] || printf '  %s\n' "$2" >&2
+    while true; do
+        printf '  %s%s%s %s[y/N]%s: ' "$prompt_accent" "$1" "$prompt_reset" \
+            "$prompt_muted" "$prompt_reset" >&2
+        if ! read -r answer <&3; then printf '\n' >&2; return 1; fi
+        case ${answer,,} in
+            y|yes) return 0 ;;
+            ''|n|no) return 1 ;;
+            *) printf '  Enter yes or no; press Enter to skip.\n' >&2 ;;
+        esac
+    done
 }
 have() { command -v "$1" >/dev/null 2>&1; }
 network_detected() {
@@ -102,9 +120,10 @@ DRY RUN — this script will not modify your system.
   3. With explicit consent, use sudo pacman -Syu --needed to install
      missing git and chezmoi (full system upgrade).
   4. Initialize chezmoi, prompting for Git identity, machine role,
-     package profile, and opt-in Chromebook tuning.
+     package profile, Herdr/LAN SSH opt-ins, and opt-in Chromebook tuning.
   5. Preview chezmoi's diff and file-only dry run.
   6. With separate consent, apply files and run enabled chezmoi scripts.
+  7. Optionally sign in to GitHub and register this machine's SSH public key.
 Wi-Fi/network access is required before pacman or git clone can work.
 EOF
     printf 'Source: %s\n' "$source_root"
@@ -121,6 +140,10 @@ is_arch || fail 'This installer supports Arch Linux and Arch derivatives only.'
 have pacman || fail 'pacman is required; run on an installed Arch system, not ChromeOS.'
 have sudo || fail 'sudo is required. Install/configure sudo for your normal user first.'
 
+section 'Dotfiles setup'
+info 'Choose settings, review changes, then apply the steps you want.'
+info 'Optional actions default to No. Press Ctrl+C to exit.'
+section '[1/6] Network'
 if $skip_wifi; then
     info 'Wi-Fi setup explicitly skipped (--no-wifi).'
 elif network_detected; then
@@ -156,14 +179,15 @@ else
     fi
 fi
 
+section '[2/6] Bootstrap tools'
 missing=()
 for tool in git chezmoi; do
     have "$tool" || missing+=("$tool")
 done
 if ((${#missing[@]})); then
-    printf '\nMissing bootstrap packages: %s\n' "${missing[*]}"
-    info 'The next step performs a full pacman system upgrade and installs the missing packages.'
-    ask 'Run sudo pacman -Syu --needed for bootstrap packages?' || fail 'Bootstrap cancelled; nothing installed.'
+    info "Missing bootstrap packages: ${missing[*]}"
+    ask 'Install bootstrap tools?' \
+        'Runs sudo pacman -Syu --needed; this may upgrade the entire system.' || fail 'Bootstrap cancelled; nothing installed.'
     sudo pacman -Syu --needed "${missing[@]}" <&3
 else
     info 'Git and chezmoi are already available.'
@@ -184,8 +208,10 @@ else
 fi
 
 have chezmoi || fail 'chezmoi is unavailable after bootstrap.'
-info 'Initializing chezmoi: answer the Git identity and machine-role prompts.'
+section '[3/6] Machine settings'
+info 'Saved answers are reused. Package installation, Herdr and LAN SSH are opt-in.'
 chezmoi --source "$source_root" init <&3
+section '[4/6] Review and apply files'
 info 'Previewing file changes. No files or scripts have been applied yet.'
 chezmoi --no-pager diff
 chezmoi apply --dry-run --verbose
@@ -193,14 +219,29 @@ if $skip_apply; then
     info 'Initialization completed. Use chezmoi diff / chezmoi apply manually.'
     exit 0
 fi
-if ask 'Apply configuration files only (no scripts or package installation)?'; then
+if ask 'Apply configuration files?' 'Writes the files shown above. No provisioning scripts run in this step.'; then
     chezmoi apply --exclude=scripts --verbose <&3
 else
     info 'Files not applied.'
 fi
-if ask 'Run enabled chezmoi scripts now (may upgrade packages and tune this Chromebook)?'; then
-    chezmoi apply --verbose <&3
+section '[5/6] Optional provisioning'
+if ask 'Run enabled setup scripts?' \
+    'Runs only opted-in tasks: package upgrades, Herdr installation, LAN SSH and Chromebook tuning.'; then
+    chezmoi apply --include=scripts --verbose <&3
 else
     info 'Provisioning skipped. Run chezmoi apply --verbose later when ready.'
 fi
-info 'Setup complete. Your dotfiles and machine-local chezmoi config are managed by chezmoi.'
+section '[6/6] GitHub authentication'
+github_setup=${HOME:?}/.local/bin/dotfiles-github-auth
+if [[ -x $github_setup ]] && have gh && have ssh-keygen; then
+    if ask 'Set up GitHub now?' 'Browser/device login, Git over SSH, and optional SSH key registration.'; then
+        "$github_setup" <&3
+    else
+        info 'Skipped. Run dotfiles-github-auth whenever you are ready.'
+    fi
+else
+    info 'Apply the helper and install github-cli/openssh, then run dotfiles-github-auth.'
+fi
+section 'Setup finished'
+info 'Review or change saved choices: chezmoi edit-config'
+info 'Preview future changes: chezmoi diff'

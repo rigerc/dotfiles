@@ -11,3 +11,5 @@ set -g fish_greeting
 if command -sq atuin
     atuin init fish --disable-up-arrow | source
 end
+
+dotfiles_remote_session

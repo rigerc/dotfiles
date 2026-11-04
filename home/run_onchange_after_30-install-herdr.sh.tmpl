@@ -1,0 +1,20 @@
+{{- if (get . "installHerdr" | default false) -}}
+#!/bin/sh
+set -eu
+# Independently opted in; does not depend on installPackages.
+export PATH="$HOME/.local/bin:$PATH"
+if command -v herdr >/dev/null 2>&1; then
+    echo 'chezmoi: Herdr already installed; use herdr update for direct-install updates'
+    exit 0
+fi
+[ "$(id -u)" != 0 ] || { echo 'chezmoi: install Herdr as your normal user' >&2; exit 1; }
+command -v curl >/dev/null 2>&1 || { echo 'chezmoi: install curl first' >&2; exit 1; }
+installer=$(mktemp)
+trap 'rm -f -- "$installer"' EXIT
+trap 'exit 1' HUP INT TERM
+curl -fsSL --proto '=https' --tlsv1.2 --connect-timeout 10 --max-time 60 \
+    https://herdr.dev/install.sh -o "$installer"
+# The upstream installer selects stable releases and verifies binary checksums.
+HERDR_INSTALL_DIR="$HOME/.local/bin" sh "$installer"
+test -x "$HOME/.local/bin/herdr"
+{{ end -}}

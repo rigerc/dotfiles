@@ -28,7 +28,19 @@ bash install.sh                 # interactive first-run setup on Arch
 bash install.sh --no-wifi       # keep existing network setup
 bash install.sh --no-apply      # initialize chezmoi without deploying anything
 bash install.sh --source PATH   # use another existing source checkout
+NO_COLOR=1 bash install.sh      # plain output, with the same prompts
 ```
+
+Setup uses numbered stages, short questions and separate descriptions of
+what each action changes. Yes/no questions accept `y`, `yes`, `n` or `no`
+(case-insensitive); Enter means No, and invalid answers are asked again.
+Terminal color is disabled for redirected output, `TERM=dumb` or `NO_COLOR=1`.
+No additional prompt tools are needed. Press Ctrl+C to exit.
+
+Native chezmoi prompts group Git identity, machine settings, package profiles
+and optional setup, then show a settings summary before you review changes.
+Saved answers are reused; use `chezmoi edit-config` to change them or
+`chezmoi init --prompt` to answer the questions again.
 
 ## Bootstrap directly with curl
 
@@ -69,10 +81,12 @@ The interactive steps are deliberately separate:
    **`-Syu` may upgrade the entire host.** NetworkManager is not installed
    merely because it is missing when an existing network already works.
 3. Run `chezmoi init`, which prompts for Git identity, machine role, package
-   profile, package-installation opt-in, and Chromebook tuning opt-in.
+   profile, package-installation, Herdr, LAN SSH and Chromebook tuning opt-ins.
 4. Display `chezmoi diff` and `chezmoi apply --dry-run --verbose`.
 5. Ask separately before a file-only `chezmoi apply --exclude=scripts` and
-   before any full `chezmoi apply` that runs provisioning scripts.
+   a scripts-only `chezmoi apply --include=scripts`. Declining file changes
+   is respected even if you later choose to run setup scripts.
+6. Offer GitHub authentication, or show how to run the helper later.
 
 If you select `machineRole=chromebook`, you can enable automatic zram, sysctl,
 and journal tuning; the opt-in defaults to **No**. The system tuner also
@@ -86,6 +100,12 @@ network power-saving settings, or GPU drivers.
 **machine-local** chezmoi data. Applying files renders `~/.gitconfig`. It does
 not issue `git config --global`, replace an existing `.gitconfig` without a
 preview, or push private identity into your public repo.
+
+The final bootstrap step offers `dotfiles-github-auth` when GitHub CLI and
+OpenSSH are available. You can run it later for browser/device login, SSH Git
+transport, and optional key creation/registration. Authentication and private
+keys remain local. Herdr installation and LAN SSH serving have independent,
+default-off `chezmoi init` prompts; see [remote setup](../README.md#github-and-lan-ssh).
 
 If this script is run outside the repository, it clones the public source
 into `~/.local/share/chezmoi-bootstrap`. It will not overwrite an existing
