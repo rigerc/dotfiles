@@ -43,6 +43,7 @@ if [[ $mode == prompt || $keep_shell == true ]]; then
     [[ -t 0 && -t 1 ]] || fail '--prompt/--shell requires an interactive terminal'
 fi
 [[ -f $repo/.chezmoiroot && -f $repo/home/.chezmoi.toml.tmpl ]] || fail 'Not a chezmoi checkout'
+[[ $EUID -ne 0 ]] || fail 'Run as a normal user without sudo (rootless Podman).'
 command -v podman >/dev/null 2>&1 || fail 'Install Podman on your host first'
 # Rootless Podman: container root maps into the invoking user's namespace.
 # This allows pacman only inside the disposable guest, never on the host.
