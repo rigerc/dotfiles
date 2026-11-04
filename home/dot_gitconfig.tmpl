@@ -1,0 +1,8 @@
+# Git author identity is saved only in the local chezmoi config.
+[user]
+    name = {{ .gitName | quote }}
+    email = {{ .gitEmail | quote }}
+[core]
+    excludesFile = ~/.config/git/ignore
+[init]
+    defaultBranch = main
