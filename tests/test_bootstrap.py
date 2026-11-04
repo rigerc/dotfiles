@@ -1,5 +1,6 @@
 """No privileged operations: exercise installer preview and staged Chromebook tune."""
 import os
+import hashlib
 from pathlib import Path
 import shutil
 import subprocess
@@ -22,7 +23,7 @@ def run_shell(*args, cwd=ROOT):
 class BootstrapTests(unittest.TestCase):
     def test_syntax_all_scripts(self):
         for rel in (
-            "install.sh", "vm/launch.sh", "vm/guest-smoke.sh",
+            "install.sh", "vm/launch.sh", "vm/download-iso.sh", "vm/guest-smoke.sh",
             "scripts/chromebook-preflight.sh",
             "home/.chezmoitemplates/chromebook-tune.sh",
         ):
@@ -52,6 +53,114 @@ class BootstrapTests(unittest.TestCase):
         self.assertIn("--iso", launcher.stdout)
         missing = run_shell(ROOT / "vm/launch.sh", "--iso", "/missing/not-real.iso")
         self.assertNotEqual(missing.returncode, 0)
+
+    def test_network_detection_and_pipe_mode(self):
+        with tempfile.TemporaryDirectory() as td:
+            binaries = Path(td)
+            ip = binaries / "ip"
+            ip.write_text(
+                '#!/bin/sh\n'
+                'if [ "${TEST_ROUTE:-0}" = 1 ] && [ "$1 $2 $3 $4" = "-4 route show default" ]; then\n'
+                '  echo "default via 192.0.2.1 dev eth0"\n'
+                'fi\n'
+            )
+            ip.chmod(0o755)
+            nmcli = binaries / "nmcli"
+            nmcli.write_text('#!/bin/sh\necho disconnected\n')
+            nmcli.chmod(0o755)
+            env = {**os.environ, "PATH": f"{binaries}:{os.environ.get('PATH', '')}"}
+            online = subprocess.run(
+                ["bash", str(INSTALL), "--check-network"],
+                capture_output=True, text=True, env={**env, "TEST_ROUTE": "1"},
+            )
+            self.assertEqual(online.returncode, 0, online.stderr)
+            self.assertIn("Network detected", online.stdout)
+            offline = subprocess.run(
+                ["bash", str(INSTALL), "--check-network"],
+                capture_output=True, text=True, env={**env, "TEST_ROUTE": "0"},
+            )
+            self.assertEqual(offline.returncode, 1)
+            self.assertIn("No active network", offline.stdout)
+            piped = subprocess.run(
+                ["bash", "-s", "--", "--dry-run"], input=INSTALL.read_text(),
+                capture_output=True, text=True, env=env,
+            )
+            self.assertEqual(piped.returncode, 0, piped.stderr)
+            self.assertIn("DRY RUN", piped.stdout)
+
+    @staticmethod
+    def make_mock_mirror(root):
+        mirror = root / "mirror"
+        mirror.mkdir()
+        payload = b"fake Arch ISO payload for local tests only"
+        (mirror / "archlinux-x86_64.iso").write_bytes(payload)
+        digest = hashlib.sha256(payload).hexdigest()
+        (mirror / "sha256sums.txt").write_text(
+            f"{digest}  archlinux-x86_64.iso\n"
+        )
+        binaries = root / "bin"
+        binaries.mkdir()
+        curl = binaries / "curl"
+        curl.write_text(
+            '#!/bin/sh\n'
+            'out=; url=\n'
+            'while [ "$#" -gt 0 ]; do\n'
+            '  if [ "$1" = --output ]; then out=$2; shift 2; continue; fi\n'
+            '  url=$1; shift\n'
+            'done\n'
+            'file=${url##*/}\n'
+            'cp -- "$FAKE_MIRROR/$file" "$out"\n'
+        )
+        curl.chmod(0o755)
+        env = {**os.environ, "FAKE_MIRROR": str(mirror),
+               "PATH": f"{binaries}:{os.environ.get('PATH', '')}"}
+        return mirror, payload, env
+
+    def test_iso_download_verified_cached_and_refreshed(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            mirror, payload, env = self.make_mock_mirror(root)
+            out = root / "cache" / "archlinux-x86_64.iso"
+            cmd = ["bash", str(ROOT / "vm/download-iso.sh"),
+                   "--output", str(out)]
+            first = subprocess.run(cmd, capture_output=True, text=True, env=env)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertEqual(out.read_bytes(), payload)
+            second = subprocess.run(cmd, capture_output=True, text=True, env=env)
+            self.assertEqual(second.returncode, 0, second.stderr)
+            self.assertIn("Cached Arch ISO verified", second.stdout)
+            out.write_bytes(b"outdated or corrupt")
+            third = subprocess.run(cmd, capture_output=True, text=True, env=env)
+            self.assertEqual(third.returncode, 0, third.stderr)
+            self.assertEqual(out.read_bytes(), payload)
+            self.assertFalse(list(out.parent.glob("*.partial.*")))
+            (mirror / "sha256sums.txt").write_text(
+                "0" * 64 + "  archlinux-x86_64.iso\n"
+            )
+            failed = subprocess.run(cmd, capture_output=True, text=True, env=env)
+            self.assertNotEqual(failed.returncode, 0)
+            self.assertIn("checksum mismatch", failed.stderr)
+            self.assertEqual(out.read_bytes(), payload)
+            self.assertFalse(list(out.parent.glob("*.partial.*")))
+            insecure = subprocess.run(cmd + ["--mirror", "http://bad"],
+                                      capture_output=True, text=True, env=env)
+            self.assertNotEqual(insecure.returncode, 0)
+            self.assertIn("HTTPS", insecure.stderr)
+
+    def test_vm_download_only_never_launches_qemu(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            mirror, payload, env = self.make_mock_mirror(root)
+            env["XDG_CACHE_HOME"] = str(root / "cache")
+            result = subprocess.run(["bash", str(ROOT / "vm/launch.sh"),
+                                     "--download-only"], capture_output=True,
+                                    text=True, env=env)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("Verified Arch ISO", result.stdout)
+            self.assertEqual(
+                (root / "cache/dotfiles-arch-vm/archlinux-x86_64.iso").read_bytes(),
+                payload,
+            )
 
     def test_tuning_staged_idempotent_and_rollback(self):
         with tempfile.TemporaryDirectory() as td:
