@@ -18,7 +18,7 @@ cd "$HOME/dotfiles"
 # Preview the package command and file changes; does not change your home.
 ./install.sh --packages
 
-# Install core packages, back up replaced files, and apply the dotfiles.
+# Install core packages, back up/apply dotfiles, and use Fish as the login shell.
 ./install.sh --apply --packages
 ```
 
@@ -29,8 +29,16 @@ normal prompts. The core list is in [packages/arch.txt](packages/arch.txt).
 No AUR packages or third-party repositories are installed automatically.
 
 If the dependencies are already installed, use `./install.sh --apply`.
+The installer sets `/usr/bin/fish` as your account's login shell using `chsh`,
+which may ask for your password. It checks the account database rather than
+`$SHELL`, and also checks this on reruns when the dotfiles already match.
+Log out and back in for the new shell to take effect. Use
+`./install.sh --apply --no-shell` to keep your current login shell.
+The change follows [Arch's chsh behavior](https://man.archlinux.org/man/chsh.1.en).
+
 Running `./install.sh` or passing `--dry-run` previews changes. To render into
 a separate home directory, use `./install.sh --apply --destination /tmp/dotfiles-demo`.
+Custom destinations never change your login shell, even with `--apply`.
 Package installation, when requested, always affects the host system.
 
 Before writing changes, the installer saves replaced files under
@@ -39,7 +47,9 @@ Each backup includes `existing.txt`, `created.txt`, and original files under
 `files/`; symlinks are preserved. Keep the backup path printed during install.
 For manual rollback, review those manifests, restore originals from `files/`,
 and remove only the new files listed in `created.txt` that you want to undo.
-Packages and unrelated legacy settings are outside this file backup.
+Packages, your account's login shell, and unrelated legacy settings are outside
+this file backup. To revert the shell change, use `chsh --shell OLD_SHELL` with
+your previous shell's full path.
 
 The installer uses this checkout explicitly and isolates its chezmoi config,
 cache, and state. It does not change the previous chezmoi source or register
@@ -49,7 +59,7 @@ this checkout as its default. For updates, run `git pull`, preview again with
 After installation, choose the packaged **Hyprland** session at your next login.
 The configuration starts Noctalia and, when installed, Vicinae at compositor
 startup. The installer does not restart your current session, configure a login
-manager, change your login shell, or perform Atuin authentication. Select a
+manager or perform Atuin authentication. Select a
 session that loads `~/.config/hypr/hyprland.lua`; a custom session loading the
 old `hypr/noctalia/` root will continue to use that old configuration.
 
@@ -156,4 +166,5 @@ python3 -m unittest discover -s tests -v
 ```
 
 The integration checks use temporary homes, the real chezmoi renderer, and
-stubbed package commands. They do not install packages or modify your home.
+stubbed package/account commands. They do not install packages, change your
+login shell, or modify your home.
