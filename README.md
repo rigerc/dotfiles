@@ -110,13 +110,15 @@ Ghostty, Hyprland, and Noctalia configurations.
 
 ## Chromebook tuning
 
-The Chromebook role inherits your regular Fish, Atuin, Ghostty, Hyprland
-bindings and rules, Noctalia and Git configuration. If you opt in to
+The Chromebook role inherits your regular Fish, Atuin, shared Hyprland
+bindings/rules, Noctalia and Git configuration. The rendered terminal module
+selects lightweight `foot` on Chromebook while retaining Ghostty on other
+graphical roles, and disables compositor blur-layer rules only for Chromebook. If you opt in to
 `chromebookTuning` during `chezmoi init`, an `run_onchange_after_` script writes
 its own small systemd zram-generator, sysctl and journald drop-ins with root
 confirmation. Existing unmanaged files are protected; virtual machines are
 recognized and skipped. The tuning can be rolled back using the script in
-`home/.chezmoitemplates/`. Full details: [Chromebook guide](docs/CHROMEBOOK.md).
+`home/.chezmoitemplates/`. Full details: [Chromebook guide](docs/CHROMEBOOK.md) and the [EDGAR-specific Arch installation handoff](docs/EDGAR.md).
 
 ## Disposable Arch container rehearsal
 
@@ -144,7 +146,7 @@ or systemd boot. No ISO download or QEMU image is needed.
 | `home/dot_config/fish/config.fish` | `~/.config/fish/config.fish` | Fish PATH and Atuin integration |
 | `home/dot_atuin/config.toml` | `~/.atuin/config.toml` | Search and history sync preferences |
 | `home/dot_config/ghostty/config` | `~/.config/ghostty/config` | Fish, Rosé Pine, fonts and keys |
-| `home/dot_config/hypr/*.lua{,.tmpl}` | `~/.config/hypr/*.lua` | Hyprland 0.57+ layout, binds, rules and startup |
+| `home/dot_config/hypr/*.lua{,.tmpl}` | `~/.config/hypr/*.lua` | Hyprland 0.57+ layout, binds, rules, role-specific terminal/layer effects and startup |
 | `home/dot_config/noctalia/config.toml` | `~/.config/noctalia/config.toml` | Noctalia v5 panel and theme |
 | `home/dot_gitconfig.tmpl` | `~/.gitconfig` | Git identity from local prompts |
 | `home/dot_config/git/ignore` | `~/.config/git/ignore` | Shared Git ignore patterns |
@@ -156,6 +158,10 @@ The generated local config is outside Git, normally at
 `~/.config/chezmoi/chezmoi.toml`.
 
 Hyprland starts Noctalia and, when installed, Vicinae at session startup.
+Noctalia Alt+Tab uses held-modifier switching, including reverse selection
+with Shift+Alt+Tab. The Chromebook supplement installs `foot` without removing
+Ghostty from the shared desktop package list; confirm available eMMC space.
+
 Some optional keybindings reference `hyprsummon`, `vicinae`, `zen-browser`,
 `nautilus`, `spotify-launcher`, `feishin`, and `fladder`; these are **not**
 installed by the package profiles. GPU drivers, display-manager sessions and

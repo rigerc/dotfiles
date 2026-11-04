@@ -53,6 +53,11 @@ if [[ $root == / && $mode != preview ]]; then
     if [[ ! $dmi =~ [Gg]oogle|[Cc]hromebook ]]; then
         fail 'DMI does not identify a Google/Chromebook machine; refusing system tuning'
     fi
+    if [[ $mode == apply ]]; then
+        command -v pacman >/dev/null 2>&1 || fail 'pacman is required to verify zram-generator'
+        pacman -Qq zram-generator >/dev/null 2>&1 || \
+            fail 'zram-generator is missing; install it before enabling Chromebook tuning (the core package profile omits it)'
+    fi
 fi
 
 files=(

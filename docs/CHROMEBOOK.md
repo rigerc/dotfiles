@@ -13,7 +13,8 @@ Linux installation**, not for a Chromebook still running ChromeOS or Crostini.
 - The existing Hyprland Lua config continues to load the shared scrolling,
   rule, binding, and session modules, and additionally loads `chromebook.lua`.
   This override disables animations/blur/shadows, reduces gaps and scrolling
-  column width, and adjusts touchpad scroll behavior.
+  column width, and adjusts touchpad scroll behavior. A separate rendered
+  `layers.lua` preserves desktop blur rules but omits them on Chromebook.
 - Monitor scale remains `auto`, and the shared keyboard/keybindings remain
   unchanged. Hardware-specific resolutions, Search/Super mapping, camera,
   audio topology, suspend and GPU-specific environment variables are **not**
@@ -25,12 +26,23 @@ Linux installation**, not for a Chromebook still running ChromeOS or Crostini.
   alternate Rose Pine Moon / Shelly / AUR-based stack in the supplied ZIP is
   **not installed**, preserving your current general configuration.
 
-The supplement installs tools such as `alsa-ucm-conf`, `sof-firmware`,
+The supplement installs tools such as `foot`, `alsa-ucm-conf`, `sof-firmware`,
 `upower`, `wev`, `mesa`, `networkmanager`, fonts, and `zram-generator`.
+The shared keybindings use **foot** for Chromebook and **Ghostty** for
+desktop/laptop via the rendered `terminal.lua` module. Both Alt+Tab directions
+use Noctalia's held-modifier IPC behavior.
 Installing `zram-generator` alone does not activate compressed swap. With
 explicit `chromebookTuning=true`, chezmoi configures zram, sysctl and journal
 limits. The optional bootstrap separately offers to enable NetworkManager; it
 never flashes firmware, installs AUR packages or partitions disks.
+
+## EDGAR-specific installation handoff
+
+For **Acer CB3-431 with confirmed EDGAR HWID**, follow
+[EDGAR: manual Arch installation to managed dotfiles](EDGAR.md).
+The guide distinguishes irreversible firmware/eMMC steps from the
+post-install chezmoi workflow. **Do not use the EDGAR firmware procedure on
+other Chromebook boards.**
 
 ## Before running chezmoi on the Chromebook
 
@@ -57,7 +69,9 @@ never flashes firmware, installs AUR packages or partitions disks.
    chezmoi apply --exclude=scripts --verbose
    ```
 
-Package installation is off by default. Enabling it runs a full
+Package installation is off by default. The Chromebook supplement installs
+`foot` but `core` omits it; install the required desktop packages before
+starting Hyprland. Enabling package provisioning runs a full
 `pacman -Syu --needed` transaction only after you review the command;
 that may upgrade packages across the machine. Do not install AUR packages or apply hardware-specific tuning from the
 supplied Chromebook bundle automatically; only the documented, managed opt-in
@@ -94,7 +108,10 @@ When enabled on a genuine **x86_64 Arch Chromebook**, the script:
 - Limits persistent systemd journal use to 200 MiB.
 
 It never replaces a matching path if the contents lack its own marker, and
-requires root/sudo for actual system changes. It refuses non-Chromebooks, non-
+requires root/sudo for actual system changes. A real-host apply checks for
+`zram-generator` *before* writing files and refuses to proceed if missing.
+The `core` profile omits that package; install it manually first or select
+`desktop`/`developer` with package installation enabled. It refuses non-Chromebooks, non-
 x86_64 hardware and non-Arch systems, and **skips real system tuning in VMs**.
 Zram takes effect at the next reboot; the sysctl adjustments are applied
 immediately when possible. No firmware, sound drivers/topologies, Wi-Fi power

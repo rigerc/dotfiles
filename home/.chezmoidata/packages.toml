@@ -10,7 +10,7 @@ developer = ["jq", "ripgrep", "fd", "fzf", "neovim", "tmux"]
 
 # Chromebook official packages: desktop/developer profiles only, no AUR.
 chromebook = [
-  "mesa", "libva-utils", "upower", "wev",
+  "foot", "mesa", "libva-utils", "upower", "wev",
   "alsa-utils", "alsa-ucm-conf", "sof-firmware", "pipewire-alsa",
   "xorg-xwayland", "networkmanager", "bluez", "bluez-utils",
   "ttf-jetbrains-mono-nerd", "noto-fonts", "noto-fonts-emoji",
