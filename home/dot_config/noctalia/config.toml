@@ -1,0 +1,8 @@
+# Noctalia v5 configuration; GUI overrides and runtime state remain local.
+[bar.default]
+position = "bottom"
+
+[theme]
+source = "builtin"
+builtin = "Rosé Pine"
+mode = "dark"

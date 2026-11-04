@@ -1,0 +1,6 @@
+# Each machine logs in separately; history and encryption keys stay out of Git.
+auto_sync = true
+sync_frequency = "5m"
+filter_mode = "global"
+search_mode = "fuzzy"
+secrets_filter = true

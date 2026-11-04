@@ -1,0 +1,19 @@
+# Local credentials and machine overrides.
+/DOTFILES_PLAN.md
+.env
+.env.*
+*.local
+*.local.*
+
+# Runtime state is never part of the source configuration.
+**/dot_atuin/data/
+**/fish_variables
+**/fish_history
+**/dot_local/state/
+
+# Editor and backup files.
+*.swp
+*.swo
+*.bak
+*~
+.DS_Store

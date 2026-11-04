@@ -1,0 +1,12 @@
+# Use Fish without changing the system login shell.
+command = /usr/bin/fish
+
+font-size = 12
+theme = Rose Pine
+window-padding-x = 12
+window-padding-y = 12
+mouse-hide-while-typing = true
+shell-integration = detect
+
+keybind = ctrl+shift+enter=new_window
+keybind = ctrl+shift+t=new_tab
