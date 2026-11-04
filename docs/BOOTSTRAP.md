@@ -99,3 +99,9 @@ chezmoi --no-pager diff
 chezmoi source-path ~/.gitconfig
 chezmoi apply --exclude=scripts
 ```
+
+## Isolated test environment
+
+To rehearse chezmoi first-run prompts and file deployment safely, use
+`bash container/run.sh --prompt` instead of installing Arch in a VM. See
+[Podman container guide](CONTAINER.md). The guest always excludes scripts.
