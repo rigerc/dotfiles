@@ -1,0 +1,5 @@
+{{- if eq .machineRole "server" }}
+.config/ghostty/**
+.config/hypr/**
+.config/noctalia/**
+{{- end }}
