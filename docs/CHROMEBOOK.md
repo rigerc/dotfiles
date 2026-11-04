@@ -36,7 +36,7 @@ topology may damage speakers. No firmware flash, disk partition operation,
 audio override, power-management service enablement, systemd configuration,
 zram tuning or AUR build is performed by this role.
 
-Run the **read-only** hardware inventory on working Arch:
+After installing chezmoi and initializing this repository, run the **read-only** hardware inventory on working Arch:
 
 ```sh
 bash "$(chezmoi source-path)/scripts/chromebook-preflight.sh"
@@ -56,6 +56,7 @@ data-recovery instructions separately, and do not apply this Arch setup yet.
 sudo pacman -Syu --needed git chezmoi
 chezmoi init rigerc/dotfiles
 # Choose machineRole = chromebook; leave installPackages = false initially.
+bash "$(chezmoi source-path)/scripts/chromebook-preflight.sh"
 chezmoi data
 chezmoi ignored
 chezmoi --no-pager diff
