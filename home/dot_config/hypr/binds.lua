@@ -1,6 +1,7 @@
 -- Adapted from the active Hyprland + Noctalia session, independently of chezmoi.
 -- Commands use the desktop session's PATH; dependency installation is separate.
 local ipc = "noctalia msg "
+local terminal = require("terminal")
 
 local function run_or_raise(class, command)
     return hl.dsp.exec_cmd(
@@ -17,11 +18,12 @@ hl.bind("SUPER + Space", hl.dsp.exec_cmd(
 ))
 hl.bind("SUPER + S", hl.dsp.exec_cmd(ipc .. "panel-toggle control-center"))
 hl.bind("SUPER + comma", hl.dsp.exec_cmd(ipc .. "settings-toggle"))
-hl.bind("ALT + Tab", hl.dsp.exec_cmd(ipc .. "window-switcher"))
+hl.bind("ALT + Tab", hl.dsp.exec_cmd(ipc .. "window-switcher hold"))
+hl.bind("ALT + SHIFT + Tab", hl.dsp.exec_cmd(ipc .. "window-switcher hold reverse"))
 hl.bind("SUPER + ALT + L", hl.dsp.exec_cmd(ipc .. "session lock"))
 hl.bind("SUPER + SHIFT + E", hl.dsp.exec_cmd(ipc .. "session logout"))
-hl.bind("SUPER + T", hl.dsp.exec_cmd("ghostty"))
-hl.bind("SUPER + Return", run_or_raise("com.mitchellh.ghostty", "ghostty"))
+hl.bind("SUPER + T", hl.dsp.exec_cmd(terminal.command))
+hl.bind("SUPER + Return", run_or_raise(terminal.class, terminal.command))
 hl.bind("SUPER + B", run_or_raise("zen", "zen-browser"))
 hl.bind("SUPER + E", hl.dsp.exec_cmd("nautilus"))
 hl.bind("SUPER + M", hl.dsp.exec_cmd("spotify-launcher"))
