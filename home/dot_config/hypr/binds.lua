@@ -4,12 +4,17 @@ local ipc = "noctalia msg "
 
 local function run_or_raise(class, command)
     return hl.dsp.exec_cmd(
-        "hyprsummon run --class " .. class .. " --current-workspace-only -- " .. command
+        "if command -v hyprsummon >/dev/null 2>&1; then "
+        .. "hyprsummon run --class " .. class .. " --current-workspace-only -- " .. command
+        .. "; else " .. command .. "; fi"
     )
 end
 
--- Shell and applications. Noctalia and Vicinae startup is configured separately.
-hl.bind("SUPER + Space", hl.dsp.exec_cmd("vicinae toggle"))
+-- Prefer Vicinae when installed; otherwise use the built-in Noctalia launcher.
+hl.bind("SUPER + Space", hl.dsp.exec_cmd(
+    "if command -v vicinae >/dev/null 2>&1; then vicinae toggle; "
+    .. "else " .. ipc .. "panel-toggle launcher; fi"
+))
 hl.bind("SUPER + S", hl.dsp.exec_cmd(ipc .. "panel-toggle control-center"))
 hl.bind("SUPER + comma", hl.dsp.exec_cmd(ipc .. "settings-toggle"))
 hl.bind("ALT + Tab", hl.dsp.exec_cmd(ipc .. "window-switcher"))

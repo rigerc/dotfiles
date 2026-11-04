@@ -25,3 +25,4 @@ hl.monitor({ output = "", mode = "preferred", position = "auto", scale = "auto" 
 require("scrolling")
 require("rules")
 require("binds")
+require("session")

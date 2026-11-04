@@ -4,8 +4,59 @@ Minimal configuration for Arch machines using Fish, Atuin, Ghostty, Hyprland,
 and Noctalia. Independent of the previous chezmoi setup, with Hyprland bindings
 and rules adapted from the active desktop configuration.
 
-These are source files only. Nothing has been installed, linked, applied, or
-registered with the existing chezmoi configuration.
+Cloning the repository leaves your system unchanged. Installation requires
+running the installer explicitly with `--apply`.
+
+## Install
+
+On Arch or an Arch derivative, clone the repository as your normal user:
+
+```sh
+git clone https://github.com/rigerc/dotfiles.git "$HOME/dotfiles"
+cd "$HOME/dotfiles"
+
+# Preview the package command and file changes; does not change your home.
+./install.sh --packages
+
+# Install core packages, back up replaced files, and apply the dotfiles.
+./install.sh --apply --packages
+```
+
+Git is needed to clone. The installer can bootstrap chezmoi with the core
+packages; without chezmoi, preview shows the package command and setup guidance.
+Package installation uses `sudo pacman -Syu --needed` and retains pacman's
+normal prompts. The core list is in [packages/arch.txt](packages/arch.txt).
+No AUR packages or third-party repositories are installed automatically.
+
+If the dependencies are already installed, use `./install.sh --apply`.
+Running `./install.sh` or passing `--dry-run` previews changes. To render into
+a separate home directory, use `./install.sh --apply --destination /tmp/dotfiles-demo`.
+Package installation, when requested, always affects the host system.
+
+Before writing changes, the installer saves replaced files under
+`${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/backups/` with private permissions.
+Each backup includes `existing.txt`, `created.txt`, and original files under
+`files/`; symlinks are preserved. Keep the backup path printed during install.
+For manual rollback, review those manifests, restore originals from `files/`,
+and remove only the new files listed in `created.txt` that you want to undo.
+Packages and unrelated legacy settings are outside this file backup.
+
+The installer uses this checkout explicitly and isolates its chezmoi config,
+cache, and state. It does not change the previous chezmoi source or register
+this checkout as its default. For updates, run `git pull`, preview again with
+`./install.sh`, then run `./install.sh --apply`.
+
+After installation, choose the packaged **Hyprland** session at your next login.
+The configuration starts Noctalia and, when installed, Vicinae at compositor
+startup. The installer does not restart your current session, configure a login
+manager, change your login shell, or perform Atuin authentication. Select a
+session that loads `~/.config/hypr/hyprland.lua`; a custom session loading the
+old `hypr/noctalia/` root will continue to use that old configuration.
+
+Remove conflicting old shell autostarts and review Noctalia GUI overrides
+before switching sessions. GPU/driver setup remains machine-specific. These
+files target the standard `~/.config` path and require Hyprland 0.57+ and
+Noctalia v5.
 
 ## Files
 
@@ -20,7 +71,7 @@ leading dot in the eventual destination filename.
 - `home/dot_config/ghostty/config`: Fish, Rosé Pine, padding, and basic bindings.
 - `home/dot_config/hypr/hyprland.lua`: native Lua for Hyprland 0.57+ and automatic
   monitor placement/scaling. Loads `scrolling.lua`, `binds.lua`, and `rules.lua`
-  from the same directory.
+  from the same directory, plus `session.lua` for next-login startup.
 - `home/dot_config/noctalia/config.toml`: Noctalia v5, a bottom bar, and Rosé Pine.
 
 ## Inspect without applying
@@ -35,17 +86,16 @@ ghostty +validate-config --config-file="$PWD/home/dot_config/ghostty/config"
 noctalia config validate "$PWD/home/dot_config/noctalia/config.toml"
 ```
 
-The files contain no installation hooks, service definitions, or session
-autostarts. Noctalia controls require a running Noctalia instance; Super+Space
-requires a running Vicinae server. Starting those services and integrating
-generated themes are deferred.
+Session startup runs Noctalia and an optional Vicinae server. Noctalia controls
+require its running instance. Generated theme integration remains deferred.
 
-Application bindings expect `hyprsummon`, `vicinae`, `zen-browser`, `nautilus`,
-`spotify-launcher`, `feishin`, and `fladder` on the desktop session's PATH.
-`hyprsummon` provides the existing run-or-raise behavior for Ghostty and Zen;
-Super+T launches Ghostty directly. Dependencies are not installed here. Fladder
-was not on this machine's PATH during the review, so its retained shortcut
-needs that application installed before use.
+Optional application bindings use `hyprsummon`, `vicinae`, `zen-browser`,
+`nautilus`, `spotify-launcher`, `feishin`, and `fladder` on the desktop session's
+PATH. Install the apps you use separately. `hyprsummon` provides run-or-raise;
+without it, Enter/B launches Ghostty/Zen directly. Super+Space falls back to
+Noctalia's launcher when Vicinae is not installed. The other app shortcuts need
+their corresponding application. The core installer covers the five main
+applications and desktop utilities, not this optional app set.
 
 ## Defaults and later setup
 
@@ -57,7 +107,7 @@ Noctalia/Vicinae layer effects.
 - Super+Enter runs or raises Ghostty; Super+T starts a new Ghostty window.
   Super+B runs or raises Zen; E/M/N launch Nautilus/Spotify/Feishin;
   Super+Shift+V launches Fladder.
-- Super+Space toggles Vicinae; Super+S opens Noctalia's control center;
+- Super+Space toggles Vicinae or Noctalia's launcher; Super+S opens the control center;
   Super+comma opens settings; Alt+Tab opens the window switcher.
 - Super+Alt+L locks; Super+Shift+E logs out. Super+L focuses right.
 - Super+Q closes; Super+Shift+T toggles floating; Super+F toggles fullscreen;
@@ -93,3 +143,17 @@ Configuration references: [chezmoi source layout](https://www.chezmoi.io/user-gu
 [Noctalia](https://docs.noctalia.dev/noctalia/configuration/).
 
 Scrolling settings and layout actions follow the [Hyprland scrolling reference](https://wiki.hypr.land/configuring/layouts/scrolling-layout/).
+Session startup follows [Noctalia's Hyprland setup](https://docs.noctalia.dev/noctalia/compositor-settings/hyprland/).
+
+## Installer checks
+
+With chezmoi, Python 3, and ShellCheck installed:
+
+```sh
+bash -n install.sh
+shellcheck install.sh
+python3 -m unittest discover -s tests -v
+```
+
+The integration checks use temporary homes, the real chezmoi renderer, and
+stubbed package commands. They do not install packages or modify your home.
