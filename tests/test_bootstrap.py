@@ -1,6 +1,5 @@
 """No privileged operations: exercise installer preview and staged Chromebook tune."""
 import os
-import hashlib
 from pathlib import Path
 import shutil
 import subprocess
@@ -23,7 +22,7 @@ def run_shell(*args, cwd=ROOT):
 class BootstrapTests(unittest.TestCase):
     def test_syntax_all_scripts(self):
         for rel in (
-            "install.sh", "vm/launch.sh", "vm/download-iso.sh", "vm/guest-smoke.sh",
+            "install.sh", "container/run.sh", "container/guest.sh",
             "scripts/chromebook-preflight.sh",
             "home/.chezmoitemplates/chromebook-tune.sh",
         ):
@@ -46,13 +45,6 @@ class BootstrapTests(unittest.TestCase):
             self.assertIn("Wi-Fi", cmd.stdout)
             self.assertIn("sudo pacman -Syu --needed", cmd.stdout)
             self.assertEqual(list(home.iterdir()), [])
-
-    def test_preview_options_without_iso(self):
-        launcher = run_shell(ROOT / "vm/launch.sh", "--help")
-        self.assertEqual(launcher.returncode, 0, launcher.stderr)
-        self.assertIn("--iso", launcher.stdout)
-        missing = run_shell(ROOT / "vm/launch.sh", "--iso", "/missing/not-real.iso")
-        self.assertNotEqual(missing.returncode, 0)
 
     def test_network_detection_and_pipe_mode(self):
         with tempfile.TemporaryDirectory() as td:
@@ -88,79 +80,52 @@ class BootstrapTests(unittest.TestCase):
             self.assertEqual(piped.returncode, 0, piped.stderr)
             self.assertIn("DRY RUN", piped.stdout)
 
-    @staticmethod
-    def make_mock_mirror(root):
-        mirror = root / "mirror"
-        mirror.mkdir()
-        payload = b"fake Arch ISO payload for local tests only"
-        (mirror / "archlinux-x86_64.iso").write_bytes(payload)
-        digest = hashlib.sha256(payload).hexdigest()
-        (mirror / "sha256sums.txt").write_text(
-            f"{digest}  archlinux-x86_64.iso\n"
-        )
-        binaries = root / "bin"
-        binaries.mkdir()
-        curl = binaries / "curl"
-        curl.write_text(
-            '#!/bin/sh\n'
-            'out=; url=\n'
-            'while [ "$#" -gt 0 ]; do\n'
-            '  if [ "$1" = --output ]; then out=$2; shift 2; continue; fi\n'
-            '  url=$1; shift\n'
-            'done\n'
-            'file=${url##*/}\n'
-            'cp -- "$FAKE_MIRROR/$file" "$out"\n'
-        )
-        curl.chmod(0o755)
-        env = {**os.environ, "FAKE_MIRROR": str(mirror),
-               "PATH": f"{binaries}:{os.environ.get('PATH', '')}"}
-        return mirror, payload, env
+    def test_container_launcher_and_roles(self):
+        host = ROOT / "container/run.sh"
+        guest = ROOT / "container/guest.sh"
+        self.assertTrue(host.is_file())
+        self.assertTrue(guest.is_file())
+        help_result = run_shell(host, "--help")
+        self.assertEqual(help_result.returncode, 0, help_result.stderr)
+        self.assertIn("--role", help_result.stdout)
+        self.assertIn("--prompt", help_result.stdout)
+        invalid = run_shell(host, "--role", "desktop;rm")
+        self.assertNotEqual(invalid.returncode, 0)
+        self.assertIn("Unknown role", invalid.stderr)
 
-    def test_iso_download_verified_cached_and_refreshed(self):
+        # Stub podman: inspect argv without pulling an image or privileged calls.
         with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            mirror, payload, env = self.make_mock_mirror(root)
-            out = root / "cache" / "archlinux-x86_64.iso"
-            cmd = ["bash", str(ROOT / "vm/download-iso.sh"),
-                   "--output", str(out)]
-            first = subprocess.run(cmd, capture_output=True, text=True, env=env)
-            self.assertEqual(first.returncode, 0, first.stderr)
-            self.assertEqual(out.read_bytes(), payload)
-            second = subprocess.run(cmd, capture_output=True, text=True, env=env)
-            self.assertEqual(second.returncode, 0, second.stderr)
-            self.assertIn("Cached Arch ISO verified", second.stdout)
-            out.write_bytes(b"outdated or corrupt")
-            third = subprocess.run(cmd, capture_output=True, text=True, env=env)
-            self.assertEqual(third.returncode, 0, third.stderr)
-            self.assertEqual(out.read_bytes(), payload)
-            self.assertFalse(list(out.parent.glob("*.partial.*")))
-            (mirror / "sha256sums.txt").write_text(
-                "0" * 64 + "  archlinux-x86_64.iso\n"
+            fake = Path(td) / "podman"
+            output = Path(td) / "podman-argv.txt"
+            fake.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$PODMAN_CAPTURE"\n')
+            fake.chmod(0o755)
+            env = {**os.environ,
+                   "PATH": f"{td}:{os.environ.get('PATH', '')}",
+                   "PODMAN_CAPTURE": str(output)}
+            result = subprocess.run(
+                ["bash", str(host), "--role", "chromebook"],
+                env=env, capture_output=True, text=True, timeout=15,
             )
-            failed = subprocess.run(cmd, capture_output=True, text=True, env=env)
-            self.assertNotEqual(failed.returncode, 0)
-            self.assertIn("checksum mismatch", failed.stderr)
-            self.assertEqual(out.read_bytes(), payload)
-            self.assertFalse(list(out.parent.glob("*.partial.*")))
-            insecure = subprocess.run(cmd + ["--mirror", "http://bad"],
-                                      capture_output=True, text=True, env=env)
-            self.assertNotEqual(insecure.returncode, 0)
-            self.assertIn("HTTPS", insecure.stderr)
-
-    def test_vm_download_only_never_launches_qemu(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            mirror, payload, env = self.make_mock_mirror(root)
-            env["XDG_CACHE_HOME"] = str(root / "cache")
-            result = subprocess.run(["bash", str(ROOT / "vm/launch.sh"),
-                                     "--download-only"], capture_output=True,
-                                    text=True, env=env)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("Verified Arch ISO", result.stdout)
-            self.assertEqual(
-                (root / "cache/dotfiles-arch-vm/archlinux-x86_64.iso").read_bytes(),
-                payload,
-            )
+            args = output.read_text().splitlines()
+            self.assertIn("--rm", args)
+            self.assertIn(f"{ROOT}:/repo:ro", args)
+            self.assertIn("docker.io/library/archlinux:latest", args)
+            self.assertIn("/repo/container/guest.sh", args)
+            self.assertIn("chromebook", args)
+            self.assertNotIn("--privileged", args)
+            self.assertNotIn("--device", args)
+
+    def test_container_guest_never_applies_provisioning_scripts(self):
+        guest = (ROOT / "container/guest.sh").read_text()
+        self.assertIn("apply --exclude=scripts", guest)
+        self.assertIn("--root", guest)
+        self.assertIn("--rollback", guest)
+        self.assertIn("cp -a /repo/. ", guest)
+        self.assertNotIn("--privileged", guest)
+        self.assertNotIn("sudo pacman", guest)
+        self.assertFalse((ROOT / "vm").exists())
+        self.assertFalse((ROOT / "docs/VM.md").exists())
 
     def test_tuning_staged_idempotent_and_rollback(self):
         with tempfile.TemporaryDirectory() as td:
@@ -208,12 +173,6 @@ class BootstrapTests(unittest.TestCase):
         self.assertIn(".chromebookTuning", template)
         self.assertIn('include ".chezmoitemplates/chromebook-tune.sh"', template)
 
-    def test_vm_guest_never_emulates_chromebook_hardware(self):
-        script = (ROOT / "vm/guest-smoke.sh").read_text()
-        self.assertIn("--root", script)
-        self.assertIn("QEMU|KVM|Virtual", script)
-        self.assertIn("--dry-run", script)
-        self.assertNotIn("sudo pacman", script)
 
 
 if __name__ == "__main__":
